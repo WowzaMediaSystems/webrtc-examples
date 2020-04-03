@@ -1,0 +1,34 @@
+<meta charset="UTF-8">
+<html>
+	<head>
+		<script src="../js/jquery-3.1.0.min.js"></script>
+		<script src="../js/jquery.cookie.js"></script>
+		<script src="webrtc.js"></script>
+		<style>
+		.div-section {margin-bottom: 8px;}
+		</style>
+	</head>
+	<body>
+		<div class="div-section"><img src="../img/wowza-logo.png" class="logo" height="80"/></div>
+		<div class="div-section">
+		<table>
+		<tr><td><strong>SDP URL</strong></td><td><input type="text" id="sdpURL" size="50" value=""/></td></tr>
+		<tr><td><strong>Application Name</strong></td><td><input type="text" id="applicationName" size="25" value=""/></td></tr>
+		<tr><td><strong>Stream Name</strong></td><td><input type="text" id="streamName" size="25" value=""/></td></tr>
+		<tr><td>&nbsp;</td><td><input type="button" id="buttonGo" onclick="start()" value="" /></td></tr>
+		</table>
+		</div>
+		<div class="div-section">
+		<video id="remoteVideo" autoplay playsinline controls muted style="height:480px;"></video>
+		</div>
+		<input type="button" id="buttonCheckStream" onclick="getAvailableStreams()" value="Get Available Streams" />
+		
+		<script type="text/javascript">
+			pageReady();
+		</script>
+
+		<div>
+			<span id="sdpDataTag"></span>
+		</div>
+	</body>
+</html>
