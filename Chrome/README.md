@@ -9,3 +9,5 @@ The following examples demonstrate how to publish and play WebRTC streams with t
 
 - [Publish from Chrome](publish/)
 - [Playback from Chrome](play/)
+- [ScreenShare from Chrome](screenshare/)
+
