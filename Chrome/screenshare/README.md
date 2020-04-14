@@ -1,4 +1,4 @@
-![wowza media systems logo](../images/wowza-logo.png)
+![wowza media systems logo](../../images/wowza-logo.png)
 # Wowza Media Systems WebRTC client examples for screen sharing
 
 Welcome to the official Wowza Media Systems WebRTC client examples. These examples are intended to help developers bring live streaming into their applications using WebRTC.
