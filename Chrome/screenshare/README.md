@@ -16,7 +16,7 @@ Welcome to the official Wowza Media Systems WebRTC client examples. These exampl
 
 ## Install the required Chrome Extension
 
-An extension is required to provide access to the screen share capability. An open source extension can be found here
+An extension is required to provide access to the screen share capability. An open source extension can be found here:
 
 [Screen Share Extension](https://chrome.google.com/webstore/detail/screen-capturing/ajhifddimkapgcifgcodmmfdlknahffk)
 
@@ -24,12 +24,24 @@ It provides a basic media ID which can then be used to attach to a peer connecti
 
 ## Install the Share example
 
-- Copy the share/ folder to your installation
+- Copy the `share/` folder to your installation. `install-dir/conf/webrtc`
 
-- Open the example in your browser and it should now show an option to share your screen using the following example style link
+- Open the example in your browser at and it should now show an option to share your screen using the following example style link
 
-https://&lt;Your Stream Lock&gt;.streamlock.net/webrtc/share/
+`https://streamlock-domain-name.streamlock.net/webrtc/share/index.html`
 
-- You can then publish your screen 
+- You can then publish your screen using the `Publish` button.
 
-- Play back is the same as any other WebRTC stream
+- Playback is the same as any other WebRTC stream
+
+`https://streamlock-domain-name.streamlock.net/webrtc/play/index.html`
+
+## Troubleshooting
+
+> DOMException: Permission denied by system
+
+In recent versions of MacOS, you may need to explicitly configure your privacy settings to allow the Chrome browser to screen record.
+
+Check System Preferences > Security & Privacy > Privacy > Camera & Microphone. Make sure Chrome is listed and has a checkbox. If the checkbox is unchecked, check it, and follow the prompt to allow Chrome to restart. Without a restart, the change will not propagate and you will continue to see the error.
+
+For more information, please see this [Stack Overflow post](https://stackoverflow.com/questions/59000581/google-chrome-domexception-permission-denied-by-system-for-navigator-mediadevic).
