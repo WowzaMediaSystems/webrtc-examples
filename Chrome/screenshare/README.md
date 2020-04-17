@@ -22,19 +22,33 @@ An extension is required to provide access to the screen share capability. An op
 
 It provides a basic media ID which can then be used to attach to a peer connection.
 
+Please keep in mind this Chrome Extension is not built or maintained by Wowza Media Systems and is just an example of how a screen share capabality can be added to a WebRTC workflow.
+
 ## Install the Share example
 
-- Copy the `share/` folder to your installation. `install-dir/conf/webrtc`
+Copy the `share/` folder to your installation. `install-dir/conf/webrtc`
 
-- Open the example in your browser at and it should now show an option to share your screen using the following example style link
+Open the example in your browser at and it should now show an option to share your screen. Make a window selection and click `Share`.
 
-`https://streamlock-domain-name.streamlock.net/webrtc/share/index.html`
+![Screen Share Browser Extension Model when example starts](images/screen_share.png)
 
-- You can then publish your screen using the `Publish` button.
+In this example, you will not see a preview of what you are sharing, but you will see a small banner from your browser extension alerting you to what is being shared.
 
-- Playback is the same as any other WebRTC stream
+Using your domain name, replace `localhost` with your domain name. For example, using a StreamLock domain, it should look like the following:
 
-`https://streamlock-domain-name.streamlock.net/webrtc/play/index.html`
+`wss://123456.streamlock.net/webrtc-session.json`
+
+If you hit publish before configuring your SDP URL, you will need to refresh the page.
+
+You can then publish your screen using the `Publish` button.
+
+Playback is the same as any other WebRTC stream. Use the one in Chrome examples by navigating to the `index.html` page in the `Play` directory or at the following URL:
+
+`https://[ssl-certificate-domain-name]:9443/webrtc/play/index.html`
+
+For StreamLock, use the following URL as an example:
+
+`https://123456.streamlock.net:9443/webrtc/play/index.html`
 
 ## Troubleshooting
 
