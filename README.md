@@ -3,7 +3,7 @@
 
 Welcome to the official Wowza Media Systems Web Real-time Communication (WebRTC) client examples. These examples are intended to help developers bring live streaming into their applications using WebRTC.
 
-This is a monorepo that contains multiple browser examples. Each browser example is in its own directory and includes a README with example-specific instructions and additional information.
+This is a **WIP** monorepo that contains multiple browser examples. Each browser example is in its own directory and includes a README with example-specific instructions and additional information. Some browser examples include additional functionality at this time.
 
 - [Examples for FireFox](FireFox/)
 - [Examples for Safari](Safari/)
