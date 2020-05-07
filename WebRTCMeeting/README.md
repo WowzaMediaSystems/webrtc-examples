@@ -25,6 +25,8 @@ Welcome to the official Wowza Media Systems WebRTC client examples. These exampl
 
 4. In the **[wowza-install-directory]/webrtcmeetingfiles/meeting/** folder, open **meeting/js/webrtc-play.js** and **meeting/js/webrtc-publish.js**  and edit them to replace the `[YOUR CERT NAME HERE]` entry with the name of the SSL certificate you are using.
 
+5. In the same folder,**[wowza-install-directory]/webrtcmeetingfiles/meeting/**, open **showMeetingLinks.html** and edit them to replace the `[YOUR CERT NAME HERE]` entry with the name of the SSL certificate you are using.
+
 5. In the **[wowza-install-directory]/conf/** folder open the **VHost.xml** file and locate the <HostPort> container for port 443 with SSL.
 
 	>	**Note:**  The default port for SSL is 443, however if you are using another port these same changes apply. 
