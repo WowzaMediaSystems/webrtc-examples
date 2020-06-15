@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+      <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+      <link rel="stylesheet" type="text/css" href="./css/main.css" />
+      <link rel="stylesheet" type="text/css" href="./css/wowza-streaming-engine.css" />
+      <link rel="icon" href="./images/favicon.ico" type="image/x-icon"/>
+      <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+      <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+      <script src="https://cdn.jsdelivr.net/npm/js-cookie@2.2.1/src/js.cookie.js" integrity="sha256-P8jY+MCe6X2cjNSmF4rQvZIanL5VwUUT4MBnOMncjRU=" crossorigin="anonymous"></script>
+      <script type="text/javascript" src="https://webrtchacks.github.io/adapter/adapter-latest.js"></script>
+      <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+      <title>WebRTC Publishing Test for Wowza Streaming Engine</title>
+      <meta name="description" content="As a Wowza Streaming Engine customer, you can now test WebRTC streams published from your browser. Use this page to test different configurations.">
+    </head>
+    <body>
+      <div id="build">DEV-BUILD</div>
+      <div class="container-fluid">
+        <nav class="navbar navbar-expand-sm navbar-light bg-light pb-3 pb-md-2" id="top-nav">
+          <a class="navbar-brand" href="http://www.wowza.com"><img class="noll" src="./images/wowza-logo.svg" alt="Wowza Media Systems" /></a>
+          <ul class="navbar-nav mr-auto-lg">
+            <li class="nav-item page active">
+              <a href="dev-view-publish" id="show-publish-page">Publish</a>
+              <span></span>
+            </li>
+            <li class="nav-item page">
+              <a href="dev-view-play" id="show-play-page">Play</a>
+              <span></span>
+            </li>
+          </ul>
+          <ul class="navbar-nav ml-auto d-none d-md-flex">
+            <li class="nav-item mr-3">
+              <a href="https://www.wowza.com/docs/wowza-streaming-engine-product-articles">Docs</a>
+            </li>
+            <li class="nav-item mr-3">
+              <a href="https://www.wowza.com/developer">Developer Portal</a>
+            </li>
+          </ul>
+        </nav>
+        <div class="row justify-content-center" id="transcoder-warning" style="display:none;">
+          <div class="col-12 alert alert-warning p-2 text-center">
+            Please visit <a href="https://cloud.wowza.com">cloud.wowza.com</a> to start your live stream.
+          </div>
+        </div>
+        <div class="row justify-content-center invisible mt-3" id="error-panel">
+          <div class="col-10 alert alert-danger alert-dismissible p-2">
+            <button id="error-panel-close" type="button" class="close" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+            <div id="error-messages">&nbsp;</div>
+          </div>
+        </div>
+        <div class="container-fluid mt-3" id="publish-content">
+          <div class="row justify-content-center">
+            <div class="col-md-8 col-sm-12">
+              <div id="publish-video-container">
+                <video id="publisher-video" autoplay playsinline muted controls></video>
+                <div id="video-live-indicator">
+                  <span id="video-live-indicator-live" class="badge badge-pill badge-danger" style="display:none;">LIVE</span>
+                  <span id="video-live-indicator-error" class="badge badge-pill badge-warning" style="display:none;">ERROR</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4 col-sm-12" id="publish-settings">
+              <form id="publish-settings-form">
+                <div class="row">
+                  <div class="col-12">
+                    <div class="form-group">
+                      <label for="sdpURL">Signaling URL</label>
+                      <input type="text" class="form-control" id="sdpURL" name="sdpURL" maxlength="1024" placeholder="wss://[ssl-certificate-domain-name]/webrtc-session.json">
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-lg-6 col-sm-12">
+                    <div class="form-group">
+                      <label for="applicationName">Application Name</label>
+                      <input type="text" class="form-control" id="applicationName" name="applicationName" maxlength="256">
+                    </div>
+                  </div>
+                  <div class="col-lg-6 col-sm-12">
+                    <div class="form-group">
+                      <label for="streamName">Stream Name</label>
+                      <input type="text" class="form-control" id="streamName" name="streamName" maxlength="256">
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-lg-6 col-sm-12">
+                    <div class="form-group">
+                      <label for="audioBitrate">Audio Bitrate</label>
+                      <div class="input-group">
+                        <input type="number" class="form-control" id="audioBitrate" name="audioBitrate" value="64">
+                        <div class="input-group-append">
+                          <span class="input-group-text">Kbps</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-lg-6 col-sm-12">
+                    <div class="form-group">
+                      <label for="audioCodec">Audio Codec</label>
+                      <div class="input-group">
+                        <select class="form-control" id="audioCodec" name="audioCodec">
+                          <option value="opus" selected>Opus</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-lg-6 col-sm-12">
+                    <div class="form-group">
+                      <label for="videoBitrate">Video Bitrate</label>
+                      <div class="input-group">
+                        <input type="number" class="form-control" id="videoBitrate" name="videoBitrate" value="3500">
+                        <div class="input-group-append">
+                          <span class="input-group-text">Kbps</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-lg-6 col-sm-12">
+                    <div class="form-group">
+                      <label for="videoCodec">Video Codec</label>
+                      <div class="input-group">
+                        <select class="form-control" id="videoCodec" name="videoCodec">
+                          <option value="42e01f" selected>H.264</option>
+                          <option value="VP8">VP8</option>
+                          <option value="VP9">VP9</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-lg-6 col-sm-12">
+                    <div class="form-group">
+                      <label for="videoFrameRate">Frame Rate</label>
+                      <div class="input-group">
+                        <input type="number" class="form-control" id="videoFrameRate" name="videoFrameRate" value="30">
+                        <div class="input-group-append">
+                          <span class="input-group-text">fps</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-lg-6 col-sm-12">
+                    <div class="form-group">
+                      <label for="frameSize">Frame Size</label>
+                      <div class="input-group">
+                        <select class="form-control" id="frameSize" name="frameSize">
+                          <option selected value="default">
+                            Default
+                          </option>
+                          <option value="1920x1080">
+                            1920x1080
+                          </option>
+                          <option value="1280x720">
+                            1280x720
+                          </option>
+                          <option value="800x600">
+                            800x600
+                          </option>
+                          <option value="640x360">
+                            640x360
+                          </option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-10">
+                    <div class="form-group">
+                      <label for="camera-list-select">
+                        Input Camera
+                      </label>
+                      <select id="camera-list-select" class="form-control">
+                      </select>
+                    </div>
+                  </div>
+                  <div class="col-2">
+                    <button id="camera-toggle" class="control-button">
+                      <img alt="" class="noll" id="video-off" src="./images/videocam-32px.svg" />
+                      <img alt="" class="noll" id="video-on" src="./images/videocam-off-32px.svg" style="display:none;"/>
+                    </button>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-10">
+                    <div class="form-group">
+                      <label for="mic-list-select">
+                        Input Microphone
+                      </label>
+                      <select id="mic-list-select" class="form-control">
+                      </select>
+                    </div>
+                  </div>
+                  <div class="col-2">
+                    <button id="mute-toggle" class="control-button">
+                      <img alt="" class="noll" id="mute-off" src="./images/mic-32px.svg" />
+                      <img alt="" class="noll" id="mute-on" src="./images/mic-off-32px.svg" style="display:none;"/>
+                    </button>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-10">
+                    <button id="publish-toggle" type="button" class="btn">Publish</button>
+                  </div>
+                  <div class="col-2">
+                    <button id="publish-share-link" type="button" class="control-button mt-0">
+                      <img alt="" class="noll" id="mute-off" src="./images/file_copy-24px.svg" />
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+  		<script type="module" src="./publish.js"></script>
+  		<div>
+  			<span id="sdpDataTag"></span>
+  		</div>
+    </body>
+</html>
