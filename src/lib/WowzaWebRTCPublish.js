@@ -1,3 +1,8 @@
+/*
+ * This code and all components (c) Copyright 2019-2020, Wowza Media Systems, LLC. All rights reserved.
+ * This code is licensed pursuant to the BSD 3-Clause License.
+ */
+
 import { mungeSDPPublish } from './WowzaMungeSDP.js';
 import WowzaPeerConnectionPublish from './WowzaPeerConnectionPublish.js';
 import SoundMeter from './SoundMeter.js';
