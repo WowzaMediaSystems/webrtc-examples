@@ -4,7 +4,12 @@
  *  Use of this source code is governed by a BSD-style license
  *  that can be found in the LICENSE file in the root of the source
  *  tree.
+ * 
+ *  This code is modified to be used as a JS module from original source at
+ *  https://github.com/webrtc/samples/blob/gh-pages/src/content/getusermedia/volume/js/soundmeter.js
+ * 
  */
+
 
 'use strict';
 
