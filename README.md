@@ -34,7 +34,7 @@ You'll need to setup WebRTC for either Wowza Streaming Engine or Wowza Streaming
 In the `src` folder, you'll find the following:
 - `css` and `images` - Assets used by the example HTML pages.
 - `lib` - JavaScript libraries for managing the WebRTC setup.
-   - `AvMenu.js` - Controls the selected input.
+   - `AvMenu.js` - Controls the selected input for publishing and screen sharing.
    - `Settings.js` - Creates a set of configuration settings and copy functionality.
    - `SoundMeter.js` - Provides a audio meter.
    - `WowzaMungeSDP.js` - Generates an SPD for peer signaling.
@@ -42,7 +42,8 @@ In the `src` folder, you'll find the following:
    - `WowzaPeerConnectionPublish.js` - Manages the signaling process for publishing.
    - `WowzaWebRTCPlay.js` - Controls the playback state.
    - `WowzaWebRTCPublish.js` - Controls the publishing state.
-- `dev-view-publish.html` and `dev-view-play.html` - Example HTML pages that can create a WebRTC stream and publish it to Wowza Streaming Engine and play back the WebRTC stream from Wowza Streaming Engine.
+- `dev-view-publish.html` - Example HTML page that can create a WebRTC stream with video, audio, and screen share input and publish it to Wowza Streaming Engine. 
+- `dev-view-play.html` - Example HTML page that can play back a WebRTC stream from Wowza Streaming Engine.
 - `play.js` and `publish.js` - JavaScript files that use libraries imported from the `lib` folder to control the WebRTC setup for publishing and playing streams.
 
 

@@ -4,7 +4,7 @@
  */
 
 import AvMenu from './lib/AvMenu.js';
-import Settings from './lib/settings.js';
+import Settings from './lib/Settings.js';
 import WowzaWebRTCPublish from './lib/WowzaWebRTCPublish.js';
 window.WowzaWebRTCPublish = WowzaWebRTCPublish;
 let browserDetails = window.adapter.browserDetails;
@@ -16,6 +16,8 @@ $(document).ready(() => {
     pendingPublishTimeout: undefined,
     muted: false,
     video: true,
+    selectedCam: '',
+    selectedMic: '',
     settings: {
       sdpURL: "",
       applicationName: "",
@@ -25,7 +27,7 @@ $(document).ready(() => {
       videoBitrate: "3500",
       videoCodec: "42e01f",
       videoFrameRate: "30",
-      frameSize: "1280x720"
+      frameSize: "default"
     }
   };
 
@@ -50,6 +52,22 @@ $(document).ready(() => {
           stopped();
         }
       },
+      onCameraChanged: (cameraId) => {
+        if (cameraId !== state.selectedCam)
+        {
+          state.selectedCam = cameraId;
+          let camSelectValue = 'CameraMobile_'+cameraId;
+          if (cameraId === 'screen') camSelectValue = 'screen_screen';
+          $('#camera-list-select').val(camSelectValue);
+        }
+      },
+      onMicrophoneChanged: (microphoneId) => {
+        if (microphoneId !== state.selectedMic)
+        {
+          state.selectedMic = microphoneId;
+          $('#mic-list-select').val('MicrophoneMobile_'+microphoneId);
+        }
+      },
       onError: errorHandler,
       onSoundMeter: soundMeter
     })
@@ -58,7 +76,7 @@ $(document).ready(() => {
       useSoundMeter:true
     })
     .then((result) => {
-      AvMenu.init(result.cameras,result.microphones, WowzaWebRTCPublish.setCamera, WowzaWebRTCPublish.setMicrophone);
+      AvMenu.init(result.cameras,result.microphones, onAvMenuCameraChanged, onAvMenuMicrophoneChanged);
     });
   };
 
@@ -193,6 +211,22 @@ $(document).ready(() => {
     $("#error-panel").addClass('invisible');
   }
 
+  const onAvMenuCameraChanged = (cameraId) => {
+    if (state.selectedCam !== cameraId)
+    {
+      state.selectedCam = cameraId;
+      WowzaWebRTCPublish.setCamera(cameraId);
+    }
+  }
+
+  const onAvMenuMicrophoneChanged = (microphoneId) => {
+    if (state.selectedMic !== microphoneId)
+    {
+      state.selectedMic = microphoneId;
+      WowzaWebRTCPublish.setMicrophone(microphoneId);
+    }
+  }
+
   // sound meter
   const onSoundMeter = (level) => {
     // map level onto the rising quadrant shape of a circle to exaggerate the sound meter gradient
@@ -216,7 +250,7 @@ $(document).ready(() => {
 
   const onPublishPeerConnectionFailed = () => {
     setPendingPublish(false);
-    onPublishingConnected();
+    onPublishPeerConnected();
     errorHandler({message:"Peer connection failed."});
     $("#publish-settings-form :input").prop("disabled", false);
     $("#publish-settings-form :button").prop("disabled", false);

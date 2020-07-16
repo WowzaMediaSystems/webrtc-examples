@@ -24,11 +24,14 @@ let mediaInfo = {
   audioCodec: "opus"
 }
 let userData = undefined;
+let statsInterval = undefined;
 
 let wsConnection = undefined;
 let peerConnection = undefined;
 let peerConnectionConfig = { 'iceServers': [] };
 peerConnectionConfig = null;
+let videoSender = undefined;
+let audioSender = undefined;
 
 
 function gotIceCandidate(event) {
@@ -72,41 +75,15 @@ function gotDescription(description) {
     });
 }
 
-// START STATS
-
-function statsInterval() {
-  console.log('WowzaPeerConnectionPublish.statsInterval');
-  if (peerConnection != null)
-  {
-    peerConnection.getStats(null)
-    .then(showLocalStats, err => console.log(err));
+function createOnStats(onStats) {
+  return () => {
+    if (peerConnection != null)
+    {
+      peerConnection.getStats(null)
+      .then(onStats, err => console.log(err));
+    }
   }
 }
-
-function showLocalStats(results) {
-  results.forEach(res => {
-    console.log(res);
-  });
-}
-
-function dumpStats(results) {
-  let statsString = '';
-  results.forEach(res => {
-    statsString += '<h3>Report type=';
-    statsString += res.type;
-    statsString += '</h3>\n';
-    statsString += `id ${res.id}<br>`;
-    statsString += `time ${res.timestamp}<br>`;
-    Object.keys(res).forEach(k => {
-      if (k !== 'timestamp' && k !== 'type' && k !== 'id') {
-        statsString += `${k}: ${res[k]}<br>`;
-      }
-    });
-  });
-  return statsString;
-}
-
-// END STATS
 
 function wsConnect(url) {
   try
@@ -125,6 +102,8 @@ function wsConnect(url) {
     console.log("WowzaPeerConnectionPublish.wsConnection.onopen");
 
     peerConnection = new RTCPeerConnection(peerConnectionConfig);
+    videoSender = undefined;
+    audioSender = undefined;
 
     peerConnection.onicecandidate = (event) => {
       if (event.candidate != null) {
@@ -139,13 +118,22 @@ function wsConnect(url) {
       }
     }
 
-    var localTracks = localStream.getTracks();
-    for (let localTrack in localTracks) {
-      peerConnection.addTrack(localTracks[localTrack], localStream);
+    peerConnection.onnegotiationneeded = (event) => {
+      peerConnection.createOffer(gotDescription, errorHandler);
     }
 
-    peerConnection.createOffer(gotDescription, errorHandler);
-
+    let localTracks = localStream.getTracks();
+    for (let localTrack in localTracks) {
+      let sender = peerConnection.addTrack(localTracks[localTrack], localStream);
+      if (localTracks[localTrack].type === 'audio')
+      {
+        audioSender = sender;
+      }
+      else if (localTracks[localTrack].type === 'video')
+      {
+        videoSender = sender;
+      }
+    }
   }
 
   wsConnection.onmessage = function (evt) {
@@ -189,10 +177,6 @@ function wsConnect(url) {
         }
       }
     }
-
-    if (wsConnection != null)
-      wsConnection.close();
-    wsConnection = null;
   }
 
   wsConnection.onclose = function () {
@@ -207,6 +191,36 @@ function wsConnect(url) {
     let newError = {message:message,...error};
     stop();
     errorHandler(newError);
+  }
+}
+
+function replaceTrack (type, newTrack)
+{
+  if (peerConnection != null)
+  {
+    console.log(peerConnection);
+    if (type === 'audio')
+    {
+      if (audioSender != null)
+      {
+        audioSender.replaceTrack(newTrack);
+      }
+      else
+      {
+        audioSender = peerConnection.addTrack(newTrack);
+      }
+    }
+    else if (type === 'video')
+    {
+      if (videoSender != null)
+      {
+        videoSender.replaceTrack(newTrack);
+      }
+      else
+      {
+        videoSender = peerConnection.addTrack(newTrack);
+      }
+    }
   }
 }
 
@@ -241,8 +255,17 @@ function start (props)
   if (props.onerror != null)
     onerror = props.onerror;
 
+  if (props.onstats != null)
+  {
+    statsInterval = setInterval(createOnStats(props.onstats),5000);
+  }
+
   if (peerConnection == null)
   {
+    if (wsConnection != null)
+      wsConnection.close();
+    wsConnection = null;
+
     console.log("WowzaPeerConnectionPublish.start: wsURL:" + wsURL + " streamInfo:" + JSON.stringify(streamInfo));
     wsConnect(wsURL);
   }
@@ -256,16 +279,28 @@ function stop ()
 {
   if (peerConnection != null)
     peerConnection.close();
-  peerConnection = null;
-
+  peerConnection = undefined;
+  videoSender = undefined;
+  audioSender = undefined;
+  
   if (wsConnection != null)
     wsConnection.close();
-  wsConnection = null;
+  wsConnection = undefined;
 
+  if (statsInterval != null)
+  {
+    clearInterval(statsInterval);
+    statsInterval = undefined;
+  }
   if (onstop != null)
   {
     onstop();
   }
+}
+
+function isStarted()
+{
+  return (peerConnection != null);
 }
 
 function errorHandler(error) {
@@ -276,11 +311,10 @@ function errorHandler(error) {
   }
 }
 
-// To display peer connection stats, uncomment this line
-// setInterval(statsInterval,5000);
-
 export default {
   connect: wsConnect,
   start: start,
-  stop: stop
+  stop: stop,
+  isStarted: isStarted,
+  replaceTrack: replaceTrack
 };
