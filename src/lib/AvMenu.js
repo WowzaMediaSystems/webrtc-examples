@@ -3,11 +3,31 @@
  * This code is licensed pursuant to the BSD 3-Clause License.
  */
 
+let browserDetails = window.adapter.browserDetails;
+
 let selectedMic = "";
 let selectedCam = "";
 let selectedMobileCam = "";
 
+const canScreenShare = () => {
+  if (browserDetails.browser === 'safari') {
+    return false;
+  }
+  if (browserDetails.browser === 'firefox') {
+    return false;
+  }
+  if (/mobi|android/i.test(navigator.userAgent.toLowerCase())) {
+    return false;
+  }
+  return true;
+}
+
 const init = (cameras,mics,camCallback,micCallback) => {
+
+  if (canScreenShare())
+  {
+    cameras.push({deviceId:'screen_screen',kind:'videoinput',label:'Screen Share'});
+  }
 
   $("#show-cameras-menu").popover({
     content: deviceListDesktopHTML(cameras, "Camera"),
@@ -74,7 +94,7 @@ const deviceListSelectHTML = (devices,label) => {
     let deviceId = `${label}Mobile_${devices[i].deviceId}`;
     if(i==0) { selectedMobileCam = deviceId;};
     let deviceLabel = devices[i].label || `${label}_${i}`;
-    let element = $('<option>').attr("id", deviceId).text(deviceLabel);
+    let element = $('<option>').attr("id", deviceId).attr("value", deviceId).text(deviceLabel);
     deviceList.push(element);
   }
   return deviceList;

@@ -14,6 +14,7 @@ let state = {
   connectionState:'stopped',
   videoElementPublish:undefined,
   stream:undefined,
+  isScreenSharing:false,
   constraints:{
     video: {
       width: { min: "640", ideal: "1280", max: "1920" },
@@ -108,10 +109,13 @@ const set = async (props) =>
   {
     newMediaInfo.videoFrameRate = props.videoFrameRate;
     newState['constraints'] = {...currentState.constraints};
-    if (newMediaInfo.videoFrameRate === '')
-      delete newState['constraints']['video']['frameRate'];
-    else
-      newState['constraints']['video']['frameRate'] = props.videoFrameRate
+    if (!(typeof newState['constraints']['video'] === 'boolean'))
+    {
+      if (newMediaInfo.videoFrameRate === '')
+        delete newState['constraints']['video']['frameRate'];
+      else
+        newState['constraints']['video']['frameRate'] = props.videoFrameRate
+    }
   }
   if (props.videoCodec != null)
     newMediaInfo.videoCodec = props.videoCodec;
@@ -172,21 +176,33 @@ const applyConstraints = (stream, constraints) => {
 
 // returns Promise
 // resultsObject is {stream:MediaStream}
-const getUserMedia = () =>
+const getUserMedia = (mediaKind) =>
 {
-  return new Promise((resolve,reject) => {
+  mediaKind = mediaKind || 'both';
 
+  return new Promise((resolve,reject) => 
+  {
     console.log('WowzaWebRTCPublish.getUserMedia');
 
     let currentState = getState();
-
-    if (soundMeter != null)
+    let savedAudioTracks = [];
+    let savedVideoTracks = [];
+    if (currentState.stream != null)
     {
-      soundMeter.stop();
+      savedAudioTracks = currentState.stream.getAudioTracks();
+      savedVideoTracks = currentState.stream.getVideoTracks();
     }
-    if (soundMeterInterval != null)
+
+    if (mediaKind !== 'video')
     {
-      clearInterval(soundMeterInterval);
+      if (soundMeter != null)
+      {
+        soundMeter.stop();
+      }
+      if (soundMeterInterval != null)
+      {
+        clearInterval(soundMeterInterval);
+      }
     }
 
     if (currentState.videoElementPublish == null)
@@ -194,9 +210,35 @@ const getUserMedia = () =>
       reject({message:"videoElementPublish not set"});
     }
 
-    function getUserMediaSuccess(stream)
+    async function getUserMediaSuccess(stream)
     {
+      if (mediaKind === 'audio' && savedVideoTracks.length > 0)
+      {
+        let videoTracksToRemove = stream.getVideoTracks();
+        for(let i in videoTracksToRemove)
+        {
+          stream.removeTrack(videoTracksToRemove[i]);
+        }
+        stream.addTrack(savedVideoTracks[0]);
+      }
+      else if (mediaKind === 'video' && savedAudioTracks.length > 0)
+      {
+        let audioTracksToRemove = stream.getAudioTracks();
+        for(let j in audioTracksToRemove)
+        {
+          stream.removeTrack(audioTracksToRemove[j]);
+        }
+        stream.addTrack(savedAudioTracks[0]);
+      }
       let newState = {stream:stream};
+      if (mediaKind !== 'audio' && currentState.isScreenSharing)
+      {
+        for(let k in savedVideoTracks)
+        {
+          savedVideoTracks[k].stop();
+        }
+        newState['isScreenSharing'] = false;
+      }
       try
       {
         currentState.videoElementPublish.srcObject = stream;
@@ -211,7 +253,7 @@ const getUserMedia = () =>
       }
       try
       {
-        if (window.AudioContext && currentState.useSoundMeter)
+        if (mediaKind !== 'video' && window.AudioContext && currentState.useSoundMeter)
         {
 
           let audioContext = new AudioContext();
@@ -235,7 +277,7 @@ const getUserMedia = () =>
         console.log('getUserMediaSuccess: error creating audio meter');
         console.log(error2);
       }
-      setState(newState);
+      await setState(newState);
       resolve(newState);
     }
 
@@ -333,24 +375,100 @@ function setVideoEnabled(enabled) {
   setState({videoEnabled:enabled});
 }
 
+function getDisplayStream() {
+  return new Promise((resolve,reject) => {
+    let savedStream = getState().stream;
+    function getDisplaySuccess(stream,constraints) {
+      let newState = {stream:stream,isScreenSharing:true};
+      if (savedStream.getAudioTracks().length > 0)
+      {
+        stream.addTrack(savedStream.getAudioTracks()[0]);
+      }
+      try
+      {
+        getState().videoElementPublish.srcObject = stream;
+        newState['ready'] = true;
+      }
+      catch (error)
+      {
+        reject(error);
+      }
+      setState(newState);
+      resolve(stream);
+    };
+    let constraints = {video:true};
+    if (navigator.getDisplayMedia) {
+      navigator.getDisplayMedia(constraints)
+      .then((stream) => { getDisplaySuccess(stream,constraints); })
+      .catch((e) => { reject(e); });
+    } else if (navigator.mediaDevices.getDisplayMedia) {
+      navigator.mediaDevices.getDisplayMedia(constraints)
+      .then((stream) => { getDisplaySuccess(stream,constraints); })
+      .catch((e) => { reject(e); });
+    } else {
+      constraints = {video: {mediaSource: 'screen'}};
+      navigator.mediaDevices.getUserMedia(constraints)
+      .then((stream) => { getDisplaySuccess(stream,constraints); })
+      .catch((e) => { reject(e); });
+    }
+  });
+}
+
 const setCamera = (id) =>
 {
   console.log("WowzaWebRTC.setCamera: " + id);
-  let constraints = {...state.constraints};
-  if (typeof constraints.video === 'boolean')
+  if (id === 'screen') 
   {
-    constraints.video = {};
-  }
-  constraints.video = Object.assign({},constraints.video,{deviceId: id});
-  setState({constraints:constraints})
-  .then(()=>{
-    getUserMedia()
-    .then(()=>{
+    getDisplayStream()
+    .then((stream) => {
       let currentState = getState();
       setEnabled("audio",currentState.audioEnabled);
       setEnabled("video",currentState.videoEnabled);
+      stream.getVideoTracks()[0].onended = function () {
+        let endedState = getState();
+        if (endedState.cameras.length > 0)
+        {
+          setCamera(endedState.cameras[0].deviceId);
+        }
+      }
+      if (WowzaPeerConnectionPublish.isStarted())
+      {
+        stop();
+        start();
+      }
+      if (callbacks.onCameraChanged != null)
+      {
+        callbacks.onCameraChanged('screen');
+      }
     });
-  });
+  }
+  else 
+  {
+    let constraints = {...state.constraints};
+    if (typeof constraints.video === 'boolean')
+    {
+      constraints.video = {};
+    }
+    constraints.video = Object.assign({},constraints.video,{deviceId: id});
+    setState({constraints:constraints})
+    .then(()=>{
+      getUserMedia('video')
+      .then((stream) => {
+        let currentState = getState();
+        setEnabled("audio",currentState.audioEnabled);
+        setEnabled("video",currentState.videoEnabled);
+        if (WowzaPeerConnectionPublish.isStarted())
+        {
+          stop();
+          start();
+        }
+        if (callbacks.onCameraChanged != null)
+        {
+          callbacks.onCameraChanged(id);
+        }
+      });
+    });
+  }
 }
 
 const setMicrophone = (id) =>
@@ -364,11 +482,20 @@ const setMicrophone = (id) =>
   constraints.audio = Object.assign({},constraints.audio,{deviceId: id});
   setState({constraints:constraints})
   .then(()=>{
-    getUserMedia()
-    .then(()=>{
+    getUserMedia('audio')
+    .then((stream)=>{
       let currentState = getState();
       setEnabled("audio",currentState.audioEnabled);
       setEnabled("video",currentState.videoEnabled);
+      if (WowzaPeerConnectionPublish.isStarted())
+      {
+        stop();
+        start();
+      }
+      if (callbacks.onMicrophoneChanged != null)
+      {
+        callbacks.onMicrophoneChanged(id);
+      }
     });
   });
 }
@@ -386,6 +513,7 @@ const start = () =>
     mungeSDP:mungeSDPPublish,
     onconnectionstatechange: onconnectionstatechange,
     onstop:onstop,
+    onstats:callbacks.onStats || undefined,
     onerror:errorHandler
   });
 }

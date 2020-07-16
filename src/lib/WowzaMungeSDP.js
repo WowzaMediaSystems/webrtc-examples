@@ -3,7 +3,6 @@
  * This code is licensed pursuant to the BSD 3-Clause License.
  */
 
-
 const browserDetails = window.adapter.browserDetails;
 
 let SDPOutput;
@@ -88,10 +87,8 @@ function addVideo(sdpStr, videoLine) {
 
 // Filter codec offerings
 function deliverCheckLine(profile, type) {
-  let outputString = "";
   for (let line in SDPOutput) {
     let lineInUse = SDPOutput[line];
-    outputString += line;
     if (lineInUse.includes(profile)) {
       if (profile.includes("VP9") || profile.includes("VP8")) {
         let output = "";
@@ -126,10 +123,11 @@ function deliverCheckLine(profile, type) {
       if (type.includes("video")) {
         videoIndex = line;
       }
+
       return lineInUse;
     }
   }
-  return outputString;
+  return '';
 }
 
 function checkLine(line) {
@@ -209,13 +207,13 @@ export function mungeSDPPublish(sdpStr, mungeData) {
 
     if (browserDetails.browser === 'chrome') {
       let audioMLines;
-      if (sdpLine.indexOf("m=audio") == 0 && audioIndex != -1) {
+      if (sdpLine.indexOf("m=audio") == 0 && audioIndex !== -1) {
         audioMLines = sdpLine.split(" ");
         sdpStrRet += audioMLines[0] + " " + audioMLines[1] + " " + audioMLines[2] + " " + audioIndex + "\r\n";
         continue;
       }
 
-      if (sdpLine.indexOf("m=video") == 0 && videoIndex != -1) {
+      if (sdpLine.indexOf("m=video") == 0 && videoIndex !== -1) {
         audioMLines = sdpLine.split(" ");
         sdpStrRet += audioMLines[0] + " " + audioMLines[1] + " " + audioMLines[2] + " " + videoIndex + "\r\n";
         continue;

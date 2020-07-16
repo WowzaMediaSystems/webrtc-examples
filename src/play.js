@@ -5,6 +5,7 @@
 
 import Settings from './lib/Settings.js';
 import WowzaWebRTCPlay from './lib/WowzaWebRTCPlay.js';
+window.WowzaWebRTCPlay = WowzaWebRTCPlay;
 
 let state = {
   settings: {
