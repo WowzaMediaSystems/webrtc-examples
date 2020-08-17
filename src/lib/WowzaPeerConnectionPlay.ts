@@ -1,11 +1,46 @@
 /*
  * This code and all components (c) Copyright 2019-2020, Wowza Media Systems, LLC. All rights reserved.
  * This code is licensed pursuant to the BSD 3-Clause License.
+ * 
+ * Typescript migration by @farandal - Francisco Aranda - farandal@gmail.com - http://linkedin.com/in/farandal
+ * 
  */
+
+import {IStreamInfo} from "./interfaces";
+
+interface IProps {
+  sdpURL: string;
+  videoElement: HTMLVideoElement;
+  streamInfo: IStreamInfo;
+  userData: any;
+  mungeSDP: Function;
+  onconnectionstatechange: Function;
+  onstop: Function;
+  onerror: Function;
+
+}
 
 class WowzaPeerConnectionPlay
 {
-  constructor (props)
+
+  mungeSDP: Function;
+  onconnectionstatechange: Function;
+  onstop: Function;
+  onerror: Function;
+  videoElement: HTMLVideoElement;
+  sdpURL:string;
+  repeaterRetryCount:number;
+  streamInfo:IStreamInfo;
+  userData: any;
+  wsConnection:WebSocket;
+  peerConnection:RTCPeerConnection;
+  //let peerConnectionConfig:{iceServers: any[]} = { 'iceServers': [] };
+  peerConnectionConfig:{iceServers: any[]} = null;
+  doGetAvailableStreams:boolean;
+  getAvailableStreamsResolve:Function;
+  getAvailableStreamsReject:Function;
+
+  constructor (props:IProps)
   {
     // munge plug-in
     this.mungeSDP = undefined;
@@ -49,7 +84,7 @@ class WowzaPeerConnectionPlay
   //   mungeSDP: function (sdpStr)
   //   onconnectionstatechange: function
   //   onerror: function 
-  set (props) 
+  public set = (props: IProps) =>
   {
     if (props.sdpURL != null)
       this.sdpURL = props.sdpURL;
@@ -72,14 +107,14 @@ class WowzaPeerConnectionPlay
       this.onerror = props.onerror;
   }
 
-  gotIceCandidate (event) 
+  public gotIceCandidate = (event:RTCPeerConnectionIceEvent) =>
   {
     if (event.candidate != null) {
-      // console.log('gotIceCandidate: ' + JSON.stringify({ 'ice': event.candidate }));
+      console.log('gotIceCandidate: ' + JSON.stringify({ 'ice': event.candidate }));
     }
   }
 
-  gotDescription (description) 
+  public gotDescription = (description: RTCSessionDescriptionInit) =>
   {
     let _this = this;
     console.log('WowzaPeerConnectionPlay.gotDescription');
@@ -93,7 +128,7 @@ class WowzaPeerConnectionPlay
       .catch(err => console.log('set description error', err));
   }
 
-  gotRemoteTrack (event) 
+  public gotRemoteTrack = (event:RTCTrackEvent) =>
   {
     console.log('WowzaPeerConnectionPlay.gotRemoteTrack: kind:' + event.track.kind + ' stream:' + event.streams[0]);
     try {
@@ -103,7 +138,7 @@ class WowzaPeerConnectionPlay
     }
   }
 
-  wsConnect(url) 
+  public wsConnect = (url:string)  =>
   {
     let _this = this;
     console.log('WowzaPeerConnectionPlaywsConnect: ' + url);
@@ -152,7 +187,7 @@ class WowzaPeerConnectionPlay
       _this.wsConnection.send('{"direction":"play", "command":"getAvailableStreams", "streamInfo":' + JSON.stringify(_this.streamInfo) + ', "userData":' + JSON.stringify(_this.userData) + '}');
     }
 
-    this.wsConnection.onmessage = function (evt) 
+    this.wsConnection.onmessage = (evt:MessageEvent) =>
     {
       console.log("wsConnection.onmessage: " + evt.data);
 
@@ -168,13 +203,14 @@ class WowzaPeerConnectionPlay
           setTimeout(sendPlayGetOffer, 500);
         }
         else {
-          _this.errorHandler({message:'Live stream repeater timeout: ' + streamName});
+          _this.errorHandler({message:'Live stream repeater timeout: ' + this.streamInfo.applicationName});
           _this.stop();
         }
       }
       else if (msgStatus != 200) {
         _this.errorHandler({message:msgJSON['statusDescription']});
-        _stop();
+        //_stop(); ? what is _stop?
+        _this.stop();
       }
       else {
 
@@ -288,7 +324,7 @@ class WowzaPeerConnectionPlay
     });
   }
 
-  errorHandler (error)
+  errorHandler (error:any)
   {
     if (this.onerror != null) {
       this.onerror(error);
