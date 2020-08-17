@@ -1,17 +1,22 @@
 /*
  * This code and all components (c) Copyright 2019-2020, Wowza Media Systems, LLC. All rights reserved.
  * This code is licensed pursuant to the BSD 3-Clause License.
+ * 
+ * Typescript migration by @farandal - Francisco Aranda - farandal@gmail.com - http://linkedin.com/in/farandal
+ * 
  */
 
-const browserDetails = window.adapter.browserDetails;
+// @ts-ignore
+import Bowser from "bowser";
+//const browserDetails = window.adapter.browserDetails;
 
-let SDPOutput;
+let SDPOutput:Object;
 let videoChoice;
 let audioChoice;
 let videoIndex;
 let audioIndex;
 
-function addAudio(sdpStr, audioLine) {
+const addAudio = (sdpStr:string, audioLine:string) => {
   let sdpLines = sdpStr.split(/\r\n/);
   let sdpSection = 'header';
   let hitMID = false;
@@ -35,7 +40,7 @@ function addAudio(sdpStr, audioLine) {
   return sdpStrRet;
 }
 
-function addVideo(sdpStr, videoLine) {
+const addVideo = (sdpStr:string, videoLine:string) => {
   let sdpLines = sdpStr.split(/\r\n/);
   let sdpSection = 'header';
   let hitMID = false;
@@ -86,7 +91,7 @@ function addVideo(sdpStr, videoLine) {
 }
 
 // Filter codec offerings
-function deliverCheckLine(profile, type) {
+const deliverCheckLine = (profile:string, type:string) => {
   for (let line in SDPOutput) {
     let lineInUse = SDPOutput[line];
     if (lineInUse.includes(profile)) {
@@ -130,12 +135,13 @@ function deliverCheckLine(profile, type) {
   return '';
 }
 
-function checkLine(line) {
+const checkLine = (line:string) => {
   if (line.startsWith("a=rtpmap") || line.startsWith("a=rtcp-fb") || line.startsWith("a=fmtp")) {
     let res = line.split(":");
 
     if (res.length > 1) {
-      let number = res[1].split(" ");
+      let x = res[1].split(" ");
+      let number:number = parseInt(x[0]); // TODO! Debug this! to check!
       if (!isNaN(number[0])) {
         if (!number[1].startsWith("http") && !number[1].startsWith("ur")) {
           let currentString = SDPOutput[number[0]];
@@ -153,13 +159,20 @@ function checkLine(line) {
   return true;
 }
 
-function getrtpMapID(line) {
+const getrtpMapID = (line:string) => {
   let findid = new RegExp('a=rtpmap:(\\d+) (\\w+)/(\\d+)');
   let found = line.match(findid);
   return (found && found.length >= 3) ? found : null;
 }
 
-export function mungeSDPPublish(sdpStr, mungeData) {
+
+
+export const mungeSDPPublish = (sdpStr: string, mungeData: { videoCodec: string; audioCodec: string; audioBitrate: string; videoBitrate: string; videoFrameRate: string; }) => {
+
+
+  const browser = Bowser.getParser(window.navigator.userAgent);
+  console.log("BROWSER",browser.getBrowser());
+
 
   SDPOutput = new Object();
   videoChoice = "42e01f";
@@ -205,7 +218,7 @@ export function mungeSDPPublish(sdpStr, mungeData) {
     if (sdpLine.length <= 0)
       continue;
 
-    if (browserDetails.browser === 'chrome') {
+    if (browser.getBrowser().name === 'Chrome') {
       let audioMLines;
       if (sdpLine.indexOf("m=audio") == 0 && audioIndex !== -1) {
         audioMLines = sdpLine.split(" ");
@@ -235,7 +248,7 @@ export function mungeSDPPublish(sdpStr, mungeData) {
       hitMID = false;
     }
 
-    if (browserDetails.browser === 'chrome') {
+    if (browser.getBrowser().name === 'Chrome') {
       if (sdpLine.indexOf("a=mid:") === 0 || sdpLine.indexOf("a=rtpmap") == 0) {
         if (!hitMID) {
           if ('audio'.localeCompare(sdpSection) == 0) {
@@ -279,7 +292,7 @@ export function mungeSDPPublish(sdpStr, mungeData) {
       }
     }
 
-    if (browserDetails.browser === 'firefox' || browserDetails.browser === 'safari') {
+    if (browser.getBrowser().name === 'firefox' || browser.getBrowser().name === 'safari') {
       if ( sdpLine.indexOf("c=IN") ==0 )
       {
         if ('audio'.localeCompare(sdpSection) == 0)
@@ -308,7 +321,7 @@ export function mungeSDPPublish(sdpStr, mungeData) {
   return sdpStrRet;
 }
 
-export function mungeSDPPlay(sdpStr) {
+export const mungeSDPPlay = (sdpStr:string) => {
 
   // For greatest playback compatibility, 
   // force H.264 playback to baseline (42e01f).
