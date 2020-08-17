@@ -1,50 +1,76 @@
 /*
  * This code and all components (c) Copyright 2019-2020, Wowza Media Systems, LLC. All rights reserved.
  * This code is licensed pursuant to the BSD 3-Clause License.
+ * 
+ * Typescript migration by @farandal - Francisco Aranda - farandal@gmail.com - http://linkedin.com/in/farandal
+ * 
  */
 
-let browserDetails = window.adapter.browserDetails;
+import {IStreamInfo,IMediaInfo} from "./interfaces";
+
+
+interface IProps {
+  wsURL: any;
+  localStream: MediaStream;
+  streamInfo?:IStreamInfo,
+  mediaInfo?:{
+    videoBitrate: string,
+    audioBitrate: string,
+    videoFrameRate: string,
+    videoCodec: string,
+    audioCodec: string
+  },
+  userData: any;
+  mungeSDP: Function; //  mungeSDP: function (sdpStr, mungeData)
+  onconnectionstatechange: Function;
+  onstop: Function;
+  onerror: Function;
+  onstats: Function;
+
+}
+
 
 // munge plug-in
-let mungeSDP = undefined;
+let mungeSDP: Function;
 
 // callbacks
-let onconnectionstatechange = undefined;
-let onstop = undefined;
-let onerror = undefined;
+let onconnectionstatechange: Function;
+let onstop: Function;
+let onerror: Function;
 
 // local state
-let localStream = undefined;
-let streamInfo = undefined;
-let mediaInfo = {
+let localStream:MediaStream;
+let streamInfo:IStreamInfo;
+let mediaInfo:IMediaInfo = {
   videoBitrate: "",
   audioBitrate: "",
   videoFrameRate: "30",
   videoCodec: "42e01f",
   audioCodec: "opus"
 }
-let userData = undefined;
-let statsInterval = undefined;
+let userData:any;
+let statsInterval:ReturnType<typeof setTimeout>;
 
-let wsConnection = undefined;
-let peerConnection = undefined;
-let peerConnectionConfig = { 'iceServers': [] };
-peerConnectionConfig = null;
-let videoSender = undefined;
-let audioSender = undefined;
+let wsConnection:WebSocket;
+let peerConnection:RTCPeerConnection;
+//let peerConnectionConfig:{iceServers: any[]} = { 'iceServers': [] };
+let peerConnectionConfig:{iceServers: any[]} = null;
+let videoSender: RTCRtpSender = undefined;
+let audioSender: RTCRtpSender = undefined;
 
 
-function gotIceCandidate(event) {
+const gotIceCandidate = (event:RTCPeerConnectionIceEvent) => {
   if (event.candidate != null) {
     console.log('WowzaPeerConnectionPublish.gotIceCandidate: ' + JSON.stringify({ 'ice': event.candidate }));
   }
 }
 
-function gotDescription(description) {
+const gotDescription = (description: RTCSessionDescriptionInit) => {
   console.log("WowzaPeerConnectionPublish.gotDescription: SDP:");
   console.log(description.sdp+'');
 
-  let mungeData = new Object();
+  // TODO! improve mungeData Interface
+  let mungeData:any = new Object();
 
   if (mediaInfo.audioBitrate != null)
     mungeData.audioBitrate = mediaInfo.audioBitrate;
@@ -73,9 +99,11 @@ function gotDescription(description) {
       let newError = {message:"Peer connection failed",...error};
       errorHandler(newError);
     });
-}
 
-function createOnStats(onStats) {
+
+}
+// TODO! onstats type should be (value: RTCStatsReport) => RTCStatsReport | PromiseLike<RTCStatsReport>'.
+const createOnStats = (onStats:any) => {
   return () => {
     if (peerConnection != null)
     {
@@ -85,7 +113,7 @@ function createOnStats(onStats) {
   }
 }
 
-function wsConnect(url) {
+const wsConnect = (url:string) => {
   try
   {
     wsConnection = new WebSocket(url);
@@ -118,25 +146,31 @@ function wsConnect(url) {
       }
     }
 
-    peerConnection.onnegotiationneeded = (event) => {
-      peerConnection.createOffer(gotDescription, errorHandler);
+    // Experimental API, no type defined for event in mozilla
+    peerConnection.onnegotiationneeded = (event:any) => {
+      // peerConnection createOffer, doesn not allo error Handler, consider implementing try catch strategy.
+      // gotDescription returns void
+      // instead RTCOfferOptions object must be passed. 
+      // TODO! 
+      //peerConnection.createOffer(gotDescription);
+      peerConnection.createOffer();
     }
 
     let localTracks = localStream.getTracks();
     for (let localTrack in localTracks) {
       let sender = peerConnection.addTrack(localTracks[localTrack], localStream);
-      if (localTracks[localTrack].type === 'audio')
+      if (localTracks[localTrack].kind === 'audio')
       {
         audioSender = sender;
       }
-      else if (localTracks[localTrack].type === 'video')
+      else if (localTracks[localTrack].kind === 'video')
       {
         videoSender = sender;
       }
     }
   }
 
-  wsConnection.onmessage = function (evt) {
+  wsConnection.onmessage =  (evt:MessageEvent) => {
     console.log("WowzaPeerConnectionPublish.wsConnection.onmessage: " + evt.data);
 
     var msgJSON = JSON.parse(evt.data);
@@ -152,7 +186,7 @@ function wsConnect(url) {
       var sdpData = msgJSON['sdp'];
       if (sdpData !== undefined) {
 
-        var mungeData = new Object();
+        let mungeData:any = new Object();
 
         if (mediaInfo.audioBitrate !== undefined)
           mungeData.audioBitrate = mediaInfo.audioBitrate;
@@ -162,11 +196,15 @@ function wsConnect(url) {
         console.log("WowzaPeerConnectionPublish.wsConnection.onmessage: Setting remote description SDP:");
         console.log(sdpData.sdp);
 
-        peerConnection
+        // setRemoteDescription does not allow second argumment nor errorHandler
+        /* peerConnection
           .setRemoteDescription(new RTCSessionDescription(sdpData),
             () => { },
             errorHandler
-          );
+          );*/
+
+          peerConnection
+          .setRemoteDescription(new RTCSessionDescription(sdpData));
       }
 
       var iceCandidates = msgJSON['iceCandidates'];
@@ -194,7 +232,7 @@ function wsConnect(url) {
   }
 }
 
-function replaceTrack (type, newTrack)
+const replaceTrack = (type:string, newTrack:MediaStreamTrack) =>
 {
   if (peerConnection != null)
   {
@@ -234,7 +272,7 @@ function replaceTrack (type, newTrack)
 //   onconnectionstatechange: function
 //   onerror: function 
 
-function start (props)
+const start = (props:IProps) =>
 {
   let wsURL = props.wsURL;
   localStream = props.localStream;
@@ -275,7 +313,7 @@ function start (props)
   }
 }
 
-function stop ()
+const stop = () =>
 {
   if (peerConnection != null)
     peerConnection.close();
@@ -303,7 +341,7 @@ function isStarted()
   return (peerConnection != null);
 }
 
-function errorHandler(error) {
+function errorHandler(error:any) {
   console.trace();
   if (onerror != null)
   {
