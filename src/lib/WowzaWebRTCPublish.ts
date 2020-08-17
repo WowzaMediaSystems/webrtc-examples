@@ -1,15 +1,66 @@
 /*
  * This code and all components (c) Copyright 2019-2020, Wowza Media Systems, LLC. All rights reserved.
  * This code is licensed pursuant to the BSD 3-Clause License.
+ * 
+ * Typescript migration by @farandal - Francisco Aranda - farandal@gmail.com - http://linkedin.com/in/farandal
+ * 
  */
+//import {IStreamInfo,IMediaInfo} from "./interfaces";
+import { mungeSDPPublish } from './WowzaMungeSDP';
+import WowzaPeerConnectionPublish from './WowzaPeerConnectionPublish';
+import SoundMeter from './SoundMeter';
+import { ICallbacks } from './interfaces';
 
-import { mungeSDPPublish } from './WowzaMungeSDP.js';
-import WowzaPeerConnectionPublish from './WowzaPeerConnectionPublish.js';
-import SoundMeter from './SoundMeter.js';
+interface IProps {
+  videoElementPublish?: any,
+  useSoundMeter?: any,
+  sdpURL?: any,
+  applicationName?: any,
+  streamName?: any,
+  sessionId?: any,
+  streamInfo?: any,
+  videoBitrate?: any,
+  audioBitrate?: any,
+  videoFrameRate?: any,
+  videoCodec?: any,
+  audioCodec?: any,
+  mediaInfo?: any,
+  userData?: any,
+  constraints?: any,
+}
+
+interface IState {
+  ready?:boolean,
+  connectionState?:string,
+  videoElementPublish?:HTMLVideoElement,
+  stream?:MediaStream,
+  isScreenSharing?:boolean,
+  constraints?:MediaStreamConstraints,
+  sdpURL?:string,
+  streamInfo?:{
+    applicationName?: string,
+    streamName?: string,
+    sessionId?: string // "[empty]"
+  },
+  mediaInfo?:{
+    videoBitrate: string,
+    audioBitrate: string,
+    videoFrameRate: string,
+    videoCodec: string,
+    audioCodec: string
+  },
+  userData?: any, // ?
+  audioEnabled?: boolean,
+  videoEnabled?: boolean,
+  useSoundMeter?: boolean,
+  cameras?: MediaDeviceInfo[],
+  microphones?: MediaDeviceInfo[]
+
+}
 
 window.AudioContext = window.AudioContext || window.webkitAudioContext || false;
 
-let state = {
+let state:IState = {
   ready:false,
   connectionState:'stopped',
   videoElementPublish:undefined,
@@ -17,9 +68,9 @@ let state = {
   isScreenSharing:false,
   constraints:{
     video: {
-      width: { min: "640", ideal: "1280", max: "1920" },
-      height: { min: "360", ideal: "720", max: "1080" },
-      frameRate: "30"
+      width: { min: 640, ideal: 1280, max: 1920 },
+      height: { min: 360, ideal: 720, max: 1080 },
+      frameRate: 30
     },
     audio: true,
   },
@@ -43,20 +94,23 @@ let state = {
   cameras: [],
   microphones: []
 }
-let soundMeter = undefined;
-let soundMeterInterval = undefined;
+let soundMeter:SoundMeter;
+let soundMeterInterval:ReturnType<typeof setTimeout>;
 
-let callbacks = {};
+let callbacks:ICallbacks;
 
-const setState = (newState) =>
+const setState = (newState: IState):Promise<IState> =>
 {
   return new Promise((resolve,reject) => {
     state = {...state,...newState};
-    if (callbacks.onStateChanged != null)
+    if (callbacks.onStateChanged)
     {
-      callbacks.onStateChanged(state);
+      callbacks.onStateChanged(state); 
+      resolve(state);
+    } else {
+      reject("Not implemented")
     }
-    resolve(state);
+
   });
 }
 const getState = () =>
@@ -65,12 +119,12 @@ const getState = () =>
 }
 
 // External wire callbacks
-const on = (_callbacks) => {
+const on = (_callbacks: ICallbacks) => {
   callbacks = _callbacks;
 }
 
 // External set
-const set = async (props) => 
+const set = async (props:IProps) => 
 {
   console.log('WowzaWebRTC.set');
   console.log(props);
@@ -78,7 +132,7 @@ const set = async (props) =>
   let currentState = getState();
   let newStreamInfo = {...currentState.streamInfo};
   let newMediaInfo = {...currentState.mediaInfo};
-  let newState = {};
+  let newState:IState = {};
   let constraintsChanged = false;
 
   if (props.videoElementPublish != null)
@@ -147,6 +201,7 @@ const set = async (props) =>
     let s2 = await getDevices();
     if (constraintsChanged && s2.stream != null)
     {
+      
       await applyConstraints(s2.stream,s2.constraints);
     }
     return getState();
@@ -159,34 +214,34 @@ const set = async (props) =>
 }
 
 // returns Promise
-const applyConstraints = (stream, constraints) => {
+const applyConstraints = (stream:MediaStream, constraints:any) => {
   let promises = [];
   let audioTracks = stream.getAudioTracks();
   let videoTracks = stream.getVideoTracks();
   for (let a in audioTracks)
   {
-    promises.push(audioTracks[a].applyConstraints(constraints['audio']));
+    promises.push(audioTracks[a].applyConstraints(constraints.audio)); //constraints.["audio"]
   }
   for (let v in videoTracks)
   {
-    promises.push(videoTracks[v].applyConstraints(constraints['video']));
+    promises.push(videoTracks[v].applyConstraints(constraints.video));  //constraints.["video"]
   }
   return Promise.all(promises);
 }
 
 // returns Promise
 // resultsObject is {stream:MediaStream}
-const getUserMedia = (mediaKind) =>
+const getUserMedia = (mediaKind?: string):Promise<{stream:MediaStream}> =>
 {
   mediaKind = mediaKind || 'both';
-
+  
   return new Promise((resolve,reject) => 
   {
     console.log('WowzaWebRTCPublish.getUserMedia');
 
     let currentState = getState();
-    let savedAudioTracks = [];
-    let savedVideoTracks = [];
+    let savedAudioTracks:any[] = [];
+    let savedVideoTracks:any[] = [];
     if (currentState.stream != null)
     {
       savedAudioTracks = currentState.stream.getAudioTracks();
@@ -210,7 +265,7 @@ const getUserMedia = (mediaKind) =>
       reject({message:"videoElementPublish not set"});
     }
 
-    async function getUserMediaSuccess(stream)
+    const getUserMediaSuccess = async(stream:MediaStream) =>
     {
       if (mediaKind === 'audio' && savedVideoTracks.length > 0)
       {
@@ -258,7 +313,7 @@ const getUserMedia = (mediaKind) =>
 
           let audioContext = new AudioContext();
           let soundMeter = new SoundMeter(audioContext);
-          soundMeter.connectToSource(stream, function(e) {
+          soundMeter.connectToSource(stream, (e:any) => {
             if (e) {
               console.log(e);
               return;
@@ -303,13 +358,13 @@ const getUserMedia = (mediaKind) =>
 }
 
 // Returns Promise
-// resultsObject is {cameras:[]<InputDeviceInfo>,microphones:[]<InputDeviceInfo>}
-const getDevices = () =>
+// resultsObject is {cameras:MediaDeviceInfo[],microphones:MediaDeviceInfo[]}
+const getDevices = ():Promise<IState> =>
 {
   return new Promise((resolve,reject) =>
   {
     console.log('WowzaWebRTCPublish.getDevices');
-    navigator.mediaDevices.enumerateDevices().then((devices) =>
+    navigator.mediaDevices.enumerateDevices().then(async (devices) =>
     {
       console.log(JSON.stringify(devices));
       let constraints = {...getState().constraints};
@@ -328,8 +383,9 @@ const getDevices = () =>
           microphones.push(devices[i]);
         }
       }
-      let newState = {cameras:cameras,microphones:microphones,constraints:constraints};
-      resolve(setState(newState));
+      let newStateUpdate = {cameras:cameras,microphones:microphones,constraints:constraints};
+      let newState = await setState(newStateUpdate);
+      resolve(newState);
     }).catch(
       (e) => {
         console.log("unable to detect AV devices: " + e);
@@ -339,19 +395,19 @@ const getDevices = () =>
   });
 }
 
-function onconnectionstatechange(evt)
+const onconnectionstatechange = (evt:any) =>
 {
   if (evt.target != null && evt.target.connectionState != null)
   {
     setState({connectionState:evt.target.connectionState});
   }
 }
-function onstop()
+const onstop = () =>
 {
   setState({connectionState:'stopped'});
 }
 
-function setEnabled(trackKind, enabled) {
+const setEnabled = (trackKind: string, enabled: boolean) => {
   let currentState = getState();
   if (currentState.stream != null && currentState.stream.getTracks != null)
   {
@@ -363,22 +419,22 @@ function setEnabled(trackKind, enabled) {
   }
 }
 
-function setAudioEnabled(enabled) {
+const setAudioEnabled = (enabled: boolean) => {
   console.log('WowzaWebRTC.setAudioEnabled:' + enabled);
   setEnabled("audio",enabled);
   setState({audioEnabled:enabled});
 }
 
-function setVideoEnabled(enabled) {
+const setVideoEnabled = (enabled:boolean) => {
   console.log('WowzaWebRTC.setVideoEnabled:' + enabled);
   setEnabled("video",enabled);
   setState({videoEnabled:enabled});
 }
 
-function getDisplayStream() {
+const getDisplayStream = () => {
   return new Promise((resolve,reject) => {
     let savedStream = getState().stream;
-    function getDisplaySuccess(stream,constraints) {
+    const getDisplaySuccess = (stream:MediaStream,constraints:any) => {
       let newState = {stream:stream,isScreenSharing:true};
       if (savedStream.getAudioTracks().length > 0)
       {
@@ -396,31 +452,36 @@ function getDisplayStream() {
       setState(newState);
       resolve(stream);
     };
-    let constraints = {video:true};
+    let constraints:MediaStreamConstraints = {video:true};
+    let x:MediaTrackConstraints;
+    // TODO! https://blog.mozilla.org/webrtc/getdisplaymedia-now-available-in-adapter-js/
+    // Workaround
+    const mediaDevices = navigator.mediaDevices as any;
+
     if (navigator.getDisplayMedia) {
       navigator.getDisplayMedia(constraints)
-      .then((stream) => { getDisplaySuccess(stream,constraints); })
-      .catch((e) => { reject(e); });
-    } else if (navigator.mediaDevices.getDisplayMedia) {
-      navigator.mediaDevices.getDisplayMedia(constraints)
-      .then((stream) => { getDisplaySuccess(stream,constraints); })
-      .catch((e) => { reject(e); });
-    } else {
-      constraints = {video: {mediaSource: 'screen'}};
-      navigator.mediaDevices.getUserMedia(constraints)
-      .then((stream) => { getDisplaySuccess(stream,constraints); })
-      .catch((e) => { reject(e); });
-    }
+      .then((stream: MediaStream) => { getDisplaySuccess(stream,constraints); })
+      .catch((e: any) => { reject(e); });
+    } else if (mediaDevices.getDisplayMedia) {
+      mediaDevices.getDisplayMedia(constraints)
+      .then((stream: MediaStream) => { getDisplaySuccess(stream,constraints); })
+      .catch((e: any) => { reject(e); });
+    }/* else {
+      constraints = {video: { mediaSource: 'screen' }};
+      mediaDevices.getUserMedia(constraints)
+      .then((stream: MediaStream) => { getDisplaySuccess(stream,constraints); })
+      .catch((e: any) => { reject(e); });
+    }*/
   });
 }
 
-const setCamera = (id) =>
+const setCamera = (id: string) =>
 {
   console.log("WowzaWebRTC.setCamera: " + id);
   if (id === 'screen') 
   {
     getDisplayStream()
-    .then((stream) => {
+    .then((stream:MediaStream) => {
       let currentState = getState();
       setEnabled("audio",currentState.audioEnabled);
       setEnabled("video",currentState.videoEnabled);
@@ -471,7 +532,7 @@ const setCamera = (id) =>
   }
 }
 
-const setMicrophone = (id) =>
+const setMicrophone = (id: string) =>
 {
   console.log("WowzaWebRTC.setMicrophone: " + id);
   let constraints = {...state.constraints};
@@ -524,7 +585,7 @@ const stop = () =>
   WowzaPeerConnectionPublish.stop();
 }
 
-const errorHandler = (error) =>
+const errorHandler = (error:any) =>
 {
   console.log('WowzaWebRTC ERROR:');
   console.log(error);
@@ -542,7 +603,7 @@ const errorHandler = (error) =>
   }
 }
 
-let WowzaWebRTC = {
+let WowzaWebRTCPublish = {
   on: on,
   set: set,
   getState: getState,
@@ -553,4 +614,5 @@ let WowzaWebRTC = {
   setCamera: setCamera,
   setMicrophone: setMicrophone
 }
-export default WowzaWebRTC;
+
+export default WowzaWebRTCPublish;
