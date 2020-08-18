@@ -311,7 +311,7 @@ export function mungeSDPPublish(sdpStr, mungeData) {
 export function mungeSDPPlay(sdpStr) {
 
   // For greatest playback compatibility, 
-  // force H.264 playback to baseline (42e01f).
+  // force H.264 playback to constrained baseline (42e01f).
 
   let sdpLines = sdpStr.split(/\r\n/);
   let sdpStrRet = '';
@@ -337,6 +337,10 @@ export function mungeSDPPlay(sdpStr) {
         profile = 0x42;
         constraint = 0xE0;
         level = 0x1F;
+      }
+      if (constraint == 0x00)
+      {
+      	constraint = 0xE0;
       }
       let newProfileLevelId = ("00" + profile.toString(16)).slice(-2).toLowerCase() +
         ("00" + constraint.toString(16)).slice(-2).toLowerCase() +
