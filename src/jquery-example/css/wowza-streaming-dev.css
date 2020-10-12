@@ -1,0 +1,103 @@
+/*
+ * This code and all components (c) Copyright 2019-2020, Wowza Media Systems, LLC. All rights reserved.
+ * This code is licensed pursuant to the BSD 3-Clause License.
+ */
+
+
+
+#publish-content,
+#play-content {
+  max-width: 1500px;
+}
+
+#play-settings,
+#publish-settings {
+  background: #FFFFFF;
+  border: 1px solid #F0F0F0;
+  box-sizing: border-box;
+  box-shadow: 0px 2px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  padding: 1em;
+}
+#play-toggle,
+#publish-toggle {
+  background: #FF8400;
+  border-radius: 55px;
+  width: 100%;
+  font-weight: 500;
+  font-size: 17px;
+  line-height: 130%;
+  text-align: center;
+  color: #FFFFFF;
+}
+
+
+#navbarNav {
+  height: 40px;
+}
+
+#play-share-link,
+#publish-share-link {
+  padding: 0.25em 0.7em;
+}
+#play-share-link,
+#publish-share-link:focus {
+  outline: none;
+}
+
+.control-button {
+  background: #FFFFFF;
+  border: 1px solid #B2B3B5;
+  box-sizing: border-box;
+  border-radius: 6px;
+  margin-top: 2em;
+}
+
+ul.navbar-nav {
+  flex-direction: unset;
+}
+
+.peer-video-player {
+  width:100%;
+}
+.navbar-nav li.nav-item.page {
+  text-align: center;
+}
+.navbar-nav li.nav-item.page.active span{
+  border-bottom: solid 3px  #65686A;
+}
+.navbar-nav li.nav-item.page span {
+  padding: 0 40px 0 40px;
+  position: relative;
+  left: 0;
+  display: block;
+  top: 20px;
+  border-bottom: none;
+}
+
+.navbar-nav li.nav-item a{
+  text-decoration: none;
+  color: #939597;
+}
+.navbar-nav li.nav-item.active a{
+  color: #65686A;
+}
+
+.peer-videos-container{
+  max-height: 700px;
+  overflow-y: scroll;
+}
+
+.peer-video-container{
+  position: relative;
+  background-color:rgba(102, 102, 102, 1);
+  border-radius:0.75em;
+  margin-right: 10px;
+  padding-bottom: 10px;
+}
+
+.peer-video-controls {
+  cursor: pointer;
+  margin-bottom: 5px;
+  margin-left: 10px;
+}
