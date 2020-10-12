@@ -22,7 +22,7 @@ class WowzaWebRTCPlay
     }
 
     this.wowzaPeerConnectionPlay = undefined;
-    this.callbacks = {}; //TODO: turn into listeners
+    this.callbacks = {};
     this.newAPI = false;
     this.errorHandler = this.errorHandler.bind(this);
     this.onconnectionstatechange = this.onconnectionstatechange.bind(this);
