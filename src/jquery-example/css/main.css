@@ -1,0 +1,68 @@
+/*
+ * This code and all components (c) Copyright 2019-2020, Wowza Media Systems, LLC. All rights reserved.
+ * This code is licensed pursuant to the BSD 3-Clause License.
+ */
+
+html {
+ height: 100%;
+}
+body {
+  background: #F8F8F8;
+  background-image: url(../images/bg-image-1.svg), url(../images/bg-image-2.svg);
+  background-position: bottom center, top center;
+  background-repeat: no-repeat;
+  background-size: 100% 32%, 100% 60%;
+  height: 100%;
+}
+a:disabled,
+button:disabled {
+  cursor: not-allowed;
+}
+
+.alert-dismissible .close {
+  padding: .4rem 1.25rem;
+}
+
+#top-nav {
+  background: #FFFFFF;
+  box-shadow: 0px 3px 3px rgba(0, 0, 0, 0.05);
+}
+
+#content {
+  margin-top: 3em;
+  max-width: 1500px;
+}
+#play-video-container {
+  height:0;
+  width:100%;
+  padding-bottom:57%;
+  background-color:rgba(102, 102, 102, 1);
+  border-radius:0.75em;
+}
+
+#player-video,
+#publisher-video {
+  width: 100%    !important;
+  height: auto   !important;
+  background: #EEEEEE;
+  border-radius: 10px;
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  outline:none;
+}
+
+#video-live-indicator {
+  position: absolute;
+  top: 0.5em;
+  left: 1.5em;
+  opacity: 90%;
+}
+
+#build {
+  position:absolute;
+  color:#ccc;
+  font-size:50%;
+  bottom:1em;
+  right:1em;
+}

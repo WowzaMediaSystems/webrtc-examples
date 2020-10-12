@@ -20,45 +20,61 @@ WebRTC is an open source project to enable real-time communication of audio, vid
 ## Getting started
 
 ### Set up WebRTC
-You'll need to setup WebRTC for either Wowza Streaming Engine or Wowza Streaming Cloud to run the examples in this repo. The following links include steps for both. 
-
-[Set up WebRTC streaming with Wowza Streaming Engine](https://www.wowza.com/docs/how-to-use-webrtc-with-wowza-streaming-engine)
-
-[Connect a WebRTC stream to Wowza Streaming Cloud](https://www.wowza.com/docs/connect-a-webrtc-stream-to-wowza-streaming-cloud) 
-
->	**Note:**
->   Keep in mind that encryption is mandatory for WebRTC streams.
+You'll need to set up WebRTC for Wowza Streaming Engine to run the examples. For more information, see [Set up WebRTC streaming with Wowza Streaming Engine](https://www.wowza.com/docs/how-to-use-webrtc-with-wowza-streaming-engine).
 
 ### Directory structure
 
-In the `src` folder, you'll find the following:
-- `css` and `images` - Assets used by the example HTML pages.
-- `lib` - JavaScript libraries for managing the WebRTC setup.
-   - `AvMenu.js` - Controls the selected input for publishing and screen sharing.
-   - `Settings.js` - Creates a set of configuration settings and copy functionality.
-   - `SoundMeter.js` - Provides a audio meter.
-   - `WowzaMungeSDP.js` - Generates an SPD for peer signaling.
-   - `WowzaPeerConnectionPlay.js` - Manages the signaling process for playback.
-   - `WowzaPeerConnectionPublish.js` - Manages the signaling process for publishing.
-   - `WowzaWebRTCPlay.js` - Controls the playback state.
-   - `WowzaWebRTCPublish.js` - Controls the publishing state.
-- `dev-view-publish.html` - Example HTML page that can create a WebRTC stream with video, audio, and screen share input and publish it to Wowza Streaming Engine. 
-- `dev-view-play.html` - Example HTML page that can play back a WebRTC stream from Wowza Streaming Engine.
-- `play.js` and `publish.js` - JavaScript files that use libraries imported from the `lib` folder to control the WebRTC setup for publishing and playing streams.
+In the `src` folder, you'll find examples for jQuery and React:
 
-
-
+- `jquery-example`
+    - `css` and `images` - Assets used by the example HTML pages.
+    - `lib` - JavaScript files for managing the WebRTC setup.
+        - `AvMenu.js` - Controls the selected input for publishing and screen sharing.
+        - `Settings.js` - Creates a set of configuration settings and copy functionality.
+        - `SoundMeter.js` - Provides an audio meter.
+        - `WowzaMungeSDP.js` - Generates an SDP for peer signaling.
+        - `WowzaPeerConnectionPlay.js` - Manages the signaling process for playback.
+        - `WowzaPeerConnectionPublish.js` - Manages the signaling process for publishing.
+        - `WowzaWebRTCPlay.js` - Controls the playback state.
+        - `WowzaWebRTCPublish.js` - Controls the publishing state.
+    - `dev-view-publish.html` - Example HTML page that can publish a WebRTC stream to Wowza Streaming Engine with video, audio, and screen share input.
+    - `dev-view-play.html` - Example HTML page that can play back a WebRTC stream from Wowza Streaming Engine.
+    - `play.js` and `publish.js` - JavaScript files that use files imported from the `lib` folder to control the WebRTC setup for publishing and playing streams.
+- `react-example`
+    - `src`
+        - `components` - React components for the composite, play, and publish examples.
+            - `composite` - CSS and JavaScript files that use components imported from other files to control the setup for compositing a WebRTC stream with multiple video and audio tracks.
+                - `Composite.js`
+                - `CompositePublisher.js`
+                - `Compositor.js`
+            - `media`
+                - `CompositorUserMedia.js`
+            - `play` -  JavaScript files that use components imported from other files to control the WebRTC setup for playing streams.
+            - `publish` - JavaScript files that use components imported from other files to control the WebRTC setup for publishing streams.
+        - `webrtc` - JavaScript files for managing the WebRTC setup.
+            - `replaceAudioTrack.js`
+            - `replaceVideoTrack.js`
 
 ### Run the example code
 
-To run on your local host, in the project directory execute:
+>	**Note:**
+>   If you're not running the examples from `localhost`, an HTTPS connection is required for WebRTC to access local devices.
+
+#### React
+
+In the `react-example` directory, run the following command:
+```bash
+ $ npm start
+ ```
+
+#### jQuery
+
+In the `jquery-example` directory, run the following command:
 ```bash
  $ npx serve
  ```
 
 Go to `localhost:5000/src/` to view the examples.
-
-If you are not running the examples from `localhost`, an HTTPS connection is required for WebRTC to access local devices.
 
 ## More resources
 
