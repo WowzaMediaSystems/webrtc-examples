@@ -282,21 +282,26 @@ export function mungeSDPPublish(sdpStr, mungeData) {
     if (browserDetails.browser === 'firefox' || browserDetails.browser === 'safari') {
       if ( sdpLine.indexOf("c=IN") ==0 )
       {
+
         if ('audio'.localeCompare(sdpSection) == 0)
         {
           if (mungeData.audioBitrate !== '') {
-            sdpStrRet += "\r\nb=TIAS:"+(Number(mungeData.audioBitrate)*1000)+"\r\n";
-            sdpStrRet += "b=AS:"+(Number(mungeData.audioBitrate)*1000)+"\r\n";
-            sdpStrRet += "b=CT:"+(Number(mungeData.audioBitrate)*1000)+"\r\n";
+            let audioBitrate = parseInt(mungeData.audioBitrate) * 1000;
+            let audioBitrateTIAS = parseInt(mungeData.audioBitrate) * 1000 * 0.95 - (50 * 40 * 8);
+            sdpStrRet += "\r\nb=TIAS:"+audioBitrateTIAS+"\r\n";
+            sdpStrRet += "b=AS:"+audioBitrate+"\r\n";
+            sdpStrRet += "b=CT:"+audioBitrate+"\r\n";
           }
           continue;
         }
         if ('video'.localeCompare(sdpSection) == 0)
         {
           if (mungeData.videoBitrate !== '') {
-            sdpStrRet += "\r\nb=TIAS:"+(Number(mungeData.videoBitrate)*1000)+"\r\n";
-            sdpStrRet += "b=AS:"+(Number(mungeData.videoBitrate)*1000)+"\r\n";
-            sdpStrRet += "b=CT:"+(Number(mungeData.videoBitrate)*1000)+"\r\n";
+            let videoBitrate = parseInt(mungeData.videoBitrate) * 1000;
+            let videoBitrateTIAS = parseInt(mungeData.videoBitrate) * 1000 * 0.95 - (50 * 40 * 8);
+            sdpStrRet += "\r\nb=TIAS:"+videoBitrateTIAS*1000+"\r\n";
+            sdpStrRet += "b=AS:"+videoBitrate+"\r\n";
+            sdpStrRet += "b=CT:"+videoBitrate+"\r\n";
           }
           continue;
         }
