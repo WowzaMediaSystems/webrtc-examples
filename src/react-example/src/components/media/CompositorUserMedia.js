@@ -124,6 +124,23 @@ const CompositorUserMedia = () => {
     }
   }, [dispatch,compositeVideoTrack1DeviceId, displayScreenTrack])
 
+  useEffect(() => {
+    let audioTrack = null;
+    let videoTrack = null;
+    if (Object.keys(audioTracksMap).length > 0) {
+      audioTrack = audioTracksMap[Object.keys(audioTracksMap)[0]];
+    }
+    if (Object.keys(videoTracksMap).length > 0) {
+      videoTrack = videoTracksMap[Object.keys(videoTracksMap)[0]];
+    }
+    if (audioTrack != null || videoTrack != null)
+    {
+      let stream = new MediaStream();
+      if (audioTrack != null) stream.addTrack(audioTrack);
+      if (videoTrack != null) stream.addTrack(videoTrack);
+      dispatch({type:MediaActions.SET_MEDIA_STREAM,stream:stream});
+    }
+  }, [dispatch,audioTracksMap,videoTracksMap])
 
   return <></>;
 }

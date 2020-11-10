@@ -175,6 +175,12 @@ const startPublish = (publishSettings, websocket, callbacks) =>
     {
       websocket = new WebSocket (publishSettings.signalingURL);
     }
+    if(publishSettings.applicationName.length === 0){
+      throw {message: "Application name required"}
+    }
+    if(publishSettings.streamName.length === 0){
+      throw {message: "Stream name required"}
+    }
     if (websocket != null)
     {
       websocket.binaryType = 'arraybuffer';

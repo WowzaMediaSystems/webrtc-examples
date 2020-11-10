@@ -42,13 +42,14 @@ In the `src` folder, you'll find examples for jQuery and React:
     - `play.js` and `publish.js` - JavaScript files that use files imported from the `lib` folder to control the WebRTC setup for publishing and playing streams.
 - `react-example`
     - `src`
-        - `components` - React components for the composite, play, and publish examples.
+        - `components` - React components for the composite, meeting, play, and publish examples.
             - `composite` - CSS and JavaScript files that use components imported from other files to control the setup for compositing a WebRTC stream with multiple video and audio tracks.
                 - `Composite.js`
                 - `CompositePublisher.js`
                 - `Compositor.js`
             - `media`
                 - `CompositorUserMedia.js`
+            - `meeting` - JavaScript files that use components imported from other files to control the setup for publishing a WebRTC stream with multiple participants.
             - `play` -  JavaScript files that use components imported from other files to control the WebRTC setup for playing streams.
             - `publish` - JavaScript files that use components imported from other files to control the WebRTC setup for publishing streams.
         - `webrtc` - JavaScript files for managing the WebRTC setup.

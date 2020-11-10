@@ -25,6 +25,7 @@ const Meeter = () => {
       // Start publishing to Wowza Streaming Engine
       startPublish(publishSettings,webrtcMeeting.websocket,{
         onError: (error) => {
+          dispatch(PublishSettingsActions.resetPublish())
           dispatch({type:ErrorsActions.SET_ERROR_MESSAGE,message:error.message});
         },
         onConnectionStateChange: (result) => {
@@ -107,7 +108,7 @@ const Meeter = () => {
     {
       dispatch({type:PublishSettingsActions.SET_PUBLISH_FLAGS, publishStopping:false});
     }
-  }, [dispatch, publishSettings, webrtcMeeting]);
+  }, [dispatch, publishSettings, webrtcMeeting, pollingInterval]);
 
   return (
     <div id="player-list">

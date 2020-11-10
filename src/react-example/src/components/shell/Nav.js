@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import wowzaLogo from '../../images/wowza-logo.svg'
 
 const Nav = () => {
@@ -19,8 +20,16 @@ const Nav = () => {
           </a>
           <span></span>
         </li>
-        <li className="nav-item page active">
+        <li className="nav-item page">
+          <Link to="/composite">
             Composite
+          </Link>
+          <span></span>
+        </li>
+        <li className="nav-item page">
+          <Link to="/meeting">
+            Meeting
+          </Link>
           <span></span>
         </li>
       </ul>
