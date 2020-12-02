@@ -250,6 +250,7 @@ const Compositor = () => {
 
   // Set up canvas captureStream when component mounts.
   useEffect(() => {
+    let ctx = canvasElement.current.getContext('2d');
     let canvasStream = canvasElement.current.captureStream(30);
     dispatch({type:compositeSettingsActions.SET_COMPOSITE_VIDEO_TRACK,videoTrack:canvasStream.getTracks()[0]});
   },[dispatch]);

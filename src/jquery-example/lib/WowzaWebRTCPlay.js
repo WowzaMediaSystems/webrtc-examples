@@ -27,6 +27,7 @@ class WowzaWebRTCPlay
     this.errorHandler = this.errorHandler.bind(this);
     this.onconnectionstatechange = this.onconnectionstatechange.bind(this);
     this.onstop = this.onstop.bind(this);
+    this.on = this.on.bind(this);
   }
 
 

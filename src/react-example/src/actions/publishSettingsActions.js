@@ -30,3 +30,13 @@ export const stopPublish = () => {
     publishStop: true
   }
 }
+
+export const resetPublish = () => {
+  return {
+    type: SET_PUBLISH_FLAGS,
+    publishStart: false,
+    publishStarting: false,
+    publishStop: false,
+    publishStopping: false,
+  }
+}

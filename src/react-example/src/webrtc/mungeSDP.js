@@ -15,6 +15,7 @@ let audioIndex;
 
 function addAudio(sdpStr, audioLine) {
   let sdpLines = sdpStr.split(/\r\n/);
+  let sdpSection = '';
   let sdpStrRet = '';
   let done = false;
 
@@ -24,12 +25,20 @@ function addAudio(sdpStr, audioLine) {
     if (sdpLine.length <= 0)
       continue;
 
+    if (sdpLine.indexOf('m=audio') === 0) {
+      sdpSection = 'audio';
+    } else if (sdpLine.indexOf('m=video') === 0) {
+      sdpSection = 'video';
+    }
+  
     sdpStrRet += sdpLine;
     sdpStrRet += '\r\n';
 
-    if ('a=rtcp-mux'.localeCompare(sdpLine) === 0 && done === false) {
-      sdpStrRet += audioLine;
-      done = true;
+    if (sdpSection === 'audio') {
+      if ('a=rtcp-mux'.localeCompare(sdpLine) === 0 && done === false) {
+        sdpStrRet += audioLine;
+        done = true;
+      }
     }
   }
   return sdpStrRet;
@@ -278,18 +287,22 @@ export function mungeSDPPublish(sdpStr, mungeData) {
         if ('audio'.localeCompare(sdpSection) === 0)
         {
           if (mungeData.audioBitrate !== '') {
-            sdpStrRet += "\r\nb=TIAS:"+(Number(mungeData.audioBitrate)*1000)+"\r\n";
-            sdpStrRet += "b=AS:"+(Number(mungeData.audioBitrate)*1000)+"\r\n";
-            sdpStrRet += "b=CT:"+(Number(mungeData.audioBitrate)*1000)+"\r\n";
+            let audioBitrate = parseInt(mungeData.audioBitrate) * 1000;
+            let audioBitrateTIAS = parseInt(mungeData.audioBitrate) * 1000 * 0.95 - (50 * 40 * 8);
+            sdpStrRet += "\r\nb=TIAS:"+audioBitrateTIAS+"\r\n";
+            sdpStrRet += "b=AS:"+audioBitrate+"\r\n";
+            sdpStrRet += "b=CT:"+audioBitrate+"\r\n";
           }
           continue;
         }
         if ('video'.localeCompare(sdpSection) === 0)
         {
           if (mungeData.videoBitrate !== '') {
-            sdpStrRet += "\r\nb=TIAS:"+(Number(mungeData.videoBitrate)*1000)+"\r\n";
-            sdpStrRet += "b=AS:"+(Number(mungeData.videoBitrate)*1000)+"\r\n";
-            sdpStrRet += "b=CT:"+(Number(mungeData.videoBitrate)*1000)+"\r\n";
+            let videoBitrate = parseInt(mungeData.videoBitrate) * 1000;
+            let videoBitrateTIAS = parseInt(mungeData.videoBitrate) * 1000 * 0.95 - (50 * 40 * 8);
+            sdpStrRet += "\r\nb=TIAS:"+videoBitrateTIAS+"\r\n";
+            sdpStrRet += "b=AS:"+videoBitrate+"\r\n";
+            sdpStrRet += "b=CT:"+videoBitrate+"\r\n";
           }
           continue;
         }

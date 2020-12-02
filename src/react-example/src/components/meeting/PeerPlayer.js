@@ -11,12 +11,11 @@ const PeerPlayer = (props) => {
   const videoElement = useRef(null);
   const publishSettings = useSelector((state) => state.publishSettings);
   const { stream } = useSelector ((state) => state.media);
-  const [peerConnection, setPeerConnection] = useState();
   const [connected, setConnected] = useState(false);
   const [audioTrack, setAudioTrack] = useState();
   const [videoTrack, setVideoTrack] = useState();
-  const [playerType, setPlayerType] = useState((props.streamName === publishSettings.streamName) ? PUBLISH_PLAYER : PEER_PLAYER);
   let mounted = true;
+  let playerType = (props.streamName === publishSettings.streamName) ? PUBLISH_PLAYER : PEER_PLAYER;
 
   useEffect(() => {
     if(mounted){
@@ -57,9 +56,6 @@ const PeerPlayer = (props) => {
           },
           onError: (e) => {
             console.log(e);
-          },
-          onSetPeerConnection: (result) => {
-            setPeerConnection(result.peerConnection);
           }
         });
       }
@@ -86,9 +82,6 @@ const PeerPlayer = (props) => {
     }
     return () => mounted = false;
   }, [connected]);
-
-  // if ((playerType == PEER_PLAYER) && !connected)
-  //   return null;
 
   return(
     <video id={props.streamName} className="meeting-peer-player" ref={videoElement} autoPlay playsInline ></video>
