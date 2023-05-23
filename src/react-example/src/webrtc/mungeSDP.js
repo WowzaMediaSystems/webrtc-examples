@@ -287,7 +287,7 @@ export function mungeSDPPublish(sdpStr, mungeData) {
         if ('audio'.localeCompare(sdpSection) === 0)
         {
           if (mungeData.audioBitrate !== '') {
-            let audioBitrate = parseInt(mungeData.audioBitrate) * 1000;
+            let audioBitrate = parseInt(mungeData.audioBitrate);
             let audioBitrateTIAS = parseInt(mungeData.audioBitrate) * 1000 * 0.95 - (50 * 40 * 8);
             sdpStrRet += "\r\nb=TIAS:"+audioBitrateTIAS+"\r\n";
             sdpStrRet += "b=AS:"+audioBitrate+"\r\n";
@@ -298,7 +298,7 @@ export function mungeSDPPublish(sdpStr, mungeData) {
         if ('video'.localeCompare(sdpSection) === 0)
         {
           if (mungeData.videoBitrate !== '') {
-            let videoBitrate = parseInt(mungeData.videoBitrate) * 1000;
+            let videoBitrate = parseInt(mungeData.videoBitrate);
             let videoBitrateTIAS = parseInt(mungeData.videoBitrate) * 1000 * 0.95 - (50 * 40 * 8);
             sdpStrRet += "\r\nb=TIAS:"+videoBitrateTIAS+"\r\n";
             sdpStrRet += "b=AS:"+videoBitrate+"\r\n";
