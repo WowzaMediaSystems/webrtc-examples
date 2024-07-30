@@ -3,7 +3,9 @@
  * This code is licensed pursuant to the BSD 3-Clause License.
  */
 
-import { mungeSDPPlay } from './WowzaMungeSDP.js';
+// import { mungeSDPPlay } from './WowzaMungeSDP.js';
+const mungeSDPPlay = null; // hotfix
+
 import WowzaPeerConnectionPlay from './WowzaPeerConnectionPlay.js';
 
 class WowzaWebRTCPlay
