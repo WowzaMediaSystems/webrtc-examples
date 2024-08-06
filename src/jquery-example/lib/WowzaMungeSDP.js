@@ -70,24 +70,31 @@ function addVideo(sdpStr, videoLine) {
 
   }
 
+  let foundMVideo = false;
   for (let sdpIndex in sdpLines) {
     let sdpLine = sdpLines[sdpIndex];
 
+    //only insert video details after m=video tag
+    if(sdpLine.startsWith("m=video")) {
+      foundMVideo = true;
+    }
     sdpStrRet += sdpLine;
     sdpStrRet += '\r\n';
 
-    if (('a=rtcp-rsize'.localeCompare(sdpLine) == 0) && done == false && rtcpSize == true) {
-      sdpStrRet += videoLine;
-      done = true;
-    }
+    if(foundMVideo) {
+      if (('a=rtcp-rsize'.localeCompare(sdpLine) == 0) && done == false && rtcpSize == true) {
+        sdpStrRet += videoLine;
+        done = true;
+      }
 
-    if ('a=rtcp-mux'.localeCompare(sdpLine) == 0 && done == true && rtcpSize == false) {
-      sdpStrRet += videoLine;
-      done = true;
-    }
+      if ('a=rtcp-mux'.localeCompare(sdpLine) == 0 && done == true && rtcpSize == false) {
+        sdpStrRet += videoLine;
+        done = true;
+      }
 
-    if ('a=rtcp-mux'.localeCompare(sdpLine) == 0 && done == false && rtcpSize == false) {
-      done = true;
+      if ('a=rtcp-mux'.localeCompare(sdpLine) == 0 && done == false && rtcpSize == false) {
+        done = true;
+      }
     }
 
   }
