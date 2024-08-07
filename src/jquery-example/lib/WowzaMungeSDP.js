@@ -226,27 +226,22 @@ export function mungeSDPPublish(sdpStr, mungeData) {
     if (sdpLine.indexOf("m=audio") == 0 && audioIndex !== -1) {
       audioMLines = sdpLine.split(" ");
       sdpStrRet += audioMLines[0] + " " + audioMLines[1] + " " + audioMLines[2] + " " + audioIndex + "\r\n";
+      sdpSection = 'audio';
+      hitMID = false;
       continue;
     }
 
     if (sdpLine.indexOf("m=video") == 0 && videoIndex !== -1) {
       audioMLines = sdpLine.split(" ");
       sdpStrRet += audioMLines[0] + " " + audioMLines[1] + " " + audioMLines[2] + " " + videoIndex + "\r\n";
+      sdpSection = 'video';
+      hitMID = false;
       continue;
     }
   
-
     sdpStrRet += sdpLine;
 
-    if (sdpLine.indexOf("m=audio") === 0) {
-      sdpSection = 'audio';
-      hitMID = false;
-    }
-    else if (sdpLine.indexOf("m=video") === 0) {
-      sdpSection = 'video';
-      hitMID = false;
-    }
-    else if (sdpLine.indexOf("a=rtpmap") == 0) {
+    if (sdpLine.indexOf("a=rtpmap") == 0) {
       sdpSection = 'bandwidth';
       hitMID = false;
     }
@@ -271,7 +266,7 @@ export function mungeSDPPublish(sdpStr, mungeData) {
             }
             hitMID = true;
           }
-          else if ('bandwidth'.localeCompare(sdpSection) == 0) {
+          else if (browserDetails.browser === 'chrome'  && 'bandwidth'.localeCompare(sdpSection) == 0) {
             let rtpmapID;
             rtpmapID = getrtpMapID(sdpLine);
             if (rtpmapID !== null) {
