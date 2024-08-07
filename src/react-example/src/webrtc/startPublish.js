@@ -1,4 +1,4 @@
-// import { mungeSDPPublish } from './mungeSDP';
+import { mungeSDPPublish } from './mungeSDP';
 
 // Utilities
 
@@ -36,10 +36,10 @@ const peerConnectionCreateOfferSuccess = (description, publishSettings, websocke
   if (publishSettings.audioCodec != null)
     mungeData.audioCodec = publishSettings.audioCodec;
 
-  // description.sdp = mungeSDPPublish(description.sdp, mungeData);
+  description.sdp = mungeSDPPublish(description.sdp, mungeData);
 
-  // console.log("peerConnectionCreateOfferSuccess: Setting local description SDP: ");
-  // console.log(description.sdp);
+  console.log("peerConnectionCreateOfferSuccess: Setting local description SDP: ");
+  console.log(description.sdp);
 
   peerConnection
     .setLocalDescription(description)
