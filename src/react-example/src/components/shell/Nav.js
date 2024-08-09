@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import wowzaLogo from '../../images/wowza-logo.svg'
 
-const Nav = () => {
+const Nav = (props) => {
 
   return (
     <nav className="navbar navbar-expand-sm navbar-light bg-light pb-3 pb-md-2" id="top-nav">
@@ -20,18 +20,50 @@ const Nav = () => {
           </a>
           <span></span>
         </li>
-        <li className="nav-item page">
-          <Link to="/composite">
-            Composite
-          </Link>
-          <span></span>
-        </li>
-        <li className="nav-item page">
-          <Link to="/meeting">
-            Meeting
-          </Link>
-          <span></span>
-        </li>
+        { props.buildComponent === 'develop' && (
+          <>
+            <li className="nav-item page">
+              <Link to="/composite">
+                Composite
+              </Link>
+              <span></span>
+            </li>
+            <li className="nav-item page">
+              <Link to="/meeting">
+                Meeting
+              </Link>
+              <span></span>
+            </li>
+          </>
+        )}
+        { props.buildComponent === 'composite' && (
+          <>
+            <li className="nav-item page active">
+              Composite
+              <span></span>
+            </li>
+            <li className="nav-item page">
+              <a href="https://www.wowza.com/developer/webrtc/dev-meeting">
+                Meeting
+              </a>
+              <span></span>
+            </li>
+          </>
+        )}
+        { props.buildComponent === 'meeting' && (
+          <>
+            <li className="nav-item page">
+              <a href="https://www.wowza.com/developer/webrtc/dev-composite">
+                Composite
+              </a>
+              <span></span>
+            </li>
+            <li className="nav-item page active">
+                Meeting
+              <span></span>
+            </li>
+          </>
+        )}
       </ul>
       <ul className="navbar-nav ml-auto d-none d-md-flex">
         <li className="nav-item mr-3">

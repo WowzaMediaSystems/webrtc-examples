@@ -183,6 +183,7 @@ const startPublish = (publishSettings, websocket, callbacks) =>
     }
     if (websocket != null)
     {
+      console.log(publishSettings);
       websocket.binaryType = 'arraybuffer';
 
       websocket.addEventListener ("open", () => { websocketOnOpen(publishSettings, websocket, callbacks); });

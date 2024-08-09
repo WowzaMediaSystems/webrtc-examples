@@ -2,6 +2,8 @@
  * This code and all components (c) Copyright 2019-2020, Wowza Media Systems, LLC. All rights reserved.
  * This code is licensed pursuant to the BSD 3-Clause License.
  */
+import getSecureToken from './SecureToken.js';
+
 
 class WowzaPeerConnectionPlay
 {
@@ -23,6 +25,7 @@ class WowzaPeerConnectionPlay
 
     this.streamInfo = undefined;
     this.userData = undefined;
+    this.secureTokenData = undefined;
 
     this.wsConnection = undefined;
     this.peerConnection = undefined;
@@ -60,6 +63,9 @@ class WowzaPeerConnectionPlay
       this.streamInfo = props.streamInfo;
     if (props.userData != null)
       this.userData = props.userData;
+      
+    if (props.secureData != null)
+      this.secureTokenData = props.secureData;
 
     if (props.mungeSDP != null)
       this.mungeSDP = props.mungeSDP;
@@ -141,9 +147,31 @@ class WowzaPeerConnectionPlay
       }
     }
 
+    /* 
+    Wowza custom offer payload:
+     {"direction":"play", 
+      "command":"getOffer", 
+      "streamInfo":{
+        "applicationName":"webrtc",
+        "streamName":"myStream",
+        "sessionId":"6432577"
+        }, 
+      "userData":{
+        "param1":"value1"
+        }, 
+      "secureToken":{
+        "hash":"wTyV72Y52C8P056OP2g3-ZG4OGrUBEBi6lFKuxOk96Y="
+        "starttime":"1615216401", (Unix Epoch Time in seconds)
+        "endtime":"1615217401"  (Unix Epoch Time in seconds)
+        }
+      }
+    */
     function sendPlayGetOffer () {
-      console.log("sendPlayGetOffer: " + JSON.stringify(_this.streamInfo));
-      _this.wsConnection.send('{"direction":"play", "command":"getOffer", "streamInfo":' + JSON.stringify(_this.streamInfo) + ', "userData":' + JSON.stringify(_this.userData) + '}');
+      getSecureToken(_this.secureTokenData).then(secureToken => {
+        let offerJson = '{"direction":"play", "command":"getOffer", "streamInfo":' + JSON.stringify(_this.streamInfo) + ', "userData":' + JSON.stringify(_this.userData) + ', "secureToken":' + JSON.stringify(secureToken) + '}';
+        console.log("sendPlayGetOffer: " + offerJson);
+        _this.wsConnection.send(offerJson);
+      });
     }
 
     function sendPlayGetAvailableStreams() {
@@ -151,6 +179,34 @@ class WowzaPeerConnectionPlay
       _this.wsConnection.send('{"direction":"play", "command":"getAvailableStreams", "streamInfo":' + JSON.stringify(_this.streamInfo) + ', "userData":' + JSON.stringify(_this.userData) + '}');
     }
 
+	/*
+	Custom Wowza response to Offer:
+	{"status":200,
+	 "statusDescription":"OK",
+	 "direction":"play",
+	 "command":"getOffer",
+	 "streamInfo":{
+	   "applicationName":"webrtc/_definst_",
+	   "streamName":"myStream",
+	   "sessionId":"2121326948"
+	 },
+	 "sdp":{
+	   "type":"offer",
+	   "sdp":"v=0\r\no=WowzaStreamingEngine-next 977851903 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0...na=ssrc:270308216 cname:{0dea64c3-d103-4d57-b6a6-deeb4e23231d}\r\n"
+	   }
+	 }
+	
+	{"status":502,
+	 "statusDescription":"Live stream is not running: myStream",
+	 "direction":"play",
+	 "command":"getOffer",
+	 "streamInfo":{
+	   "applicationName":"webrtc/_definst_",
+	   "streamName":"myStream",
+	   "sessionId":"[empty]"
+	   }
+	 }
+	*/
     this.wsConnection.onmessage = function (evt)
     {
       console.log("wsConnection.onmessage: " + evt.data);
@@ -173,7 +229,7 @@ class WowzaPeerConnectionPlay
       }
       else if (msgStatus != 200) {
         _this.errorHandler({message:msgJSON['statusDescription']});
-        _stop();
+        _this.stop();
       }
       else {
 

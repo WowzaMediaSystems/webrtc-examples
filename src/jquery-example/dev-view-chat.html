@@ -13,8 +13,8 @@
       <script src="https://cdn.jsdelivr.net/npm/js-cookie@2.2.1/src/js.cookie.js" integrity="sha256-P8jY+MCe6X2cjNSmF4rQvZIanL5VwUUT4MBnOMncjRU=" crossorigin="anonymous"></script>
       <script type="text/javascript" src="https://webrtchacks.github.io/adapter/adapter-latest.js"></script>
       <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
-      <title>WebRTC Publishing Test for Wowza Streaming Engine</title>
-      <meta name="description" content="As a Wowza Streaming Engine customer, you can now test WebRTC streams published from your browser. Use this page to test different configurations.">
+      <title>WebRTC Chat Test for Wowza Streaming Engine</title>
+      <meta name="description" content="Chat example">
     </head>
     <body>
       <div id="build">1.3.1 lzmwvnir</div>
@@ -22,20 +22,16 @@
         <nav class="navbar navbar-expand-sm navbar-light bg-light pb-3 pb-md-2" id="top-nav">
           <a class="navbar-brand" href="http://www.wowza.com"><img class="noll" src="./images/wowza-logo.svg" alt="Wowza Media Systems" /></a>
           <ul class="navbar-nav mr-auto-lg">
+            <li class="nav-item page">
+              <a href="dev-view-publish" id="show-publish-page">Publish</a>
+              <span></span>
+            </li>
+            <li class="nav-item page">
+              <a href="dev-view-play" id="show-play-page">Play</a>
+              <span></span>
+            </li>
             <li class="nav-item page active">
-              <a href="dev-view-publish.html" id="show-publish-page">Publish</a>
-              <span></span>
-            </li>
-            <li class="nav-item page">
-              <a href="dev-view-play.html" id="show-play-page">Play</a>
-              <span></span>
-            </li>
-            <li class="nav-item page">
-              <a href="https://www.wowza.com/developer/webrtc/dev-composite" id="show-chat-page">Composite</a>
-              <span></span>
-            </li>
-            <li class="nav-item page">
-              <a href="https://www.wowza.com/developer/webrtc/dev-meeting" id="show-chat-page">Meeting</a>
+              <a href="dev-view-chat" id="show-chat-page">Chat</a>
               <span></span>
             </li>
           </ul>
@@ -63,16 +59,23 @@
         </div>
         <div class="container-fluid mt-3" id="publish-content">
           <div class="row justify-content-center">
-            <div class="col-md-8 col-sm-12">
+            <div id="peer-videos-container" class="col-md-8 col-sm-12">
+              <div id="peer-stream-template" style="display:none;">
+                <div class="peer-video-controls">
+                  <span class="mute-video badge badge-pill badge-primary">mute</span>
+                  <span class="unmute-video badge badge-pill badge-danger" style="display:none">muted</span>
+                </div>
+                <video autoplay playsinline></video>
+              </div>
+            </div>
+            <div class="col-md-4 col-sm-12" id="publish-settings">
               <div id="publish-video-container">
-                <video id="publisher-video" autoplay playsinline muted controls></video>
-                <div id="video-live-indicator">
+                <video id="publisher-video" autoplay playsinline muted></video>
+                <div id="video-live-indicator" style="top: 1.5em;">
                   <span id="video-live-indicator-live" class="badge badge-pill badge-danger" style="display:none;">LIVE</span>
                   <span id="video-live-indicator-error" class="badge badge-pill badge-warning" style="display:none;">ERROR</span>
                 </div>
               </div>
-            </div>
-            <div class="col-md-4 col-sm-12" id="publish-settings">
               <form id="publish-settings-form">
                 <div class="row">
                   <div class="col-12">
@@ -93,91 +96,6 @@
                     <div class="form-group">
                       <label for="streamName">Stream Name</label>
                       <input type="text" class="form-control" id="streamName" name="streamName" maxlength="256">
-                    </div>
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="col-lg-6 col-sm-12">
-                    <div class="form-group">
-                      <label for="audioBitrate">Audio Bitrate</label>
-                      <div class="input-group">
-                        <input type="number" class="form-control" id="audioBitrate" name="audioBitrate" value="64">
-                        <div class="input-group-append">
-                          <span class="input-group-text">Kbps</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="col-lg-6 col-sm-12">
-                    <div class="form-group">
-                      <label for="audioCodec">Audio Codec</label>
-                      <div class="input-group">
-                        <select class="form-control" id="audioCodec" name="audioCodec">
-                          <option value="opus" selected>Opus</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="col-lg-6 col-sm-12">
-                    <div class="form-group">
-                      <label for="videoBitrate">Video Bitrate</label>
-                      <div class="input-group">
-                        <input type="number" class="form-control" id="videoBitrate" name="videoBitrate" value="3500">
-                        <div class="input-group-append">
-                          <span class="input-group-text">Kbps</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="col-lg-6 col-sm-12">
-                    <div class="form-group">
-                      <label for="videoCodec">Video Codec</label>
-                      <div class="input-group">
-                        <select class="form-control" id="videoCodec" name="videoCodec">
-                          <option value="42e01f" selected>H.264</option>
-                          <option value="VP8">VP8</option>
-                          <option value="VP9">VP9</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="col-lg-6 col-sm-12">
-                    <div class="form-group">
-                      <label for="videoFrameRate">Frame Rate</label>
-                      <div class="input-group">
-                        <input type="number" class="form-control" id="videoFrameRate" name="videoFrameRate" value="30">
-                        <div class="input-group-append">
-                          <span class="input-group-text">fps</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="col-lg-6 col-sm-12">
-                    <div class="form-group">
-                      <label for="frameSize">Frame Size</label>
-                      <div class="input-group">
-                        <select class="form-control" id="frameSize" name="frameSize">
-                          <option selected value="default">
-                            Default
-                          </option>
-                          <option value="1920x1080">
-                            1920x1080
-                          </option>
-                          <option value="1280x720">
-                            1280x720
-                          </option>
-                          <option value="800x600">
-                            800x600
-                          </option>
-                          <option value="640x360">
-                            640x360
-                          </option>
-                        </select>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -217,7 +135,7 @@
                 </div>
                 <div class="row">
                   <div class="col-10">
-                    <button id="publish-toggle" type="button" class="btn">Publish</button>
+                    <button id="publish-toggle" type="button" class="btn">Join</button>
                   </div>
                   <div class="col-2">
                     <button id="publish-share-link" type="button" class="control-button mt-0">
@@ -230,7 +148,7 @@
           </div>
         </div>
       </div>
-  		<script type="module" crossorigin="use-credentials" src="./publish.js"></script>
+  		<script type="module" src="./chat.js"></script>
   		<div>
   			<span id="sdpDataTag"></span>
   		</div>
