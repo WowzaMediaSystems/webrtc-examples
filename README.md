@@ -80,8 +80,6 @@ Go to `localhost:5000/src/` to view the examples.
 ## More resources
 
 - [WebRTC workflows in Wowza Streaming Engine](https://www.wowza.com/docs/webrtc-workflows-in-wowza-streaming-engine)
-- [Wowza Streaming Engine WebRTC Publish Example (CodePen)](https://codepen.io/team/wowza/pen/abNJqWV)
-- [Wowza Streaming Engine WebRTC Player Example (CodePen)](https://codepen.io/team/wowza/pen/GRZrVrQ)
 
 ## Contact us
 
