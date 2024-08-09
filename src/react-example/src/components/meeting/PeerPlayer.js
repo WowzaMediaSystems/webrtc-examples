@@ -14,11 +14,13 @@ const PeerPlayer = (props) => {
   const [connected, setConnected] = useState(false);
   const [audioTrack, setAudioTrack] = useState();
   const [videoTrack, setVideoTrack] = useState();
+  // const [playerType, setPlayerType] = useState((props.streamName === publishSettings.streamName) ? PUBLISH_PLAYER : PEER_PLAYER);
   let mounted = true;
   let playerType = (props.streamName === publishSettings.streamName) ? PUBLISH_PLAYER : PEER_PLAYER;
 
   useEffect(() => {
     if(mounted){
+      console.log("mounted");
       if(playerType === PUBLISH_PLAYER){
         console.log("publish player");
         if (stream != null && videoElement.current != null)

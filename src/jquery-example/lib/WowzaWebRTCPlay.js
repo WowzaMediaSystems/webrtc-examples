@@ -4,7 +4,6 @@
  */
 
 import { mungeSDPPlay } from './WowzaMungeSDP.js';
-
 import WowzaPeerConnectionPlay from './WowzaPeerConnectionPlay.js';
 
 class WowzaWebRTCPlay
@@ -19,11 +18,18 @@ class WowzaWebRTCPlay
         streamName: "",
         sessionId: "[empty]"
       },
+      secureData:{
+        prefix: "",
+        secret: "",
+        isIp: false,
+        ip: "",
+        timeout: ""
+      },
       userData: { param1: "value1" } // ?
     }
 
     this.wowzaPeerConnectionPlay = undefined;
-    this.callbacks = {};
+    this.callbacks = {}; //TODO: turn into listeners
     this.newAPI = false;
     this.errorHandler = this.errorHandler.bind(this);
     this.onconnectionstatechange = this.onconnectionstatechange.bind(this);
@@ -72,6 +78,7 @@ class WowzaWebRTCPlay
 
       let currentState = _this.getState();
       let newStreamInfo = {...currentState.streamInfo};
+      let newSecureData = {...currentState.secureData};
       let newState = {};
 
       if (props.videoElementPlay != null)
@@ -81,16 +88,27 @@ class WowzaWebRTCPlay
         newState['sdpURL'] = props.sdpURL.trim();
 
       if (props.applicationName != null)
-        newStreamInfo['applicationName'] = props.applicationName.trim();
-      if (props.streamName != null)
-        newStreamInfo['streamName'] = props.streamName.trim();
+        newSecureData['applicationName'] = newStreamInfo['applicationName'] = props.applicationName.trim();
+      if (props.streamName != null) 
+        newSecureData['streamName'] = newStreamInfo['streamName'] = props.streamName.trim();
       if (props.sessionId != null)
         newStreamInfo['sessionId'] = props.sessionId;
       if (props.streamInfo != null)
-        newStreamInfo = {...newStreamInfo,...props.streamInfo};
-
+        newStreamInfo = {...newStreamInfo,...props.streamInfo};       
       newState['streamInfo'] = newStreamInfo;
 
+      if (props.secret != null)
+        newSecureData['secret'] = props.secret.trim();
+      if (props.prefix != null)
+        newSecureData['prefix'] = props.prefix.trim();
+      if (props.ip != null)
+        newSecureData['ip'] = props.ip.trim();
+      if (props.timeout)
+        newSecureData['timeout'] = parseInt(props.timeout);
+      if (props.isIp != null)
+        newSecureData['isIp'] = props.isIp;
+      newState['secureData'] = newSecureData;
+      
       if (props.userData != null)
         newState['userData'] = {...props.userData};
 
@@ -123,6 +141,7 @@ class WowzaWebRTCPlay
       videoElement:currentState.videoElementPlay,
       streamInfo:currentState.streamInfo,
       userData:currentState.userData,
+      secureData:currentState.secureData,
       mungeSDP:mungeSDPPlay,
       onconnectionstatechange: this.onconnectionstatechange,
       onstop: this.onstop,

@@ -28,6 +28,7 @@ let statsInterval = undefined;
 
 let wsConnection = undefined;
 let peerConnection = undefined;
+// TODO WTF?
 let peerConnectionConfig = { 'iceServers': [] };
 peerConnectionConfig = null;
 let videoSender = undefined;

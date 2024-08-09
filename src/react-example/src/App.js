@@ -2,7 +2,8 @@ import React from 'react';
 import {
   BrowserRouter as Router,
   Switch,
-  Route
+  Route,
+  Redirect
 } from "react-router-dom";
 import { Provider as StoreProvider } from "react-redux";
 
@@ -21,28 +22,46 @@ import './App.css';
 
 const App = () => {
 
+  let buildComponent = 'develop';
+  if (process.env.REACT_APP_BASENAME != null && process.env.REACT_APP_BASENAME.indexOf('composite') > 0)
+    buildComponent = 'composite';
+  else if (process.env.REACT_APP_BASENAME != null && process.env.REACT_APP_BASENAME.indexOf('meeting') > 0)
+    buildComponent = 'meeting';
+
   return (
     <StoreProvider store={store}>
       <CompositorUserMedia />
       <Devices />
       <Router basename={process.env.REACT_APP_BASENAME}>
         <div className="container-fluid">
-          <Nav />
+          <Nav buildComponent={ buildComponent }/>
           <Errors />
         </div>
         <Switch>
           <Route path="/play">
             <Play />
           </Route>
-          <Route path="/meeting">
-            <Meeting />
-          </Route>
-          <Route path="/composite">
-            <Composite />
-          </Route>
-          <Route path="/">
-            <Composite />
-          </Route>
+          { buildComponent === 'develop' && (
+            <>
+              <Route path="/meeting">
+                <Meeting />
+              </Route>
+              <Route path="/composite">
+                <Composite />
+              </Route>
+              <Redirect path="/" to="composite" />
+            </>
+          )}
+          { buildComponent === 'composite' && (
+            <Route path="/">
+              <Composite />
+            </Route>
+          )}
+          { buildComponent === 'meeting' && (
+            <Route path="/">
+              <Meeting />
+            </Route>
+          )}
         </Switch>
       </Router>
     </StoreProvider>

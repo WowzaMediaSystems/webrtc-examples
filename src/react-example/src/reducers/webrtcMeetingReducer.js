@@ -26,10 +26,8 @@ const webrtcMeetingReducer = (state = initialState, action) => {
       newPeerStreams.push(action.peerStream);
       return { ...state, peerStreams:newPeerStreams};
     case WebRTCMeetingActions.REMOVE_PEER_VIDEO_PLAYER:
-      console.log("reducer: "+action);
       newPeerStreams =  state.peerStreams.slice();
       newPeerStreams = newPeerStreams.filter(stream => !(stream.streamName === action.streamName))
-      console.log(newPeerStreams);
       return { ...state, peerStreams:newPeerStreams};
     case WebRTCMeetingActions.REMOVE_ALL_PLAYERS:
       return { ...state, peerStreams:[]};
