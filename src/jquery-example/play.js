@@ -10,7 +10,12 @@ let state = {
   settings: {
     playSdpURL: "",
     playApplicationName: "",
-    playStreamName: ""
+    playStreamName: "",
+    playSecret: "",
+    playTimeout: "",
+    playPrefix: "",
+    playIsIp: false,
+    playIp: ""
   }
 };
 let statePrefix = 'play';
@@ -127,6 +132,7 @@ const initListeners = () => {
     else
     {
       let playSettings = Settings.mapFromForm(Settings.serializeArrayFormValues($( "#play-settings-form" )));
+      playSettings.playIsIp = $('#playIsIp').is(":checked");
       Settings.saveToCookie(playSettings);
       start(playSettings);
     }

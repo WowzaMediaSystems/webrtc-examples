@@ -37,6 +37,7 @@ In the `src` folder, you'll find examples for jQuery and React:
         - `WowzaPeerConnectionPublish.js` - Manages the signaling process for publishing.
         - `WowzaWebRTCPlay.js` - Controls the playback state.
         - `WowzaWebRTCPublish.js` - Controls the publishing state.
+        - 'SecureToken.js' - Builds a secure token hash.
     - `dev-view-publish.html` - Example HTML page that can publish a WebRTC stream to Wowza Streaming Engine with video, audio, and screen share input.
     - `dev-view-play.html` - Example HTML page that can play back a WebRTC stream from Wowza Streaming Engine.
     - `play.js` and `publish.js` - JavaScript files that use files imported from the `lib` folder to control the WebRTC setup for publishing and playing streams.
