@@ -145,6 +145,7 @@ const initFormAndSettings = () => {
   let pageParams = Settings.mapFromCookie(state.settings);
   pageParams = Settings.mapFromQueryParams(pageParams);
   Settings.updateForm(pageParams);
+  $('#playIsIp').prop('checked',pageParams.playIsIp);
 }
 initFormAndSettings();
 init(errorHandler,onPlayPeerConnected,onPlayPeerConnectionStopped);

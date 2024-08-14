@@ -28,40 +28,29 @@ let mySecureTokenData = {
 const getSecureToken = async (secureTokenData) => { 
   console.log("Token data" + JSON.stringify(secureTokenData));
   if (secureTokenData.secret) {
-	  let addedSecret = false;
     let prefix = secureTokenData.prefix;
     if(prefix === undefined || prefix === "") {
       prefix = 'wowzatoken' //the WSE default
     }    
 	  let url = secureTokenData.applicationName + '/' + secureTokenData.streamName + "?";
 	  // add query parameters in alphabetical order.
+    let queryParams = [];
+    queryParams.push(secureTokenData.secret);
 	  if (secureTokenData.isIp) {
-	    url = url + secureTokenData.ip + '&';
-	  }
-	  if (secureTokenData.secret < prefix) {
-	    url = url + secureTokenData.secret + '&';
-	    addedSecret = true;
+      queryParams.push(secureTokenData.ip);
 	  }
 	  if (secureTokenData.timeout > 0) {
 	    let currTime = Math.trunc(new Date().getTime() / 1000);
 	    secureTokenData.startTime = (currTime - 5).toString();
 	    secureTokenData.endTime = (currTime + Math.trunc(secureTokenData.timeout)).toString();
-	    url = url + prefix + "endtime=" + secureTokenData.endTime + '&' + prefix + "starttime=" + secureTokenData.startTime;
-	    if (!addedSecret) {
-	      url = url + '&';
-	    }
+      queryParams.push(prefix + "endtime=" + secureTokenData.endTime);
+      queryParams.push(prefix + "starttime=" + secureTokenData.startTime);
 	  }
-	  if (!addedSecret) {
-	    url = url + secureTokenData.secret;
-	  }
-	  if (url.endsWith('&')) {
-	    url = url.substring(0, url.length-1);
-	  }
+    queryParams.sort();
+    url = url + queryParams.join("&");
 	  console.log("URL to hash: " + url);
 	  let vDigest = await digestMessage(url);
-	  return { hash : vDigest, 
-	           starttime : secureTokenData.startTime,  
-	           endtime : secureTokenData.endTime }
+	  return { hash : vDigest, starttime : secureTokenData.startTime, endtime : secureTokenData.endTime }
   }
   return null;
 }
