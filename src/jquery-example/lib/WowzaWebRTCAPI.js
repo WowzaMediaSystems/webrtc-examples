@@ -65,7 +65,6 @@ const pollAvailableStreams = () => {
   let streamInfo = getState().streamInfo;
   if (wsConnection != null)
   {
-    console.log("wsConnection.send");
     wsConnection.send('{"direction":"publish", "command":"getAvailableStreams", "streamInfo":' + JSON.stringify(streamInfo) + '}');
   }
 }

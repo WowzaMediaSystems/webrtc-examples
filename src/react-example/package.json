@@ -17,8 +17,8 @@
     "webrtc-adapter": "^7.6.3"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "start": "SET NODE_OPTIONS=--openssl-legacy-provider && react-scripts start",
+    "build": "SET NODE_OPTIONS=--openssl-legacy-provider && react-scripts build",
     "build-private": "cross-env REACT_APP_BASENAME=/_private/webrtc/react-example/ react-scripts build",
     "build-composite": "cross-env REACT_APP_BASENAME=/developer/webrtc/dev-composite/ react-scripts build",
     "build-meeting": "cross-env REACT_APP_BASENAME=/developer/webrtc/dev-meeting/ react-scripts build",

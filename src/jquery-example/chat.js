@@ -20,6 +20,7 @@ $(document).ready(() => {
     muted: false,
   	video: true,
   	getAvailableStreamsTimer: 0,
+
     settings: {
       sdpURL: "",
       applicationName: "",
@@ -29,7 +30,7 @@ $(document).ready(() => {
       videoBitrate: "3500",
       videoCodec: "42e01f",
       videoFrameRate: "30",
-      frameSize: "1280x720"
+      frameSize: "default"
     },
     peerStreams: []
   };
@@ -219,8 +220,8 @@ $(document).ready(() => {
       for(let i=0;i<availableStreams.length;i++){
         checkAddPeerStream(availableStreams[i].streamName);
       }
-      console.log(availableStreams);
-      console.log(state.peerStreams);
+      //console.log(availableStreams);
+      //console.log(state.peerStreams);
       for(let i=0;i<state.peerStreams.length;i++){
         checkRemovePeerStream(availableStreams,state.peerStreams[i], i);
       }
