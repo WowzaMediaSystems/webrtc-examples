@@ -86,13 +86,14 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
 
   let msgJSON = JSON.parse(event.data);
   let msgStatus = Number(msgJSON['status']);
-
-  if (msgStatus === 514) // repeater stream not ready
+  console.log("websocketOnMessage:"+msgStatus);
+  console.log(msgJSON);
+  if (msgStatus === 514 || msgStatus === 504) // repeater stream not ready
   {
     repeaterRetryCount++;
 
     if (repeaterRetryCount < 10) {
-      setTimeout(websocketSendPlayGetOffer(playSettings, websocket), 500);
+      setTimeout(() => {websocketSendPlayGetOffer(playSettings, websocket)}, 1000);
     } else {
       websocketOnError({message:'Live stream repeater timeout: ' + playSettings.streamName}, callbacks);
       stopPlay(peerConnection, websocket, callbacks);

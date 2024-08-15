@@ -30,7 +30,7 @@ function addAudio(sdpStr, audioLine) {
     } else if (sdpLine.indexOf('m=video') === 0) {
       sdpSection = 'video';
     }
-  
+
     sdpStrRet += sdpLine;
     sdpStrRet += '\r\n';
 
@@ -50,6 +50,7 @@ function addVideo(sdpStr, videoLine) {
   let done = false;
 
   let rtcpSize = false;
+  let rtcpMux = false;
 
   for (let sdpIndex in sdpLines) {
     let sdpLine = sdpLines[sdpIndex];
@@ -61,26 +62,37 @@ function addVideo(sdpStr, videoLine) {
       rtcpSize = true;
     }
 
+    if (sdpLine.includes("a=rtcp-mux")) {
+      rtcpMux = true;
+    }
+
   }
 
+  let foundMVideo = false;
   for (let sdpIndex in sdpLines) {
     let sdpLine = sdpLines[sdpIndex];
 
+    //only insert video details after m=video tag
+    if(sdpLine.startsWith("m=video")) {
+      foundMVideo = true;
+    }
     sdpStrRet += sdpLine;
     sdpStrRet += '\r\n';
 
-    if (('a=rtcp-rsize'.localeCompare(sdpLine) === 0) && done === false && rtcpSize === true) {
-      sdpStrRet += videoLine;
-      done = true;
-    }
+    if(foundMVideo) {
+      if (('a=rtcp-rsize'.localeCompare(sdpLine) === 0) && done === false && rtcpSize === true) {
+        sdpStrRet += videoLine;
+        done = true;
+      }
 
-    if ('a=rtcp-mux'.localeCompare(sdpLine) === 0 && done === true && rtcpSize === false) {
-      sdpStrRet += videoLine;
-      done = true;
-    }
+      if ('a=rtcp-mux'.localeCompare(sdpLine) === 0 && done === true && rtcpSize === false) {
+        sdpStrRet += videoLine;
+        done = true;
+      }
 
-    if ('a=rtcp-mux'.localeCompare(sdpLine) === 0 && done === false && rtcpSize === false) {
-      done = true;
+      if ('a=rtcp-mux'.localeCompare(sdpLine) === 0 && done === false && rtcpSize === false) {
+        done = true;
+      }
     }
 
   }
@@ -163,7 +175,7 @@ function getrtpMapID(line) {
 
 export function mungeSDPPublish(sdpStr, mungeData) {
 
-  SDPOutput = {};
+  SDPOutput = new Object();
   videoChoice = "42e01f";
   audioChoice = "opus";
   videoIndex = -1;
@@ -207,48 +219,43 @@ export function mungeSDPPublish(sdpStr, mungeData) {
     if (sdpLine.length <= 0)
       continue;
 
-    if (browserDetails.browser === 'chrome') {
-      let audioMLines;
-      if (sdpLine.indexOf("m=audio") === 0 && audioIndex !== -1) {
-        audioMLines = sdpLine.split(" ");
-        sdpStrRet += audioMLines[0] + " " + audioMLines[1] + " " + audioMLines[2] + " " + audioIndex + "\r\n";
-        continue;
-      }
-
-      if (sdpLine.indexOf("m=video") === 0 && videoIndex !== -1) {
-        audioMLines = sdpLine.split(" ");
-        sdpStrRet += audioMLines[0] + " " + audioMLines[1] + " " + audioMLines[2] + " " + videoIndex + "\r\n";
-        continue;
-      }
-    }
-
-    sdpStrRet += sdpLine;
-
-    if (sdpLine.indexOf("m=audio") === 0) {
+    
+    let audioMLines;
+    if (sdpLine.indexOf("m=audio") === 0 && audioIndex !== -1) {
+      audioMLines = sdpLine.split(" ");
+      sdpStrRet += audioMLines[0] + " " + audioMLines[1] + " " + audioMLines[2] + " " + audioIndex + "\r\n";
       sdpSection = 'audio';
       hitMID = false;
+      continue;
     }
-    else if (sdpLine.indexOf("m=video") === 0) {
+
+    if (sdpLine.indexOf("m=video") === 0 && videoIndex !== -1) {
+      audioMLines = sdpLine.split(" ");
+      sdpStrRet += audioMLines[0] + " " + audioMLines[1] + " " + audioMLines[2] + " " + videoIndex + "\r\n";
       sdpSection = 'video';
       hitMID = false;
+      continue;
     }
-    else if (sdpLine.indexOf("a=rtpmap") === 0) {
+  
+    sdpStrRet += sdpLine;
+
+    if (sdpLine.indexOf("a=rtpmap") === 0) {
       sdpSection = 'bandwidth';
       hitMID = false;
     }
 
-    if (browserDetails.browser === 'chrome') {
+    if (browserDetails.browser === 'chrome' || browserDetails.browser === 'safari') {
       if (sdpLine.indexOf("a=mid:") === 0 || sdpLine.indexOf("a=rtpmap") === 0) {
         if (!hitMID) {
           if ('audio'.localeCompare(sdpSection) === 0) {
-            if (mungeData.audioBitrate !== undefined) {
+            if (mungeData.audioBitrate !== undefined && mungeData.audioBitrate !== '') {
               sdpStrRet += '\r\nb=CT:' + (mungeData.audioBitrate);
               sdpStrRet += '\r\nb=AS:' + (mungeData.audioBitrate);
             }
             hitMID = true;
           }
           else if ('video'.localeCompare(sdpSection) === 0) {
-            if (mungeData.videoBitrate !== undefined) {
+            if (mungeData.videoBitrate !== undefined && mungeData.videoBitrate !== '') {
               sdpStrRet += '\r\nb=CT:' + (mungeData.videoBitrate);
               sdpStrRet += '\r\nb=AS:' + (mungeData.videoBitrate);
               if (mungeData.videoFrameRate !== undefined) {
@@ -257,7 +264,7 @@ export function mungeSDPPublish(sdpStr, mungeData) {
             }
             hitMID = true;
           }
-          else if ('bandwidth'.localeCompare(sdpSection) === 0) {
+          else if (browserDetails.browser === 'chrome'  && 'bandwidth'.localeCompare(sdpSection) === 0) {
             let rtpmapID;
             rtpmapID = getrtpMapID(sdpLine);
             if (rtpmapID !== null) {
@@ -281,9 +288,10 @@ export function mungeSDPPublish(sdpStr, mungeData) {
       }
     }
 
-    if (browserDetails.browser === 'firefox' || browserDetails.browser === 'safari') {
-      if ( sdpLine.indexOf("c=IN") === 0 )
+    if (browserDetails.browser === 'firefox') {
+      if ( sdpLine.indexOf("c=IN") ==0 )
       {
+
         if ('audio'.localeCompare(sdpSection) === 0)
         {
           if (mungeData.audioBitrate !== '') {
@@ -300,7 +308,7 @@ export function mungeSDPPublish(sdpStr, mungeData) {
           if (mungeData.videoBitrate !== '') {
             let videoBitrate = parseInt(mungeData.videoBitrate);
             let videoBitrateTIAS = parseInt(mungeData.videoBitrate) * 1000 * 0.95 - (50 * 40 * 8);
-            sdpStrRet += "\r\nb=TIAS:"+videoBitrateTIAS+"\r\n";
+            sdpStrRet += "\r\nb=TIAS:"+videoBitrateTIAS*1000+"\r\n";
             sdpStrRet += "b=AS:"+videoBitrate+"\r\n";
             sdpStrRet += "b=CT:"+videoBitrate+"\r\n";
           }

@@ -23,21 +23,17 @@ function addAudio(sdpStr, audioLine) {
     if (sdpLine.length <= 0)
       continue;
 
-    if (sdpLine.indexOf('m=audio') === 0)
-    {
+    if (sdpLine.indexOf('m=audio') === 0) {
       sdpSection = 'audio';
-    }
-    else if (sdpLine.indexOf('m=video') === 0)
-    {
+    } else if (sdpLine.indexOf('m=video') === 0) {
       sdpSection = 'video';
     }
 
     sdpStrRet += sdpLine;
     sdpStrRet += '\r\n';
 
-    if (sdpSection === 'audio')
-    {
-      if ('a=rtcp-mux'.localeCompare(sdpLine) == 0 && done == false) {
+    if (sdpSection === 'audio') {
+      if ('a=rtcp-mux'.localeCompare(sdpLine) === 0 && done === false) {
         sdpStrRet += audioLine;
         done = true;
       }
@@ -82,17 +78,17 @@ function addVideo(sdpStr, videoLine) {
     sdpStrRet += '\r\n';
 
     if(foundMVideo) {
-      if (('a=rtcp-rsize'.localeCompare(sdpLine) == 0) && done == false && rtcpSize == true) {
+      if (('a=rtcp-rsize'.localeCompare(sdpLine) === 0) && done === false && rtcpSize === true) {
         sdpStrRet += videoLine;
         done = true;
       }
 
-      if ('a=rtcp-mux'.localeCompare(sdpLine) == 0 && done == true && rtcpSize == false) {
+      if ('a=rtcp-mux'.localeCompare(sdpLine) === 0 && done === true && rtcpSize === false) {
         sdpStrRet += videoLine;
         done = true;
       }
 
-      if ('a=rtcp-mux'.localeCompare(sdpLine) == 0 && done == false && rtcpSize == false) {
+      if ('a=rtcp-mux'.localeCompare(sdpLine) === 0 && done === false && rtcpSize === false) {
         done = true;
       }
     }
@@ -223,7 +219,7 @@ export function mungeSDPPublish(sdpStr, mungeData) {
 
     
     let audioMLines;
-    if (sdpLine.indexOf("m=audio") == 0 && audioIndex !== -1) {
+    if (sdpLine.indexOf("m=audio") === 0 && audioIndex !== -1) {
       audioMLines = sdpLine.split(" ");
       sdpStrRet += audioMLines[0] + " " + audioMLines[1] + " " + audioMLines[2] + " " + audioIndex + "\r\n";
       sdpSection = 'audio';
@@ -231,7 +227,7 @@ export function mungeSDPPublish(sdpStr, mungeData) {
       continue;
     }
 
-    if (sdpLine.indexOf("m=video") == 0 && videoIndex !== -1) {
+    if (sdpLine.indexOf("m=video") === 0 && videoIndex !== -1) {
       audioMLines = sdpLine.split(" ");
       sdpStrRet += audioMLines[0] + " " + audioMLines[1] + " " + audioMLines[2] + " " + videoIndex + "\r\n";
       sdpSection = 'video';
@@ -241,23 +237,23 @@ export function mungeSDPPublish(sdpStr, mungeData) {
   
     sdpStrRet += sdpLine;
 
-    if (sdpLine.indexOf("a=rtpmap") == 0) {
+    if (sdpLine.indexOf("a=rtpmap") === 0) {
       sdpSection = 'bandwidth';
       hitMID = false;
     }
 
     if (browserDetails.browser === 'chrome' || browserDetails.browser === 'safari') {
-      if (sdpLine.indexOf("a=mid:") === 0 || sdpLine.indexOf("a=rtpmap") == 0) {
+      if (sdpLine.indexOf("a=mid:") === 0 || sdpLine.indexOf("a=rtpmap") === 0) {
         if (!hitMID) {
-          if ('audio'.localeCompare(sdpSection) == 0) {
-            if (mungeData.audioBitrate !== undefined) {
+          if ('audio'.localeCompare(sdpSection) === 0) {
+            if (mungeData.audioBitrate !== undefined && mungeData.audioBitrate !== '') {
               sdpStrRet += '\r\nb=CT:' + (mungeData.audioBitrate);
               sdpStrRet += '\r\nb=AS:' + (mungeData.audioBitrate);
             }
             hitMID = true;
           }
-          else if ('video'.localeCompare(sdpSection) == 0) {
-            if (mungeData.videoBitrate !== undefined) {
+          else if ('video'.localeCompare(sdpSection) === 0) {
+            if (mungeData.videoBitrate !== undefined && mungeData.videoBitrate !== '') {
               sdpStrRet += '\r\nb=CT:' + (mungeData.videoBitrate);
               sdpStrRet += '\r\nb=AS:' + (mungeData.videoBitrate);
               if (mungeData.videoFrameRate !== undefined) {
@@ -266,20 +262,20 @@ export function mungeSDPPublish(sdpStr, mungeData) {
             }
             hitMID = true;
           }
-          else if (browserDetails.browser === 'chrome'  && 'bandwidth'.localeCompare(sdpSection) == 0) {
+          else if (browserDetails.browser === 'chrome'  && 'bandwidth'.localeCompare(sdpSection) === 0) {
             let rtpmapID;
             rtpmapID = getrtpMapID(sdpLine);
             if (rtpmapID !== null) {
               let match = rtpmapID[2].toLowerCase();
-              if (('vp9'.localeCompare(match) == 0) || ('vp8'.localeCompare(match) == 0) || ('h264'.localeCompare(match) == 0) ||
-                ('red'.localeCompare(match) == 0) || ('ulpfec'.localeCompare(match) == 0) || ('rtx'.localeCompare(match) == 0)) {
+              if (('vp9'.localeCompare(match) === 0) || ('vp8'.localeCompare(match) === 0) || ('h264'.localeCompare(match) === 0) ||
+                ('red'.localeCompare(match) === 0) || ('ulpfec'.localeCompare(match) === 0) || ('rtx'.localeCompare(match) === 0)) {
                 if (mungeData.videoBitrate !== undefined) {
                   sdpStrRet += '\r\na=fmtp:' + rtpmapID[1] + ' x-google-min-bitrate=' + (mungeData.videoBitrate) + ';x-google-max-bitrate=' + (mungeData.videoBitrate);
                 }
               }
 
-              if (('opus'.localeCompare(match) == 0) || ('isac'.localeCompare(match) == 0) || ('g722'.localeCompare(match) == 0) || ('pcmu'.localeCompare(match) == 0) ||
-                ('pcma'.localeCompare(match) == 0) || ('cn'.localeCompare(match) == 0)) {
+              if (('opus'.localeCompare(match) === 0) || ('isac'.localeCompare(match) === 0) || ('g722'.localeCompare(match) === 0) || ('pcmu'.localeCompare(match) === 0) ||
+                ('pcma'.localeCompare(match) === 0) || ('cn'.localeCompare(match) === 0)) {
                 if (mungeData.audioBitrate !== undefined) {
                   sdpStrRet += '\r\na=fmtp:' + rtpmapID[1] + ' x-google-min-bitrate=' + (mungeData.audioBitrate) + ';x-google-max-bitrate=' + (mungeData.audioBitrate);
                 }
@@ -294,7 +290,7 @@ export function mungeSDPPublish(sdpStr, mungeData) {
       if ( sdpLine.indexOf("c=IN") ==0 )
       {
 
-        if ('audio'.localeCompare(sdpSection) == 0)
+        if ('audio'.localeCompare(sdpSection) === 0)
         {
           if (mungeData.audioBitrate !== '') {
             let audioBitrate = parseInt(mungeData.audioBitrate);
@@ -305,7 +301,7 @@ export function mungeSDPPublish(sdpStr, mungeData) {
           }
           continue;
         }
-        if ('video'.localeCompare(sdpSection) == 0)
+        if ('video'.localeCompare(sdpSection) === 0)
         {
           if (mungeData.videoBitrate !== '') {
             let videoBitrate = parseInt(mungeData.videoBitrate);
@@ -335,7 +331,7 @@ export function mungeSDPPlay(sdpStr) {
   for (var sdpIndex in sdpLines) {
     var sdpLine = sdpLines[sdpIndex];
 
-    if (sdpLine.length == 0)
+    if (sdpLine.length === 0)
       continue;
 
     if (sdpLine.includes("profile-level-id")) {
@@ -354,7 +350,7 @@ export function mungeSDPPlay(sdpStr) {
         constraint = 0xE0;
         level = 0x1F;
       }
-      if (constraint == 0x00)
+      if (constraint === 0x00)
       {
         constraint = 0xE0;
       }
