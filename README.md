@@ -32,7 +32,6 @@ In the `src` folder, you'll find examples for jQuery and React:
         - `AvMenu.js` - Controls the selected input for publishing and screen sharing.
         - `Settings.js` - Creates a set of configuration settings and copy functionality.
         - `SoundMeter.js` - Provides an audio meter.
-        - `WowzaMungeSDP.js` - Generates an SDP for peer signaling.
         - `WowzaPeerConnectionPlay.js` - Manages the signaling process for playback.
         - `WowzaPeerConnectionPublish.js` - Manages the signaling process for publishing.
         - `WowzaWebRTCPlay.js` - Controls the playback state.

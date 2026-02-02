@@ -5,8 +5,6 @@
 
 let browserDetails = window.adapter.browserDetails;
 
-// munge plug-in
-let mungeSDP = undefined;
 
 // callbacks
 let onconnectionstatechange = undefined;
@@ -58,10 +56,6 @@ function gotDescription(description) {
   if (mediaInfo.audioCodec != null)
     mungeData.audioCodec = mediaInfo.audioCodec;
 
-  if (mungeSDP != null)
-  {
-    description.sdp = mungeSDP(description.sdp, mungeData);
-  }
 
   console.log("WowzaPeerConnectionPublish.gotDescription: Setting local description SDP: ");
   console.log(description.sdp);
@@ -238,7 +232,6 @@ function replaceTrack (type, newTrack)
 //   streamInfo: { applicationName, streamName }
 //   mediaInfo: { videoBitrate, audioBitrate, videoFrameRate, videoCodec, audioCodec }
 //   userData: any
-//   mungeSDP: function (sdpStr, mungeData)
 //   onconnectionstatechange: function
 //   onerror: function
 
@@ -253,8 +246,6 @@ function start (props)
   if (props.userData != null)
     userData = props.userData;
 
-  if (props.mungeSDP != null)
-    mungeSDP = props.mungeSDP;
 
   if (props.onconnectionstatechange != null)
     onconnectionstatechange = props.onconnectionstatechange;

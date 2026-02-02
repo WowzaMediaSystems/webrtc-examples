@@ -3,7 +3,6 @@
  * This code is licensed pursuant to the BSD 3-Clause License.
  */
 
-import { mungeSDPPlay } from './WowzaMungeSDP.js';
 import WowzaPeerConnectionPlay from './WowzaPeerConnectionPlay.js';
 
 class WowzaWebRTCPlay
@@ -125,8 +124,7 @@ class WowzaWebRTCPlay
       sdpURL:currentState.sdpURL,
       videoElement:currentState.videoElementPlay,
       streamInfo:currentState.streamInfo,
-      userData:currentState.userData,
-      mungeSDP:mungeSDPPlay,
+      userData: currentState.userData,
       onconnectionstatechange: this.onconnectionstatechange,
       onstop: this.onstop,
       onerror: this.errorHandler
@@ -141,8 +139,7 @@ class WowzaWebRTCPlay
       videoElement:currentState.videoElementPlay,
       streamInfo:currentState.streamInfo,
       userData:currentState.userData,
-      secureData:currentState.secureData,
-      mungeSDP:mungeSDPPlay,
+      secureData: currentState.secureData,
       onconnectionstatechange: this.onconnectionstatechange,
       onstop: this.onstop,
       onerror: this.errorHandler

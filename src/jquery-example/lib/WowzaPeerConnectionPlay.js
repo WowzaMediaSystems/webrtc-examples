@@ -9,8 +9,6 @@ class WowzaPeerConnectionPlay
 {
   constructor (props)
   {
-    // munge plug-in
-    this.mungeSDP = undefined;
 
     // callbacks
     this.onconnectionstatechange = undefined;
@@ -49,7 +47,6 @@ class WowzaPeerConnectionPlay
   //   videoElement: <video>
   //   streamInfo: { applicationName, streamName }
   //   userData: any
-  //   mungeSDP: function (sdpStr)
   //   onconnectionstatechange: function
   //   onerror: function
   set (props)
@@ -67,8 +64,6 @@ class WowzaPeerConnectionPlay
     if (props.secureData != null)
       this.secureTokenData = props.secureData;
 
-    if (props.mungeSDP != null)
-      this.mungeSDP = props.mungeSDP;
 
     if (props.onconnectionstatechange != null)
       this.onconnectionstatechange = props.onconnectionstatechange;
@@ -242,10 +237,6 @@ class WowzaPeerConnectionPlay
         if (sdpData != null) {
           console.log('sdp: ' + JSON.stringify(msgJSON['sdp']));
 
-          if (_this.mungeSDP != null)
-          {
-            msgJSON.sdp.sdp = _this.mungeSDP(msgJSON.sdp.sdp);
-          }
 
           // Enhance here if Safari is a published stream.
           console.log("SDP Data: " + msgJSON.sdp.sdp);
