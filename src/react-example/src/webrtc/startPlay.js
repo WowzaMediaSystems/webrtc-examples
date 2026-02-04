@@ -1,4 +1,3 @@
-import { mungeSDPPlay } from './mungeSDP';
 import stopPlay from './stopPlay';
 
 // Utilities
@@ -112,8 +111,6 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
     }
 
     if (msgJSON['sdp'] != null) {
-
-      msgJSON.sdp.sdp = mungeSDPPlay(msgJSON.sdp.sdp);
 
       console.log("SDP Data: " + msgJSON.sdp.sdp);
 

@@ -3,7 +3,6 @@
  * This code is licensed pursuant to the BSD 3-Clause License.
  */
 
-import { mungeSDPPublish } from './WowzaMungeSDP.js';
 import WowzaPeerConnectionPublish from './WowzaPeerConnectionPublish.js';
 import SoundMeter from './SoundMeter.js';
 
@@ -508,8 +507,7 @@ const start = () =>
     localStream:currentState.stream,
     streamInfo:currentState.streamInfo,
     mediaInfo:currentState.mediaInfo,
-    userData:currentState.userData,
-    mungeSDP:mungeSDPPublish,
+    userData: currentState.userData,
     onconnectionstatechange: onconnectionstatechange,
     onstop:onstop,
     onstats:callbacks.onStats || undefined,
