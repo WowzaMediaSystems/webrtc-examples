@@ -8,20 +8,37 @@ const Nav = (props) => {
     <nav className="navbar navbar-expand-sm navbar-light bg-light pb-3 pb-md-2" id="top-nav">
       <a className="navbar-brand" href="https://www.wowza.com"><img className="noll"  src={wowzaLogo} alt="Wowza Media Systems" /></a>
       <ul className="navbar-nav mr-auto-lg">
-        <li className="nav-item page">
-          <a href="https://www.wowza.com/developer/webrtc/dev-view-publish">
-            Publish
-          </a>
-          <span></span>
-        </li>
-        <li className="nav-item page">
-          <a href="https://www.wowza.com/developer/webrtc/dev-view-play">
-            Play
-          </a>
-          <span></span>
-        </li>
+        {/* These are the navigation items for the hosted version of this project. They link to the jQuery-based Publish and Play pages, which are deployed independently from the React app. */}
+        {props.buildComponent !== 'develop' && (
+          <>
+            <li className="nav-item page">
+              <a href="https://www.wowza.com/developer/webrtc/dev-view-publish">
+                Publish
+              </a>
+              <span></span>
+            </li>
+            <li className="nav-item page">
+              <a href="https://www.wowza.com/developer/webrtc/dev-view-play">
+                Play
+              </a>
+              <span></span>
+            </li>
+          </>
+        )}
         { props.buildComponent === 'develop' && (
           <>
+            <li className="nav-item page">
+              <a href="/publish">
+                Publish
+              </a>
+              <span></span>
+            </li>
+            <li className="nav-item page">
+              <a href="/play">
+                Play
+              </a>
+              <span></span>
+            </li>
             <li className="nav-item page">
               <Link to="/composite">
                 Composite
