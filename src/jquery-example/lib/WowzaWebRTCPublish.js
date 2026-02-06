@@ -503,7 +503,7 @@ const start = () =>
   let currentState = getState();
   console.log('WowzaWebRTC.start()');
   WowzaPeerConnectionPublish.start({
-    wsURL:currentState.sdpURL,
+    wsURL:currentState.sdpURL + "?appName=" + currentState.streamInfo.applicationName,
     localStream:currentState.stream,
     streamInfo:currentState.streamInfo,
     mediaInfo:currentState.mediaInfo,
