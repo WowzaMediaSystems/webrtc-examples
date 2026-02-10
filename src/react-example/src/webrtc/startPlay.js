@@ -1,4 +1,5 @@
 import stopPlay from './stopPlay';
+import getSecureToken from './SecureToken';
 
 // Utilities
 
@@ -17,6 +18,23 @@ const getStreamInfo = (playSettings) => {
 const getUserData = (playSettings) => {
 
   return { param1: 'value1' };
+}
+
+const getSecureTokenData = (playSettings) => {
+  // Only return secure token data if secret is provided
+  if (!playSettings.secret) {
+    return null;
+  }
+
+  return {
+    secret: playSettings.secret,
+    timeout: playSettings.timeout ? parseInt(playSettings.timeout) : 0,
+    prefix: playSettings.prefix || 'wowzatoken',
+    isIp: playSettings.isIp || false,
+    ip: playSettings.ip || '',
+    applicationName: playSettings.applicationName,
+    streamName: playSettings.streamName
+  };
 }
 
 // PeerConnection Functions
@@ -71,7 +89,7 @@ const websocketOnOpen = (playSettings, websocket, callbacks) => {
 
     websocket.addEventListener ("message", (event) => { websocketOnMessage(event, playSettings, peerConnection, websocket, callbacks); });
 
-    websocketSendPlayGetOffer (playSettings, websocket);
+    websocketSendPlayGetOffer(playSettings, websocket, callbacks);
 
   }
   catch (e) {
@@ -92,7 +110,7 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
     repeaterRetryCount++;
 
     if (repeaterRetryCount < 10) {
-      setTimeout(() => {websocketSendPlayGetOffer(playSettings, websocket)}, 1000);
+      setTimeout(() => { websocketSendPlayGetOffer(playSettings, websocket, callbacks) }, 1000);
     } else {
       websocketOnError({message:'Live stream repeater timeout: ' + playSettings.streamName}, callbacks);
       stopPlay(peerConnection, websocket, callbacks);
@@ -141,8 +159,27 @@ const websocketOnError = (error, callbacks) => {
     callbacks.onError({message:'Websocket Error: '+error.message});
 }
 
-const websocketSendPlayGetOffer = (playSettings, websocket) => {
-  websocket.send('{"direction":"play", "command":"getOffer", "streamInfo":' + JSON.stringify(getStreamInfo(playSettings)) + ', "userData":' + JSON.stringify(getUserData(playSettings)) + '}');
+const websocketSendPlayGetOffer = async (playSettings, websocket, callbacks) => {
+  try {
+    const secureTokenData = getSecureTokenData(playSettings);
+    const secureToken = await getSecureToken(secureTokenData);
+
+    const offerPayload = {
+      direction: "play",
+      command: "getOffer",
+      streamInfo: getStreamInfo(playSettings),
+      userData: getUserData(playSettings),
+      secureToken: secureToken
+    };
+
+    console.log("sendPlayGetOffer: " + JSON.stringify(offerPayload));
+    websocket.send(JSON.stringify(offerPayload));
+  } catch (error) {
+    console.error('Error generating secure token:', error);
+    if (callbacks.onError) {
+      callbacks.onError({ message: 'Failed to generate secure token: ' + error.message });
+    }
+  }
 }
 
 // startPlay
