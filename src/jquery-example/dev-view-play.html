@@ -177,5 +177,23 @@
   		<div>
   			<span id="sdpDataTag"></span>
   		</div>
+      <script>
+        (function () {
+          const isLocal =
+            location.hostname === "localhost" ||
+            location.hostname === "127.0.0.1" ||
+            location.protocol === "file:";
+
+          if (!isLocal) return;
+
+          // Hide Composite/Meeting links in local jQuery runs
+          document
+            .querySelectorAll('a[href*="dev-composite"], a[href*="dev-meeting"]')
+            .forEach(link => {
+              const li = link.closest("li");
+              if (li) li.style.display = "none";
+            });
+        })();
+      </script>
     </body>
 </html>
