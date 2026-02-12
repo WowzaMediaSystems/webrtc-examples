@@ -8,261 +8,258 @@ import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
 
 const playUrlParametersMap = {
-  "signalingURL":"playSignalingURL",
-  "applicationName":"playApplicationName",
-  "streamName": "playStreamName",
-  "secret": "playSecret",
-  "timeout": "playTimeout",
-  "prefix": "playPrefix",
-  "isIp": "playIsIp",
-  "ip": "playIp"
-}
+  signalingURL: "playSignalingURL",
+  applicationName: "playApplicationName",
+  streamName: "playStreamName",
+  secret: "playSecret",
+  timeout: "playTimeout",
+  prefix: "playPrefix",
+  isIp: "playIsIp",
+  ip: "playIp"
+};
+
+// Reusable Input Component
+const FormInput = ({ label, id, value, onChange, disabled, ...props }) => (
+  <div className="form-group">
+    <label htmlFor={id}>{label}</label>
+    <input
+      id={id}
+      name={id}
+      className="form-control"
+      value={value || ''}
+      onChange={onChange}
+      disabled={disabled}
+      {...props}
+    />
+  </div>
+);
+
+// Reusable Checkbox Component
+const FormCheckbox = ({ label, id, checked, onChange, disabled }) => (
+  <div className="form-group">
+    <label htmlFor={id}>{label}</label>
+    <input
+      type="checkbox"
+      id={id}
+      name={id}
+      className="form-control"
+      checked={checked || false}
+      onChange={onChange}
+      disabled={disabled}
+    />
+  </div>
+);
 
 const PlaySettingsForm = () => {
-
   const dispatch = useDispatch();
-  const [ initialized, setInitialized ] = useState(false);
+  const [initialized, setInitialized] = useState(false);
   const playSettings = useSelector((state) => state.playSettings);
   const webrtcPlay = useSelector((state) => state.webrtcPlay);
 
-  // load play settings from cookie and URL on mount
+  // Load settings from cookie and URL on mount
   useEffect(() => {
-    let cookieValues = getCookieValues(CookieName);
-    let qs = QueryString.parse(window.location.search);
-    let savedValues = { ...cookieValues, ...qs };
+    const cookieValues = getCookieValues(CookieName);
+    const queryParams = QueryString.parse(window.location.search);
+    const savedValues = { ...cookieValues, ...queryParams };
 
-    for (let paramKey in playUrlParametersMap) {
-      if (savedValues[playUrlParametersMap[paramKey]] != null) {
-        const value = savedValues[playUrlParametersMap[paramKey]];
+    Object.entries(playUrlParametersMap).forEach(([stateKey, cookieKey]) => {
+      const value = savedValues[cookieKey];
+      if (value != null) {
+        const actionMap = {
+          signalingURL: PlaySettingsActions.SET_PLAY_SIGNALING_URL,
+          applicationName: PlaySettingsActions.SET_PLAY_APPLICATION_NAME,
+          streamName: PlaySettingsActions.SET_PLAY_STREAM_NAME,
+          secret: PlaySettingsActions.SET_PLAY_SECRET,
+          timeout: PlaySettingsActions.SET_PLAY_TIMEOUT,
+          prefix: PlaySettingsActions.SET_PLAY_PREFIX,
+          isIp: PlaySettingsActions.SET_PLAY_IS_IP,
+          ip: PlaySettingsActions.SET_PLAY_IP
+        };
 
-        switch (playUrlParametersMap[paramKey]) {
-          case "playSignalingURL":
-            dispatch({ type: PlaySettingsActions.SET_PLAY_SIGNALING_URL, signalingURL: value });
-            break;
-          case "playApplicationName":
-            dispatch({ type: PlaySettingsActions.SET_PLAY_APPLICATION_NAME, applicationName: value });
-            break;
-          case "playStreamName":
-            dispatch({ type: PlaySettingsActions.SET_PLAY_STREAM_NAME, streamName: value });
-            break;
-          case "playSecret":
-            dispatch({ type: PlaySettingsActions.SET_PLAY_SECRET, secret: value });
-            break;
-          case "playTimeout":
-            dispatch({ type: PlaySettingsActions.SET_PLAY_TIMEOUT, timeout: value });
-            break;
-          case "playPrefix":
-            dispatch({ type: PlaySettingsActions.SET_PLAY_PREFIX, prefix: value });
-            break;
-          case "playIsIp":
-            dispatch({ type: PlaySettingsActions.SET_PLAY_IS_IP, isIp: value === 'true' || value === true });
-            break;
-          case "playIp":
-            dispatch({ type: PlaySettingsActions.SET_PLAY_IP, ip: value });
-            break;
-          default:
+        const actionType = actionMap[stateKey];
+        if (actionType) {
+          const payload = stateKey === 'isIp'
+            ? { [stateKey]: value === 'true' || value === true }
+            : { [stateKey]: value };
+          dispatch({ type: actionType, ...payload });
         }
       }
-    }
+    });
+
     setInitialized(true);
-  },[dispatch]);
-      
-  // save values to Cookie
+  }, [dispatch]);
+
+  // Save settings to cookie
   useEffect(() => {
-    let cookieValues = getCookieValues(CookieName);
-    for (let paramKey in playUrlParametersMap) {
-      if (playSettings[paramKey] != null) {
-        cookieValues[playUrlParametersMap[paramKey]] = playSettings[paramKey];
+    const cookieValues = getCookieValues(CookieName);
+
+    Object.entries(playUrlParametersMap).forEach(([stateKey, cookieKey]) => {
+      if (playSettings[stateKey] != null) {
+        cookieValues[cookieKey] = playSettings[stateKey];
       }
-    }
+    });
+
     Cookies.set(CookieName, escape(JSON.stringify(cookieValues)));
   }, [playSettings]);
 
-  // Share link functionality
   const handleShareLink = () => {
     const params = new URLSearchParams();
 
-    for (let paramKey in playUrlParametersMap) {
-      const value = playSettings[paramKey];
+    Object.entries(playUrlParametersMap).forEach(([stateKey, cookieKey]) => {
+      const value = playSettings[stateKey];
       if (value != null && value !== '') {
-        params.set(playUrlParametersMap[paramKey], value);
+        params.set(cookieKey, value);
       }
-    }
+    });
 
     const shareUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
 
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      alert('Share link copied to clipboard!');
-    }).catch(err => {
-      console.error('Failed to copy link:', err);
-    });
+    navigator.clipboard.writeText(shareUrl)
+      .then(() => alert('Share link copied to clipboard!'))
+      .catch((err) => console.error('Failed to copy link:', err));
   };
 
-  if (!initialized)
-    return null;
+  const handleInputChange = (actionType, key) => (e) => {
+    dispatch({ type: actionType, [key]: e.target.value });
+  };
+
+  const handleCheckboxChange = (actionType, key) => (e) => {
+    dispatch({ type: actionType, [key]: e.target.checked });
+  };
+
+  const handlePlay = () => dispatch(PlaySettingsActions.startPlay());
+  const handleStop = () => dispatch(PlaySettingsActions.stopPlay());
+
+  if (!initialized) return null;
+
+  const { connected } = webrtcPlay;
 
   return (
     <div className="col-md-4 col-sm-12" id="play-settings">
       <form id="play-settings-form">
+        {/* Connection Settings */}
         <div className="row">
           <div className="col-12">
-            <div className="form-group">
-              <label htmlFor="playSignalingURL">Signaling URL</label>
-              <input
-                type="text" 
-                className="form-control" 
-                id="playSignalingURL" 
-                name="playSignalingURL" 
-                maxLength="1024" 
-                placeholder="wss://[ssl-certificate-domain-name]/webrtc-session.json" 
-                value={playSettings.signalingURL}
-                disabled={webrtcPlay.connected}
-                onChange={(e) => dispatch({ type: PlaySettingsActions.SET_PLAY_SIGNALING_URL, signalingURL: e.target.value })}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="row">
-          <div className="col-6">
-            <div className="form-group">
-              <label htmlFor="playApplicationName">Application Name</label>
-              <input
-                type="text" 
-                className="form-control" 
-                id="playApplicationName" 
-                name="playApplicationName" 
-                maxLength="256" 
-                value={playSettings.applicationName}
-                disabled={webrtcPlay.connected}
-                onChange={(e) => dispatch({ type: PlaySettingsActions.SET_PLAY_APPLICATION_NAME, applicationName: e.target.value })}
-              />
-            </div>
-          </div>
-          <div className="col-6">
-            <div className="form-group">
-              <label htmlFor="playStreamName">Stream Name</label>
-              <input
-                type="text" 
-                className="form-control" 
-                id="playStreamName" 
-                name="playStreamName" 
-                maxLength="256" 
-                value={playSettings.streamName}
-                disabled={webrtcPlay.connected}
-                onChange={(e) => dispatch({ type: PlaySettingsActions.SET_PLAY_STREAM_NAME, streamName: e.target.value })}
-              />
-            </div>
+            <FormInput
+              label="Signaling URL"
+              id="playSignalingURL"
+              type="text"
+              maxLength={1024}
+              placeholder="wss://[ssl-certificate-domain-name]/webrtc-session.json"
+              value={playSettings.signalingURL}
+              disabled={connected}
+              onChange={handleInputChange(PlaySettingsActions.SET_PLAY_SIGNALING_URL, 'signalingURL')}
+            />
           </div>
         </div>
 
-        {/* Secure Token Data Section */}
+        <div className="row">
+          <div className="col-6">
+            <FormInput
+              label="Application Name"
+              id="playApplicationName"
+              type="text"
+              maxLength={256}
+              value={playSettings.applicationName}
+              disabled={connected}
+              onChange={handleInputChange(PlaySettingsActions.SET_PLAY_APPLICATION_NAME, 'applicationName')}
+            />
+          </div>
+          <div className="col-6">
+            <FormInput
+              label="Stream Name"
+              id="playStreamName"
+              type="text"
+              maxLength={256}
+              value={playSettings.streamName}
+              disabled={connected}
+              onChange={handleInputChange(PlaySettingsActions.SET_PLAY_STREAM_NAME, 'streamName')}
+            />
+          </div>
+        </div>
+
+        {/* Secure Token Section */}
         <div className="row">
           <div className="col-12">
             <b>Secure Token Data:</b>
           </div>
         </div>
+
         <div className="row">
           <div className="col-12">
-            <div className="form-group">
-              <label htmlFor="playSecret">Shared Secret</label>
-              <input
-                type="text"
-                className="form-control"
-                id="playSecret"
-                name="playSecret"
-                maxLength="256"
-                value={playSettings.secret || ''}
-                disabled={webrtcPlay.connected}
-                onChange={(e) => dispatch({ type: PlaySettingsActions.SET_PLAY_SECRET, secret: e.target.value })}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="row">
-          <div className="col-6">
-            <div className="form-group">
-              <label htmlFor="playTimeout">Token Timeout <i>(in seconds)</i></label>
-              <input
-                type="text"
-                className="form-control"
-                id="playTimeout"
-                name="playTimeout"
-                maxLength="256"
-                value={playSettings.timeout || ''}
-                disabled={webrtcPlay.connected}
-                onChange={(e) => dispatch({ type: PlaySettingsActions.SET_PLAY_TIMEOUT, timeout: e.target.value })}
-              />
-            </div>
-          </div>
-          <div className="col-6">
-            <div className="form-group">
-              <label htmlFor="playPrefix">Hash Query Parameter Prefix</label>
-              <input
-                type="text"
-                className="form-control"
-                id="playPrefix"
-                name="playPrefix"
-                maxLength="256"
-                placeholder="wowzatoken"
-                value={playSettings.prefix || ''}
-                disabled={webrtcPlay.connected}
-                onChange={(e) => dispatch({ type: PlaySettingsActions.SET_PLAY_PREFIX, prefix: e.target.value })}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="row">
-          <div className="col-6">
-            <div className="form-group">
-              <label htmlFor="playIsIp">Include Client IP Address</label>
-              <input
-                type="checkbox"
-                className="form-control"
-                id="playIsIp"
-                name="playIsIp"
-                checked={playSettings.isIp || false}
-                disabled={webrtcPlay.connected}
-                onChange={(e) => dispatch({ type: PlaySettingsActions.SET_PLAY_IS_IP, isIp: e.target.checked })}
-              />
-            </div>
-          </div>
-          <div className="col-6">
-            <div className="form-group">
-              <label htmlFor="playIp">Client IP Address</label>
-              <input
-                type="text"
-                className="form-control"
-                id="playIp"
-                name="playIp"
-                maxLength="256"
-                value={playSettings.ip || ''}
-                disabled={webrtcPlay.connected}
-                onChange={(e) => dispatch({ type: PlaySettingsActions.SET_PLAY_IP, ip: e.target.value })}
-              />
-            </div>
+            <FormInput
+              label="Shared Secret"
+              id="playSecret"
+              type="text"
+              maxLength={256}
+              value={playSettings.secret}
+              disabled={connected}
+              onChange={handleInputChange(PlaySettingsActions.SET_PLAY_SECRET, 'secret')}
+            />
           </div>
         </div>
 
-        {/* Play/Stop and Share buttons */}
+        <div className="row">
+          <div className="col-6">
+            <FormInput
+              label={<>Token Timeout <i>(in seconds)</i></>}
+              id="playTimeout"
+              type="text"
+              maxLength={256}
+              value={playSettings.timeout}
+              disabled={connected}
+              onChange={handleInputChange(PlaySettingsActions.SET_PLAY_TIMEOUT, 'timeout')}
+            />
+          </div>
+          <div className="col-6">
+            <FormInput
+              label="Hash Query Parameter Prefix"
+              id="playPrefix"
+              type="text"
+              maxLength={256}
+              placeholder="wowzatoken"
+              value={playSettings.prefix}
+              disabled={connected}
+              onChange={handleInputChange(PlaySettingsActions.SET_PLAY_PREFIX, 'prefix')}
+            />
+          </div>
+        </div>
+
+        <div className="row">
+          <div className="col-6">
+            <FormCheckbox
+              label="Include Client IP Address"
+              id="playIsIp"
+              checked={playSettings.isIp}
+              disabled={connected}
+              onChange={handleCheckboxChange(PlaySettingsActions.SET_PLAY_IS_IP, 'isIp')}
+            />
+          </div>
+          <div className="col-6">
+            <FormInput
+              label="Client IP Address"
+              id="playIp"
+              type="text"
+              maxLength={256}
+              value={playSettings.ip}
+              disabled={connected}
+              onChange={handleInputChange(PlaySettingsActions.SET_PLAY_IP, 'ip')}
+            />
+          </div>
+        </div>
+
+        {/* Action Buttons */}
         <div className="row">
           <div className="col-10">
-            { !webrtcPlay.connected && 
-              <button
-                id="play-toggle"
-                type="button"
-                className="btn"
-                disabled={playSettings.playStarting}
-                onClick={(e)=>dispatch(PlaySettingsActions.startPlay())}
-              >Play</button>
-            }
-            { webrtcPlay.connected &&
-              <button
-                id="play-toggle"
-                type="button"
-                className="btn"
-                onClick={(e)=>dispatch(PlaySettingsActions.stopPlay())}
-              >Stop</button>
-            }
+            <button
+              id="play-toggle"
+              type="button"
+              className="btn"
+              disabled={playSettings.playStarting}
+              onClick={connected ? handleStop : handlePlay}
+            >
+              {connected ? 'Stop' : 'Play'}
+            </button>
           </div>
           <div className="col-2">
             <button
@@ -270,6 +267,7 @@ const PlaySettingsForm = () => {
               type="button"
               className="control-button mt-0"
               onClick={handleShareLink}
+              title="Copy share link"
             >
               <img alt="Copy Link" className="noll" src="./images/file_copy-24px.svg" />
             </button>
@@ -278,6 +276,6 @@ const PlaySettingsForm = () => {
       </form>
     </div>
   );
-}
+};
 
 export default PlaySettingsForm;
