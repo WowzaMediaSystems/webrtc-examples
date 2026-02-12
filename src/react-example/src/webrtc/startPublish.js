@@ -171,7 +171,7 @@ const startPublish = (publishSettings, websocket, callbacks) =>
   try {
     if (websocket == null)
     {
-      websocket = new WebSocket (publishSettings.signalingURL);
+      websocket = new WebSocket (publishSettings.signalingURL + "?appName=" + publishSettings.applicationName);
     }
     if(publishSettings.applicationName.length === 0){
       throw {message: "Application name required"}
