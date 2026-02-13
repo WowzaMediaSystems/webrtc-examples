@@ -17,6 +17,7 @@ const initialState = {
   videoFrameRate: '30',
   videoFrameSize: 'default',
   userData: undefined,
+  useWhip: false,
   publishStart: false,
   publishStarting: false,
   publishStop: false,
@@ -58,6 +59,8 @@ const publishSettingsReducer = (state = initialState, action) => {
       return { ...state, videoTrack2DeviceId:action.videoTrack2DeviceId };
     case PublishSettingsActions.SET_PUBLISH_USER_DATA:
       return { ...state, userData:action.userData };
+    case PublishSettingsActions.SET_PUBLISH_USE_WHIP:
+      return { ...state, useWhip: action.useWhip };
     case PublishSettingsActions.SET_PUBLISH_FLAGS:
       let publishFlagsState = { ...state };
       if (action.publishStart != null) publishFlagsState.publishStart = action.publishStart;

@@ -16,6 +16,7 @@ export const SET_PUBLISH_USER_DATA='SET_PUBLISH_USER_DATA';
 export const SET_PUBLISH_FLAGS='SET_PUBLISH_FLAGS';
 export const TOGGLE_VIDEO_ENABLED='TOGGLE_VIDEO_ENABLED';
 export const TOGGLE_AUDIO_ENABLED='TOGGLE_AUDIO_ENABLED';
+export const SET_PUBLISH_USE_WHIP = 'SET_PUBLISH_USE_WHIP';
 
 export const startPublish = () => {
   return {
