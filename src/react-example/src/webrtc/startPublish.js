@@ -169,21 +169,21 @@ const websocketOnError = (error, callbacks) => {
 const startPublish = (publishSettings, websocket, callbacks) =>
 {
   try {
-
     if (publishSettings.useWhip) {
       startPublisWhip();
     }
     else {
       if (websocket == null) {
-        websocket = new WebSocket(publishSettings.signalingURL);
+        websocket = new WebSocket (publishSettings.signalingURL + "?appName=" + publishSettings.applicationName);
       }
-      if (publishSettings.applicationName.length === 0) {
-        throw { message: "Application name required" }
+      if(publishSettings.applicationName.length === 0){
+        throw {message: "Application name required"}
       }
-      if (publishSettings.streamName.length === 0) {
-        throw { message: "Stream name required" }
+      if(publishSettings.streamName.length === 0){
+        throw {message: "Stream name required"}
       }
-      if (websocket != null) {
+      if (websocket != null)
+      {
         console.log(publishSettings);
         websocket.binaryType = 'arraybuffer';
 
