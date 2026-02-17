@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
 import * as PublishSettingsActions from '../../actions/publishSettingsActions';
@@ -9,8 +9,21 @@ import PublishVideoDropdown from './PublishVideoDropdown';
 const PublishSettingsForm = () => {
 
   const dispatch = useDispatch();
-  const publishSettings = useSelector ((state) => state.publishSettings);
-  const webrtcPublish = useSelector ((state) => state.webrtcPublish);
+  const publishSettings = useSelector((state) => state.publishSettings);
+  const webrtcPublish = useSelector((state) => state.webrtcPublish);
+
+  const [isCameraOn, setIsCameraOn] = useState(true);
+  const [isMicOn, setIsMicOn] = useState(true);
+  const toggleCamera = () => {
+    setIsCameraOn(!isCameraOn);
+    dispatch({ type: PublishSettingsActions.TOGGLE_VIDEO_ENABLED })
+  };
+
+  const toggleMicrophone = () => {
+    setIsMicOn(!isMicOn);
+    dispatch({ type: PublishSettingsActions.TOGGLE_AUDIO_ENABLED })
+  }
+
 
   return (
     <div className="col-md-4 col-sm-12" id="publish-settings">
@@ -81,7 +94,14 @@ const PublishSettingsForm = () => {
             <div className="form-group">
               <label htmlFor="audioCodec">Audio Codec</label>
               <div className="input-group">
-                <select className="form-control" id="audioCodec" name="audioCodec" value="opus" readOnly>
+                <select
+                  className="form-select"
+                  id="audioCodec"
+                  name="audioCodec"
+                  value="opus"
+                  disabled={webrtcPublish.connected}
+                  readOnly
+                >
                   <option value="opus">Opus</option>
                 </select>
               </div>
@@ -110,7 +130,7 @@ const PublishSettingsForm = () => {
             <div className="form-group">
               <label htmlFor="videoCodec">Video Codec</label>
               <div className="input-group">
-                <select className="form-control"
+                <select className="form-select"
                   id="videoCodec"
                   name="videoCodec"
                   value={publishSettings.videoCodec}
@@ -129,9 +149,18 @@ const PublishSettingsForm = () => {
             <PublishVideoDropdown />
           </div>
           <div className="col-2">
-            <button id="camera-toggle" className="control-button">
-              <img alt="" className="noll" id="video-off" src="/images/videocam-32px.svg" />
-              <img alt="" className="noll" id="video-on" src="/images/videocam-off-32px.svg" />
+            <button
+              id="camera-toggle"
+              type="button"
+              className="control-button"
+              onClick={toggleCamera}
+            >
+              <img
+                alt=""
+                className="noll"
+                id={isCameraOn ? "video-off" : "video-on"}
+                src={isCameraOn ? "/images/videocam-32px.svg" : "/images/videocam-off-32px.svg"}
+              />
             </button>
           </div>
         </div>
@@ -140,9 +169,16 @@ const PublishSettingsForm = () => {
             <PublishAudioDropdown />
           </div>
           <div className="col-2">
-            <button id="mute-toggle" className="control-button">
-              <img alt="" className="noll" id="mute-off" src="/images/mic-32px.svg" />
-              <img alt="" className="noll" id="mute-on" src="/images/mic-off-32px.svg" />
+            <button
+              id="mute-toggle"
+              type="button"
+              className="control-button"
+              onClick={toggleMicrophone}>
+              <img
+                alt=""
+                className="noll"
+                id={isMicOn ? "mute-on" : "mute-off"}
+                src={isMicOn ? "/images/mic-32px.svg" : "/images/mic-off-32px.svg"} />
             </button>
           </div>
         </div>
