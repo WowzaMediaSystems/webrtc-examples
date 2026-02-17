@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-
+import * as ErrorsActions from '../../actions/errorsActions';
 import * as PublishSettingsActions from '../../actions/publishSettingsActions';
 import * as PublishOptions from '../../constants/PublishOptions';
 import PublishAudioDropdown from './PublishAudioDropdown';
@@ -23,6 +23,61 @@ const PublishSettingsForm = () => {
     setIsMicOn(!isMicOn);
     dispatch({ type: PublishSettingsActions.TOGGLE_AUDIO_ENABLED })
   }
+
+
+  useEffect(() => {
+    const track = publishSettings.videoTrack;
+
+    if (!track || !track.applyConstraints) return;
+
+    const constraints =
+      PublishOptions.videoConstraintsByFrameSize[
+      publishSettings.videoFrameSize
+      ];
+
+    if (!constraints) return;
+
+    const newConstraints = {
+      width: constraints.width,
+      height: constraints.height,
+      frameRate: publishSettings.videoFrameRate
+    };
+
+    console.log("Applying preview constraints:", newConstraints);
+
+    track.applyConstraints(newConstraints)
+      .then(() => {
+        console.log("Preview updated");
+      })
+      .catch((error) => {
+
+        console.error("Constraint error:", error);
+
+        let message = error.message;
+
+        if (error.name === "OverconstrainedError") {
+          message = `Your browser or camera does not support this frame size: ${publishSettings.videoFrameSize}`;
+        }
+
+        dispatch({
+          type: ErrorsActions.SET_ERROR_MESSAGE,
+          message
+        });
+
+        if (publishSettings.videoFrameSize !== "default") {
+          dispatch({
+            type: PublishSettingsActions.SET_PUBLISH_VIDEO_FRAME_SIZE_AND_RATE,
+            videoFrameSize: "default"
+          });
+        }
+
+      });
+
+  }, [
+    publishSettings.videoFrameSize,
+    publishSettings.videoFrameRate,
+    publishSettings.videoTrack
+  ]);
 
 
   return (
@@ -138,6 +193,44 @@ const PublishSettingsForm = () => {
                 >
                   { PublishOptions.videoCodecs.map((codec,key) => {
                     return <option key={key} value={codec.value}>{codec.name}</option>
+                  })}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="row">
+          <div className="col-lg-6 col-sm-12">
+            <div className="form-group">
+              <label htmlFor="videoFrameRate">Frame Rate</label>
+              <div className="input-group">
+                <input
+                  type="number"
+                  className="form-control"
+                  id="videoFrameRate"
+                  name="videoFrameRate"
+                  value={publishSettings.videoFrameRate}
+                  onChange={(e) => dispatch({ type: PublishSettingsActions.SET_PUBLISH_VIDEO_FRAME_SIZE_AND_RATE, videoFrameRate: e.target.value })}
+                />
+                <div className="input-group-append">
+                  <span className="input-group-text">fps</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="col-lg-6 col-sm-12">
+            <div className="form-group">
+              <label htmlFor="frameSize">Frame Size</label>
+              <div className="input-group">
+                <select
+                  className="form-select"
+                  id="frameSize"
+                  name="frameSize"
+                  value={publishSettings.videoFrameSize}
+                  onChange={(e) => dispatch({ type: PublishSettingsActions.SET_PUBLISH_VIDEO_FRAME_SIZE_AND_RATE, videoFrameSize: e.target.value })}
+                >
+                  {PublishOptions.videoFrameSizes.map((frameSize, key) => {
+                    return <option key={key} value={frameSize.value}>{frameSize.name}</option>
                   })}
                 </select>
               </div>
