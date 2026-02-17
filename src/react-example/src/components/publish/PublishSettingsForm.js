@@ -77,23 +77,21 @@ const PublishSettingsForm = () => {
           </div>
         </div>
 
-        <div className="row">
-          <div className="col-12">
-            <div className="form-group">
-              <label htmlFor="publishUseWhip">
-                <input
-                  type="checkbox"
-                  id="publishUseWhip"
-                  name="publishUseWhip"
-                  checked={publishSettings.useWhip || false}
-                  disabled={webrtcPublish.connected}
-                  onChange={handleCheckboxChange(PublishSettingsActions.SET_PUBLISH_USE_WHIP, 'useWhip')}
-                  style={{ marginRight: '8px' }}
-                />
-                Use WHIP
-              </label>
-            </div>
-          </div>
+        <div class="form-check form-switch form-check-inline mb-3">
+          <label className='form-check-label mr-3' for="publishUseWhip">
+            Use WHIP
+          </label>
+          <input
+            className='form-check-input form-switch'
+            type="checkbox"
+            id="publishUseWhip"
+            name="publishUseWhip"
+            checked={publishSettings.useWhip || false}
+            disabled={webrtcPublish.connected}
+            onChange={handleCheckboxChange(PublishSettingsActions.SET_PUBLISH_USE_WHIP, 'useWhip')}
+
+          />
+
         </div>
 
         <div className="row">
