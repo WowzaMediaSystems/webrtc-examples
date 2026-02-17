@@ -169,26 +169,30 @@ const websocketOnError = (error, callbacks) => {
 const startPublish = (publishSettings, websocket, callbacks) =>
 {
   try {
-    if (websocket == null)
-    {
-      websocket = new WebSocket (publishSettings.signalingURL + "?appName=" + publishSettings.applicationName);
+    if (publishSettings.useWhip) {
+      startPublisWhip();
     }
-    if(publishSettings.applicationName.length === 0){
-      throw {message: "Application name required"}
-    }
-    if(publishSettings.streamName.length === 0){
-      throw {message: "Stream name required"}
-    }
-    if (websocket != null)
-    {
-      console.log(publishSettings);
-      websocket.binaryType = 'arraybuffer';
+    else {
+      if (websocket == null) {
+        websocket = new WebSocket (publishSettings.signalingURL + "?appName=" + publishSettings.applicationName);
+      }
+      if(publishSettings.applicationName.length === 0){
+        throw {message: "Application name required"}
+      }
+      if(publishSettings.streamName.length === 0){
+        throw {message: "Stream name required"}
+      }
+      if (websocket != null)
+      {
+        console.log(publishSettings);
+        websocket.binaryType = 'arraybuffer';
 
-      websocket.addEventListener ("open", () => { websocketOnOpen(publishSettings, websocket, callbacks); });
-      websocket.addEventListener ("error", (error) => { websocketOnError(error, callbacks); });
+        websocket.addEventListener("open", () => { websocketOnOpen(publishSettings, websocket, callbacks); });
+        websocket.addEventListener("error", (error) => { websocketOnError(error, callbacks); });
 
-      if (callbacks.onSetWebsocket)
-        callbacks.onSetWebsocket({websocket:websocket});
+        if (callbacks.onSetWebsocket)
+          callbacks.onSetWebsocket({ websocket: websocket });
+      }
     }
   }
   catch (e)
@@ -197,5 +201,9 @@ const startPublish = (publishSettings, websocket, callbacks) =>
       callbacks.onError(e);
   }
 
+}
+
+const startPublisWhip = () => {
+  console.log("Not implemented");
 }
 export default startPublish;

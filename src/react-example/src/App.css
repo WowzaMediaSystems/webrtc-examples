@@ -172,3 +172,8 @@ ul.navbar-nav {
   margin-right:0.5em;
   color: #dc3545;
 }
+
+.orange-checkbox:checked {
+  background-color: #FF8400;
+  border-color: #FF8400;
+}

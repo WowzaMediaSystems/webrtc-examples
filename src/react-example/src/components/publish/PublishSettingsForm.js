@@ -9,8 +9,22 @@ import PublishVideoDropdown from './PublishVideoDropdown';
 const PublishSettingsForm = () => {
 
   const dispatch = useDispatch();
-  const publishSettings = useSelector ((state) => state.publishSettings);
-  const webrtcPublish = useSelector ((state) => state.webrtcPublish);
+  const publishSettings = useSelector((state) => state.publishSettings);
+  const webrtcPublish = useSelector((state) => state.webrtcPublish);
+
+  const handleCheckboxChange = (actionType, key) => (e) => {
+    dispatch({ type: actionType, [key]: e.target.checked });
+  };
+
+  const handlePublish = () => {
+
+    if (publishSettings.useWhip) {
+      alert('WHIP is not implemented yet');
+      return;
+    }
+
+    dispatch(PublishSettingsActions.startPublish());
+  };
 
   return (
     <div className="col-md-4 col-sm-12" id="publish-settings">
@@ -26,6 +40,7 @@ const PublishSettingsForm = () => {
                 maxLength="1024"
                 placeholder="wss://[ssl-certificate-domain-name]/webrtc-session.json"
                 value={publishSettings.signalingURL}
+                disabled={webrtcPublish.connected}
                 onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_SIGNALING_URL,signalingURL:e.target.value})}
               />
             </div>
@@ -41,6 +56,7 @@ const PublishSettingsForm = () => {
                 name="applicationName"
                 maxLength="256"
                 value={publishSettings.applicationName}
+                disabled={webrtcPublish.connected}
                 onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_APPLICATION_NAME,applicationName:e.target.value})}
               />
             </div>
@@ -54,11 +70,30 @@ const PublishSettingsForm = () => {
                 name="streamName"
                 maxLength="256"
                 value={publishSettings.streamName}
+                disabled={webrtcPublish.connected}
                 onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_STREAM_NAME,streamName:e.target.value})}
               />
             </div>
           </div>
         </div>
+
+        <div class="form-check form-switch form-check-inline mb-3">
+          <label className='form-check-label mr-3' for="publishUseWhip">
+            Use WHIP
+          </label>
+          <input
+            className='form-check-input form-switch orange-checkbox'
+            type="checkbox"
+            id="publishUseWhip"
+            name="publishUseWhip"
+            checked={publishSettings.useWhip || false}
+            disabled={webrtcPublish.connected}
+            onChange={handleCheckboxChange(PublishSettingsActions.SET_PUBLISH_USE_WHIP, 'useWhip')}
+
+          />
+
+        </div>
+
         <div className="row">
           <div className="col-lg-6 col-sm-12">
             <div className="form-group">
@@ -69,6 +104,7 @@ const PublishSettingsForm = () => {
                   id="audioBitrate"
                   name="audioBitrate"
                   value={publishSettings.audioBitrate}
+                  disabled={webrtcPublish.connected}
                   onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_AUDIO_BITRATE,audioBitrate:e.target.value})}
                   />
                 <div className="input-group-append">
@@ -81,7 +117,14 @@ const PublishSettingsForm = () => {
             <div className="form-group">
               <label htmlFor="audioCodec">Audio Codec</label>
               <div className="input-group">
-                <select className="form-control" id="audioCodec" name="audioCodec" value="opus" readOnly>
+                <select
+                  className="form-control"
+                  id="audioCodec"
+                  name="audioCodec"
+                  value="opus"
+                  disabled={webrtcPublish.connected}
+                  readOnly
+                >
                   <option value="opus">Opus</option>
                 </select>
               </div>
@@ -98,6 +141,7 @@ const PublishSettingsForm = () => {
                   id="videoBitrate"
                   name="videoBitrate"
                   value={publishSettings.videoBitrate}
+                  disabled={webrtcPublish.connected}
                   onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_VIDEO_BITRATE,videoBitrate:e.target.value})}
                 />
                 <div className="input-group-append">
@@ -114,6 +158,7 @@ const PublishSettingsForm = () => {
                   id="videoCodec"
                   name="videoCodec"
                   value={publishSettings.videoCodec}
+                  disabled={webrtcPublish.connected}
                   onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_VIDEO_CODEC,videoCodec:e.target.value})}
                 >
                   { PublishOptions.videoCodecs.map((codec,key) => {
@@ -150,8 +195,8 @@ const PublishSettingsForm = () => {
           <div className="col-10">
             { !webrtcPublish.connected &&
               <button id="publish-toggle" type="button" className="btn"
-                disabled={publishSettings.publishStarting }
-                onClick={(e)=>dispatch(PublishSettingsActions.startPublish())}
+                disabled={publishSettings.publishStarting}
+                onClick={handlePublish}
               >Publish</button>
             }
             { webrtcPublish.connected &&
@@ -171,4 +216,4 @@ const PublishSettingsForm = () => {
   );
 }
 
-  export default PublishSettingsForm;
+export default PublishSettingsForm;
