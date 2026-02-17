@@ -82,7 +82,7 @@ const PublishSettingsForm = () => {
             Use WHIP
           </label>
           <input
-            className='form-check-input form-switch'
+            className='form-check-input form-switch orange-checkbox'
             type="checkbox"
             id="publishUseWhip"
             name="publishUseWhip"

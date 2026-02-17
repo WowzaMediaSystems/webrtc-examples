@@ -36,18 +36,19 @@ const FormInput = ({ label, id, value, onChange, disabled, ...props }) => (
 
 // Reusable Checkbox Component
 const FormCheckbox = ({ label, id, checked, onChange, disabled }) => (
-  <div className="form-group">
-    <label htmlFor={id}>{label}</label>
+  <div className="form-group form-switch mt-2 ml-4">
     <input
-      type="checkbox"
       id={id}
       name={id}
-      text={label}
-      className="form-control form-check-input form-switch"
-      checked={checked || false}
-      onChange={onChange}
+      className="form-check-input orange-checkbox"
+      type="checkbox"
+      value={checked || false}
       disabled={disabled}
+      onChange={onChange}
     />
+    <label className="form-check-label" htmlFor={id}>
+      {label}
+    </label>
   </div>
 );
 

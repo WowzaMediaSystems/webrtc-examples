@@ -173,7 +173,7 @@ ul.navbar-nav {
   color: #dc3545;
 }
 
-.form-check-input:checked {
-  background-color: #FF8400 !important;
-  border-color: #FF8400 !important;
+.orange-checkbox:checked {
+  background-color: #FF8400;
+  border-color: #FF8400;
 }
