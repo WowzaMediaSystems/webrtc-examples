@@ -42,7 +42,8 @@ const FormCheckbox = ({ label, id, checked, onChange, disabled }) => (
       type="checkbox"
       id={id}
       name={id}
-      className="form-control"
+      text={label}
+      className="form-control form-check-input form-switch"
       checked={checked || false}
       onChange={onChange}
       disabled={disabled}
