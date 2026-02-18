@@ -43,7 +43,7 @@ const PublishAudioDropdown = () => {
       <label htmlFor="mic-list-select">
         Input Microphone
       </label>
-      <select id="mic-list-select" className="form-control"
+      <select id="mic-list-select" className="form-select"
         value={publishSettings.audioTrackDeviceId}
         onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_AUDIO_TRACK_DEVICEID,audioTrackDeviceId:e.target.value})}
       >

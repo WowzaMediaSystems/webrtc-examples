@@ -48,7 +48,7 @@ const PublishVideoDropdown = () => {
       <label htmlFor="camera-list-select">
         Input Camera
       </label>
-      <select id="camera-list-select" className="form-control"
+      <select id="camera-list-select" className="form-select"
         value={publishSettings.videoTrack1DeviceId}
         onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_VIDEO_TRACK1_DEVICEID,videoTrack1DeviceId:e.target.value})}
       >

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-
+import * as ErrorsActions from '../../actions/errorsActions';
 import * as PublishSettingsActions from '../../actions/publishSettingsActions';
 import * as PublishOptions from '../../constants/PublishOptions';
 import PublishAudioDropdown from './PublishAudioDropdown';
@@ -11,6 +11,73 @@ const PublishSettingsForm = () => {
   const dispatch = useDispatch();
   const publishSettings = useSelector((state) => state.publishSettings);
   const webrtcPublish = useSelector((state) => state.webrtcPublish);
+
+  const [isCameraOn, setIsCameraOn] = useState(true);
+  const [isMicOn, setIsMicOn] = useState(true);
+  const toggleCamera = () => {
+    setIsCameraOn(!isCameraOn);
+    dispatch({ type: PublishSettingsActions.TOGGLE_VIDEO_ENABLED })
+  };
+
+  const toggleMicrophone = () => {
+    setIsMicOn(!isMicOn);
+    dispatch({ type: PublishSettingsActions.TOGGLE_AUDIO_ENABLED })
+  }
+
+
+  useEffect(() => {
+    const track = publishSettings.videoTrack;
+
+    if (!track || !track.applyConstraints) return;
+
+    const constraints =
+      PublishOptions.videoConstraintsByFrameSize[
+      publishSettings.videoFrameSize
+      ];
+
+    if (!constraints) return;
+
+    const newConstraints = {
+      width: constraints.width,
+      height: constraints.height,
+      frameRate: publishSettings.videoFrameRate
+    };
+
+    console.log("Applying preview constraints:", newConstraints);
+
+    track.applyConstraints(newConstraints)
+      .then(() => {
+        console.log("Preview updated");
+      })
+      .catch((error) => {
+
+        console.error("Constraint error:", error);
+
+        let message = error.message;
+
+        if (error.name === "OverconstrainedError") {
+          message = `Your browser or camera does not support this frame size: ${publishSettings.videoFrameSize}`;
+        }
+
+        dispatch({
+          type: ErrorsActions.SET_ERROR_MESSAGE,
+          message
+        });
+
+        if (publishSettings.videoFrameSize !== "default") {
+          dispatch({
+            type: PublishSettingsActions.SET_PUBLISH_VIDEO_FRAME_SIZE_AND_RATE,
+            videoFrameSize: "default"
+          });
+        }
+
+      });
+
+  }, [
+    publishSettings.videoFrameSize,
+    publishSettings.videoFrameRate,
+    publishSettings.videoTrack
+  ]);
 
   const handleCheckboxChange = (actionType, key) => (e) => {
     dispatch({ type: actionType, [key]: e.target.checked });
@@ -118,7 +185,7 @@ const PublishSettingsForm = () => {
               <label htmlFor="audioCodec">Audio Codec</label>
               <div className="input-group">
                 <select
-                  className="form-control"
+                  className="form-select"
                   id="audioCodec"
                   name="audioCodec"
                   value="opus"
@@ -154,7 +221,7 @@ const PublishSettingsForm = () => {
             <div className="form-group">
               <label htmlFor="videoCodec">Video Codec</label>
               <div className="input-group">
-                <select className="form-control"
+                <select className="form-select"
                   id="videoCodec"
                   name="videoCodec"
                   value={publishSettings.videoCodec}
@@ -170,13 +237,60 @@ const PublishSettingsForm = () => {
           </div>
         </div>
         <div className="row">
+          <div className="col-lg-6 col-sm-12">
+            <div className="form-group">
+              <label htmlFor="videoFrameRate">Frame Rate</label>
+              <div className="input-group">
+                <input
+                  type="number"
+                  className="form-control"
+                  id="videoFrameRate"
+                  name="videoFrameRate"
+                  value={publishSettings.videoFrameRate}
+                  onChange={(e) => dispatch({ type: PublishSettingsActions.SET_PUBLISH_VIDEO_FRAME_SIZE_AND_RATE, videoFrameRate: e.target.value })}
+                />
+                <div className="input-group-append">
+                  <span className="input-group-text">fps</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="col-lg-6 col-sm-12">
+            <div className="form-group">
+              <label htmlFor="frameSize">Frame Size</label>
+              <div className="input-group">
+                <select
+                  className="form-select"
+                  id="frameSize"
+                  name="frameSize"
+                  value={publishSettings.videoFrameSize}
+                  onChange={(e) => dispatch({ type: PublishSettingsActions.SET_PUBLISH_VIDEO_FRAME_SIZE_AND_RATE, videoFrameSize: e.target.value })}
+                >
+                  {PublishOptions.videoFrameSizes.map((frameSize, key) => {
+                    return <option key={key} value={frameSize.value}>{frameSize.name}</option>
+                  })}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="row">
           <div className="col-10">
             <PublishVideoDropdown />
           </div>
           <div className="col-2">
-            <button id="camera-toggle" className="control-button">
-              <img alt="" className="noll" id="video-off" src="/images/videocam-32px.svg" />
-              <img alt="" className="noll" id="video-on" src="/images/videocam-off-32px.svg" />
+            <button
+              id="camera-toggle"
+              type="button"
+              className="control-button"
+              onClick={toggleCamera}
+            >
+              <img
+                alt=""
+                className="noll"
+                id={isCameraOn ? "video-off" : "video-on"}
+                src={isCameraOn ? "/images/videocam-32px.svg" : "/images/videocam-off-32px.svg"}
+              />
             </button>
           </div>
         </div>
@@ -185,9 +299,16 @@ const PublishSettingsForm = () => {
             <PublishAudioDropdown />
           </div>
           <div className="col-2">
-            <button id="mute-toggle" className="control-button">
-              <img alt="" className="noll" id="mute-off" src="/images/mic-32px.svg" />
-              <img alt="" className="noll" id="mute-on" src="/images/mic-off-32px.svg" />
+            <button
+              id="mute-toggle"
+              type="button"
+              className="control-button"
+              onClick={toggleMicrophone}>
+              <img
+                alt=""
+                className="noll"
+                id={isMicOn ? "mute-on" : "mute-off"}
+                src={isMicOn ? "/images/mic-32px.svg" : "/images/mic-off-32px.svg"} />
             </button>
           </div>
         </div>
