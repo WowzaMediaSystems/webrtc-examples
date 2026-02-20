@@ -40,12 +40,24 @@ const peerConnectionCreateOfferSuccess = (description, publishSettings, websocke
   console.log(description.sdp);
 
   peerConnection
-    .setLocalDescription(description)
-    .then(() => websocket.send('{"direction":"publish", "command":"sendOffer", "streamInfo":' + JSON.stringify(getStreamInfo(publishSettings)) + ', "sdp":' + JSON.stringify(description) + ', "userData":' + JSON.stringify(getUserData(publishSettings)) + '}'))
-    .catch((error)=>{
-      let newError = {message:"Peer connection failed",...error};
-      peerConnectionOnError(newError,callbacks);
-    });
+  .setLocalDescription(description)
+  .then(() => {
+    const streamInfo = getStreamInfo(publishSettings);
+    const payload = {
+      messageType: "OFFER",
+      sdp: description,
+      applicationName: streamInfo.applicationName,
+      streamName: streamInfo.streamName,
+      sessionId: streamInfo.sessionId,
+      //userData: getUserData(publishSettings) TODO do we need this?
+    };
+
+    websocket.send(JSON.stringify(payload));
+  })
+  .catch((error) => {
+    const newError = { message: "Peer connection failed", ...error };
+    peerConnectionOnError(newError, callbacks);
+  });
 }
 
 const peerConnectionOnError = (error, callbacks) => {

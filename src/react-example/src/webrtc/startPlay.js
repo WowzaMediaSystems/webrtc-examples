@@ -44,7 +44,11 @@ const peerConnectionSetRemoteDescriptionSuccess = (description, playSettings, we
   peerConnection
     .setLocalDescription(description)
     .then(() => {
-      websocket.send('{"direction":"play", "command":"sendResponse", "streamInfo":' + JSON.stringify(getStreamInfo(playSettings)) + ', "sdp":' + JSON.stringify(description) + ', "userData":' + JSON.stringify(getUserData(playSettings)) + '}');
+      const payload = createOfferPayload(playSettings);
+      if (description) {
+        payload.sdp = description;
+      }
+      websocket.send(JSON.stringify(payload));
     })
     .catch((error)=>{
       let newError = {message:"Peer connection failed",...error};
@@ -159,18 +163,27 @@ const websocketOnError = (error, callbacks) => {
     callbacks.onError({message:'Websocket Error: '+error.message});
 }
 
+const createOfferPayload = (playSettings, secureToken = null) => {
+  const streamInfo = getStreamInfo(playSettings);
+  const offerPayload = {
+      messageType: "OFFER",
+      applicationName: streamInfo.applicationName,
+      streamName: streamInfo.streamName,
+      sessionId: streamInfo.sessionId,
+      // userData: getUserData(playSettings), Do we need this?
+    };
+    if (secureToken) {
+      offerPayload.secureToken = secureToken;
+    }
+    return offerPayload;
+}
+
 const websocketSendPlayGetOffer = async (playSettings, websocket, callbacks) => {
   try {
     const secureTokenData = getSecureTokenData(playSettings);
     const secureToken = await getSecureToken(secureTokenData);
 
-    const offerPayload = {
-      direction: "play",
-      command: "getOffer",
-      streamInfo: getStreamInfo(playSettings),
-      userData: getUserData(playSettings),
-      secureToken: secureToken
-    };
+    const offerPayload = createOfferPayload(playSettings, secureToken);
 
     console.log("sendPlayGetOffer: " + JSON.stringify(offerPayload));
     websocket.send(JSON.stringify(offerPayload));
