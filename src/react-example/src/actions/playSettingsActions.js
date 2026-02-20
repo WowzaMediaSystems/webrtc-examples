@@ -7,6 +7,7 @@ export const SET_PLAY_PREFIX = 'SET_PLAY_PREFIX';
 export const SET_PLAY_IS_IP = 'SET_PLAY_IS_IP';
 export const SET_PLAY_IP = 'SET_PLAY_IP';
 export const SET_PLAY_FLAGS='SET_PLAY_FLAGS';
+export const SET_PLAY_USE_WHEP = 'SET_PLAY_USE_WHEP';
 
 export const startPlay = () => {
   return {

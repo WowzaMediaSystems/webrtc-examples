@@ -129,7 +129,13 @@ const PlaySettingsForm = () => {
     dispatch({ type: actionType, [key]: e.target.checked });
   };
 
-  const handlePlay = () => dispatch(PlaySettingsActions.startPlay());
+  const handlePlay = () => {
+    if (playSettings.useWhep) {
+      alert('WHEP is not implemented yet');
+      return;
+    }
+    dispatch(PlaySettingsActions.startPlay());
+  } 
   const handleStop = () => dispatch(PlaySettingsActions.stopPlay());
 
   if (!initialized) return null;
@@ -179,7 +185,17 @@ const PlaySettingsForm = () => {
             />
           </div>
         </div>
-
+        <div className="row">
+          <div className="col-6">
+            <FormCheckbox
+              label="Use WHEP"
+              id="playUseWhep"
+              checked={playSettings.useWhep}
+              disabled={connected}
+              onChange={handleCheckboxChange(PlaySettingsActions.SET_PLAY_USE_WHEP, 'useWhep')}
+            />
+          </div>
+        </div>
         {/* Secure Token Section */}
         <div className="row">
           <div className="col-12">
