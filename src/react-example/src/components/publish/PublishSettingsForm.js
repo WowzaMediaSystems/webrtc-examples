@@ -14,6 +14,10 @@ const PublishSettingsForm = () => {
 
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [isMicOn, setIsMicOn] = useState(true);
+  const SIGNALING_URL_PLACEHOLDER = "wss://[ssl-certificate-domain-name]/webrtc-session.json";
+  const WHIP_URL_PLACEHOLDER = "http://[whip_domain_name]:[whip_port]";
+  const [urlPlaceholder, setUrlPlaceholder] = useState(SIGNALING_URL_PLACEHOLDER);
+
   const toggleCamera = () => {
     setIsCameraOn(!isCameraOn);
     dispatch({ type: PublishSettingsActions.TOGGLE_VIDEO_ENABLED })
@@ -79,17 +83,16 @@ const PublishSettingsForm = () => {
     publishSettings.videoTrack
   ]);
 
-  const handleCheckboxChange = (actionType, key) => (e) => {
+  const handleUseWhip = (actionType, key) => (e) => {
+    if (e.target.checked) {
+      setUrlPlaceholder(WHIP_URL_PLACEHOLDER);
+    } else {
+      setUrlPlaceholder(SIGNALING_URL_PLACEHOLDER);
+    }
     dispatch({ type: actionType, [key]: e.target.checked });
   };
 
   const handlePublish = () => {
-
-    if (publishSettings.useWhip) {
-      alert('WHIP is not implemented yet');
-      return;
-    }
-
     dispatch(PublishSettingsActions.startPublish());
   };
 
@@ -105,7 +108,7 @@ const PublishSettingsForm = () => {
                 id="signalingURL"
                 name="signalingURL"
                 maxLength="1024"
-                placeholder="wss://[ssl-certificate-domain-name]/webrtc-session.json"
+                placeholder={urlPlaceholder}
                 value={publishSettings.signalingURL}
                 disabled={webrtcPublish.connected}
                 onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_SIGNALING_URL,signalingURL:e.target.value})}
@@ -155,7 +158,7 @@ const PublishSettingsForm = () => {
             name="publishUseWhip"
             checked={publishSettings.useWhip || false}
             disabled={webrtcPublish.connected}
-            onChange={handleCheckboxChange(PublishSettingsActions.SET_PUBLISH_USE_WHIP, 'useWhip')}
+            onChange={handleUseWhip(PublishSettingsActions.SET_PUBLISH_USE_WHIP, 'useWhip')}
 
           />
 
