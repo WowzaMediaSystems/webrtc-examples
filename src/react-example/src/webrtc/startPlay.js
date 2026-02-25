@@ -167,9 +167,10 @@ const createOfferPayload = (playSettings, secureToken = null) => {
   const streamInfo = getStreamInfo(playSettings);
   const offerPayload = {
       messageType: "OFFER",
+      action: "VIEW",
       applicationName: streamInfo.applicationName,
       streamName: streamInfo.streamName,
-      sessionId: streamInfo.sessionId,
+      connectionId: streamInfo.sessionId,
       // userData: getUserData(playSettings), Do we need this?
     };
     if (secureToken) {
