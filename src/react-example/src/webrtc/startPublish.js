@@ -45,7 +45,7 @@ const peerConnectionCreateOfferSuccess = (description, publishSettings, websocke
     const streamInfo = getStreamInfo(publishSettings);
     const payload = {
       messageType: "OFFER",
-      sdp: description,
+      sdp: description.sdp,
       applicationName: streamInfo.applicationName,
       streamName: streamInfo.streamName,
       sessionId: streamInfo.sessionId,

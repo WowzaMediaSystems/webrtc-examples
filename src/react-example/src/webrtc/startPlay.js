@@ -46,7 +46,7 @@ const peerConnectionSetRemoteDescriptionSuccess = (description, playSettings, we
     .then(() => {
       const payload = createOfferPayload(playSettings);
       if (description) {
-        payload.sdp = description;
+        payload.sdp = description.sdp;
       }
       websocket.send(JSON.stringify(payload));
     })
