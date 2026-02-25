@@ -45,10 +45,11 @@ const peerConnectionCreateOfferSuccess = (description, publishSettings, websocke
     const streamInfo = getStreamInfo(publishSettings);
     const payload = {
       messageType: "OFFER",
+      action: "PUBLISH",
       sdp: description.sdp,
       applicationName: streamInfo.applicationName,
       streamName: streamInfo.streamName,
-      sessionId: streamInfo.sessionId,
+      connectionId: streamInfo.sessionId,
       //userData: getUserData(publishSettings) TODO do we need this?
     };
 
