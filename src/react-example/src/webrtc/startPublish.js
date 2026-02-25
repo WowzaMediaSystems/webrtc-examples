@@ -1,6 +1,8 @@
 
 // Utilities
 
+import { waitForIceGathering } from "../utils/PeerConnectionUtils";
+
 const getStreamInfo = (publishSettings) => {
 
   return {
@@ -282,22 +284,6 @@ const startPublishWhip = async (publishSettings, callbacks) => {
     if (callbacks.onError)
       callbacks.onError(e);
   }
-};
-
-const waitForIceGathering = (pc) => {
-  return new Promise((resolve) => {
-    if (pc.iceGatheringState === "complete") {
-      resolve();
-    } else {
-      const checkState = () => {
-        if (pc.iceGatheringState === "complete") {
-          pc.removeEventListener("icegatheringstatechange", checkState);
-          resolve();
-        }
-      };
-      pc.addEventListener("icegatheringstatechange", checkState);
-    }
-  });
 };
 
 

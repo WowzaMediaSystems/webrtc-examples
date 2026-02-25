@@ -18,7 +18,9 @@ const playUrlParametersMap = {
   ip: "playIp"
 };
 
-// Reusable Input Component
+const SIGNALING_URL_PLACEHOLDER = "wss://[ssl-certificate-domain-name]/webrtc-session.json";
+const WHEP_URL_PLACEHOLDER = "http://[whep_domain_name]:[whep_port]";
+
 const FormInput = ({ label, id, value, onChange, disabled, ...props }) => (
   <div className="form-group">
     <label htmlFor={id}>{label}</label>
@@ -34,7 +36,6 @@ const FormInput = ({ label, id, value, onChange, disabled, ...props }) => (
   </div>
 );
 
-// Reusable Checkbox Component
 const FormCheckbox = ({ label, id, checked, onChange, disabled }) => (
   <div className="form-group form-switch mt-2 ml-4">
     <input
@@ -57,6 +58,8 @@ const PlaySettingsForm = () => {
   const [initialized, setInitialized] = useState(false);
   const playSettings = useSelector((state) => state.playSettings);
   const webrtcPlay = useSelector((state) => state.webrtcPlay);
+
+  const [urlPlaceholder, setUrlPlaceholder] = useState(SIGNALING_URL_PLACEHOLDER);
 
   // Load settings from cookie and URL on mount
   useEffect(() => {
@@ -126,14 +129,17 @@ const PlaySettingsForm = () => {
   };
 
   const handleCheckboxChange = (actionType, key) => (e) => {
+    if (actionType === PlaySettingsActions.SET_PLAY_USE_WHEP) {
+      if (e.target.checked) {
+        setUrlPlaceholder(WHEP_URL_PLACEHOLDER);
+      } else {
+        setUrlPlaceholder(SIGNALING_URL_PLACEHOLDER);
+      }
+    }
     dispatch({ type: actionType, [key]: e.target.checked });
   };
 
   const handlePlay = () => {
-    if (playSettings.useWhep) {
-      alert('WHEP is not implemented yet');
-      return;
-    }
     dispatch(PlaySettingsActions.startPlay());
   } 
   const handleStop = () => dispatch(PlaySettingsActions.stopPlay());
@@ -153,7 +159,7 @@ const PlaySettingsForm = () => {
               id="playSignalingURL"
               type="text"
               maxLength={1024}
-              placeholder="wss://[ssl-certificate-domain-name]/webrtc-session.json"
+              placeholder={urlPlaceholder}
               value={playSettings.signalingURL}
               disabled={connected}
               onChange={handleInputChange(PlaySettingsActions.SET_PLAY_SIGNALING_URL, 'signalingURL')}

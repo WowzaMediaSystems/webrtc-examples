@@ -27,6 +27,8 @@ const Player = () => {
       startPlay(playSettings,websocket,{
         onError: (error) => {
           dispatch({type:ErrorsActions.SET_ERROR_MESSAGE,message:error.message});
+          dispatch({ type: PlaySettingsActions.SET_PLAY_FLAGS, playStart: false, playStarting: false, playStop: false, playStopping: false });
+          dispatch({ type: WebRTCPlayActions.SET_WEBRTC_PLAY_CONNECTED, connected: false });
         },
         onConnectionStateChange: (result) => {
           dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_CONNECTED,connected:result.connected});
@@ -60,7 +62,7 @@ const Player = () => {
     if (playSettings.playStop && !playSettings.playStopping && connected)
     {
       dispatch({type:PlaySettingsActions.SET_PLAY_FLAGS, playStop:false, playStopping:true});
-      stopPlay(peerConnection, websocket,{
+      stopPlay(playSettings, peerConnection, websocket,{
         onSetPeerConnection: (result) => {
           dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_PEERCONNECTION,peerConnection:result.peerConnection});
         },

@@ -1,5 +1,6 @@
 import stopPlay from './stopPlay';
 import getSecureToken from './SecureToken';
+import { waitForIceGathering } from '../utils/PeerConnectionUtils';
 
 // Utilities
 
@@ -193,21 +194,28 @@ const websocketSendPlayGetOffer = async (playSettings, websocket, callbacks) => 
 const startPlay = (playSettings, websocket, callbacks) => 
 {
   try {
-    if (websocket == null)
+    
+    if (playSettings.useWhep) 
     {
-      websocket = new WebSocket (playSettings.signalingURL);
-    }
-    if (websocket != null)
+      startPlayWhep(playSettings,callbacks);
+    }else
     {
-      repeaterRetryCount = 0;
+      if (websocket == null)
+      {
+        websocket = new WebSocket (playSettings.signalingURL);
+      }
+      if (websocket != null)
+      {
+        repeaterRetryCount = 0;
 
-      websocket.binaryType = 'arraybuffer';
+        websocket.binaryType = 'arraybuffer';
 
-      websocket.addEventListener ("open", () => { websocketOnOpen(playSettings, websocket, callbacks); });
-      websocket.addEventListener ("error", (error) => { websocketOnError(error, callbacks); });
+        websocket.addEventListener ("open", () => { websocketOnOpen(playSettings, websocket, callbacks); });
+        websocket.addEventListener ("error", (error) => { websocketOnError(error, callbacks); });
 
-      if (callbacks.onSetWebsocket)
-        callbacks.onSetWebsocket({websocket:websocket});
+        if (callbacks.onSetWebsocket)
+          callbacks.onSetWebsocket({websocket:websocket});
+      }
     }
   }
   catch (e)
@@ -217,4 +225,68 @@ const startPlay = (playSettings, websocket, callbacks) =>
   }
 
 }
+
+const startPlayWhep = async (playSettings, callbacks) => {
+  let peerConnection;
+
+  try {
+    peerConnection = new RTCPeerConnection();
+
+    peerConnection.addTransceiver("video", { direction: "recvonly" });
+    peerConnection.addTransceiver("audio", { direction: "recvonly" });
+
+    peerConnection.ontrack = (event) => {
+      if (callbacks.onPeerConnectionOnTrack) {
+        callbacks.onPeerConnectionOnTrack(event);
+      }
+    };
+
+    peerConnection.onconnectionstatechange = (event) => {
+      if (callbacks.onConnectionStateChange) {
+        callbacks.onConnectionStateChange({
+          connected: event.currentTarget.connectionState === "connected"
+        });
+      }
+    };
+
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+
+    await waitForIceGathering(peerConnection);
+
+    const whepUrl = `${playSettings.signalingURL}/${playSettings.applicationName}/${playSettings.streamName}/whep`;
+
+    const response = await fetch(whepUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/sdp"
+      },
+      body: peerConnection.localDescription.sdp
+    });
+
+    if (!response.ok) {
+      throw new Error(`WHEP request failed: ${response.status}`);
+    }
+
+    const answerSdp = await response.text();
+
+    await peerConnection.setRemoteDescription({
+      type: "answer",
+      sdp: answerSdp
+    });
+
+    const locationHeader = response.headers.get("Location");
+    if (locationHeader) {
+      const baseUrl = new URL(whepUrl);
+      playSettings._whepSessionUrl = new URL(locationHeader, baseUrl).toString();
+    }
+
+    if (callbacks.onSetPeerConnection)
+      callbacks.onSetPeerConnection({ peerConnection });
+
+  } catch (error) {
+    if (callbacks.onError)
+      callbacks.onError(error);
+  }
+};
 export default startPlay;
