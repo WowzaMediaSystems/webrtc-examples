@@ -155,8 +155,8 @@ const PublishSettingsForm = () => {
           </div>
         </div>
 
-        <div class="form-check form-switch form-check-inline mb-3">
-          <label className='form-check-label mr-3' for="publishUseWhip">
+        <div className="form-check form-switch form-check-inline mb-3">
+          <label className='form-check-label mr-3' htmlFor="publishUseWhip">
             Use WHIP
           </label>
           <input
