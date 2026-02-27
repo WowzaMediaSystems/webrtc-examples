@@ -195,8 +195,22 @@ const startPublish = (publishSettings, websocket, callbacks) =>
         console.log(publishSettings);
         websocket.binaryType = 'arraybuffer';
 
-        websocket.addEventListener("open", () => { websocketOnOpen(publishSettings, websocket, callbacks); });
-        websocket.addEventListener("error", (error) => { websocketOnError(error, callbacks); });
+        
+        const connectionTimeout = setTimeout(() => {
+          if (websocket.readyState !== WebSocket.OPEN) {
+            websocket.close();
+          }
+        }, 10000);
+
+        websocket.addEventListener("open", () => {
+          clearTimeout(connectionTimeout);
+          websocketOnOpen(publishSettings, websocket, callbacks);
+        });
+
+        websocket.addEventListener("error", (error) => {
+          clearTimeout(connectionTimeout);
+          websocketOnError(error, callbacks);
+        });
 
         if (callbacks.onSetWebsocket)
           callbacks.onSetWebsocket({ websocket: websocket });

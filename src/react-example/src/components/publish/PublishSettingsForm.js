@@ -93,6 +93,14 @@ const PublishSettingsForm = () => {
   };
 
   const handlePublish = () => {
+    
+    if (!publishSettings.signalingURL || publishSettings.signalingURL.trim() === '') {
+      dispatch({
+        type: ErrorsActions.SET_ERROR_MESSAGE,
+        message: 'Signaling URL is required'
+      });
+      return;
+    }
     dispatch(PublishSettingsActions.startPublish());
   };
 
