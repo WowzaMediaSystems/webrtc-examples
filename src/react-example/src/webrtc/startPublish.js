@@ -124,7 +124,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks) => {
 const websocketOnMessage = (event, publishSettings, peerConnection, callbacks) => {
 
   let msgJSON = JSON.parse(event.data);
-  let msgStatus = Number(msgJSON['status']);
+  let msgStatus = Number(msgJSON['statusCode']);
 
   if(msgStatus === 504) {
     // we need to swallow these because they happen as new streams join and we don't want to break the connection over it
@@ -134,7 +134,11 @@ const websocketOnMessage = (event, publishSettings, peerConnection, callbacks) =
   }
   else {
 
-    let sdpData = msgJSON['sdp'];
+    let sdpData = {
+      "sdp" : msgJSON['message']['sdp'],
+      "type": "answer"
+    }
+
     if (sdpData !== undefined) {
 
       let mungeData = {};
@@ -154,13 +158,13 @@ const websocketOnMessage = (event, publishSettings, peerConnection, callbacks) =
         );
     }
 
-    let iceCandidates = msgJSON['iceCandidates'];
-    if (iceCandidates !== undefined) {
-      for (let index in iceCandidates) {
-        console.log('websocketOnMessage.iceCandidates: ' + iceCandidates[index]);
-        peerConnection.addIceCandidate(new RTCIceCandidate(iceCandidates[index]));
-      }
-    }
+    // let iceCandidates = msgJSON['iceCandidates'];
+    // if (iceCandidates !== undefined) {
+    //   for (let index in iceCandidates) {
+    //     console.log('websocketOnMessage.iceCandidates: ' + iceCandidates[index]);
+    //     peerConnection.addIceCandidate(new RTCIceCandidate(iceCandidates[index]));
+    //   }
+    // }
   }
 }
 
