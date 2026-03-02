@@ -72,11 +72,34 @@ const websocketOnOpen = (playSettings, websocket, callbacks) => {
   
   try {
     peerConnection = new RTCPeerConnection();
-
+    peerConnection.oniceconnectionstatechange = () => {
+      console.log('ICE state:', peerConnection.iceConnectionState);
+      if (peerConnection.iceConnectionState === 'connected') {
+        setTimeout(() => {
+          peerConnection.getStats().then(stats => {
+            stats.forEach(report => {
+              if (report.type === 'inbound-rtp') {
+                console.log('inbound-rtp:', report.kind, 'packetsReceived:', report.packetsReceived, 'bytesReceived:', report.bytesReceived);
+              }
+            });
+          });
+        }, 2000);
+      }
+    };
+    peerConnection.onicegatheringstatechange = () => {
+      console.log('ICE gathering state:', peerConnection.iceGatheringState);
+    };
+    peerConnection.onconnectionstatechange = (event) => {
+      console.log('Connection state:', peerConnection.connectionState);
+      // ... rest of your existing handler
+    };
+    peerConnection.addTransceiver('video', { direction: 'recvonly' });
+    peerConnection.addTransceiver('audio', { direction: 'recvonly' });
     peerConnection.ontrack = (event) => {
+      console.log('ontrack fired:', event.streams, event.track);
       if (callbacks.onPeerConnectionOnTrack)
         callbacks.onPeerConnectionOnTrack(event);
-    }
+    };
 
     peerConnection.onconnectionstatechange = (event) => {
       if (event.currentTarget.connectionState === 'connected')
@@ -93,7 +116,7 @@ const websocketOnOpen = (playSettings, websocket, callbacks) => {
 
     websocket.addEventListener ("message", (event) => { websocketOnMessage(event, playSettings, peerConnection, websocket, callbacks); });
 
-    websocketSendPlayGetOffer(playSettings, websocket, callbacks);
+    websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks);
 
   }
   catch (e) {
@@ -106,15 +129,15 @@ const websocketOnOpen = (playSettings, websocket, callbacks) => {
 const websocketOnMessage = (event, playSettings, peerConnection, websocket, callbacks) => {
 
   let msgJSON = JSON.parse(event.data);
-  let msgStatus = Number(msgJSON['status']);
-  console.log("websocketOnMessage:"+msgStatus);
-  console.log(msgJSON);
+  console.log(`Websocket Response: ${JSON.stringify(msgJSON)}`);
+  let msgStatus = Number(msgJSON['statusCode']);
+  console.log(`Status: ${msgStatus}`);
   if (msgStatus === 514 || msgStatus === 504) // repeater stream not ready
   {
     repeaterRetryCount++;
 
     if (repeaterRetryCount < 10) {
-      setTimeout(() => { websocketSendPlayGetOffer(playSettings, websocket, callbacks) }, 1000);
+      setTimeout(() => { websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks) }, 1000);
     } else {
       websocketOnError({message:'Live stream repeater timeout: ' + playSettings.streamName}, callbacks);
       stopPlay(peerConnection, websocket, callbacks);
@@ -126,33 +149,29 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
     stopPlay(peerConnection, websocket, callbacks);
 
   } else {
-
-    let streamInfoResponse = msgJSON['streamInfo'];
-    if (streamInfoResponse !== undefined) {
-      sessionId = streamInfoResponse.sessionId;
-    }
-
-    if (msgJSON['sdp'] != null) {
-
-      console.log("SDP Data: " + msgJSON.sdp.sdp);
-
-      peerConnection
-      .setRemoteDescription(new RTCSessionDescription(msgJSON.sdp))
-      .then(() => peerConnection
-        .createAnswer()
-        .then((description) => peerConnectionSetRemoteDescriptionSuccess(description, playSettings, websocket, peerConnection, callbacks))
-        .catch((err) => peerConnectionOnError(err,callbacks))
-      )
-      .catch((err) => peerConnectionOnError(err,callbacks));
-
-    }
-    let iceCandidates = msgJSON['iceCandidates'];
-    if (iceCandidates != null) {
-      for (let index in iceCandidates) {
-        console.log('iceCandidates: ' + JSON.stringify(iceCandidates[index]));
-        peerConnection.addIceCandidate(new RTCIceCandidate(iceCandidates[index]));
+    if (msgJSON.message) {
+      const message = msgJSON.message;
+      if (message.connectionId) {
+        sessionId = message.connectionId;
       }
-    }
+      if (message.sdp) {
+        console.log("SDP Data: " + message.sdp);
+        let sdpData = {
+          "sdp" : message.sdp,
+          "type": "answer"
+        }
+        peerConnection
+          .setRemoteDescription(new RTCSessionDescription(sdpData))
+          .then(() => {
+            console.log("Remote Description Set Successfully.");
+            console.log("ICE connection state:", peerConnection.iceConnectionState);
+            console.log("Connection state:", peerConnection.connectionState);
+            console.log("Signaling state:", peerConnection.signalingState);
+          })
+          .catch((err) => peerConnectionOnError(err, callbacks));
+
+        }
+      }
   }
 }
 
@@ -179,12 +198,20 @@ const createOfferPayload = (playSettings, secureToken = null) => {
     return offerPayload;
 }
 
-const websocketSendPlayGetOffer = async (playSettings, websocket, callbacks) => {
+const websocketSendPlayGetOffer = async (playSettings, websocket, peerConnection, callbacks) => {
   try {
+    console.log('websocketSendPlayGetOffer called, transceivers:', peerConnection.getTransceivers().length);
     const secureTokenData = getSecureTokenData(playSettings);
     const secureToken = await getSecureToken(secureTokenData);
 
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+
+    await waitForIceGathering(peerConnection);
+    console.log('Local SDP:', peerConnection.localDescription.sdp);
+
     const offerPayload = createOfferPayload(playSettings, secureToken);
+    offerPayload.sdp = peerConnection.localDescription.sdp;
 
     console.log("sendPlayGetOffer: " + JSON.stringify(offerPayload));
     websocket.send(JSON.stringify(offerPayload));
@@ -195,6 +222,22 @@ const websocketSendPlayGetOffer = async (playSettings, websocket, callbacks) => 
     }
   }
 }
+
+const waitForIceGathering = (pc) => {
+  return new Promise((resolve) => {
+    if (pc.iceGatheringState === "complete") {
+      resolve();
+    } else {
+      const checkState = () => {
+        if (pc.iceGatheringState === "complete") {
+          pc.removeEventListener("icegatheringstatechange", checkState);
+          resolve();
+        }
+      };
+      pc.addEventListener("icegatheringstatechange", checkState);
+    }
+  });
+};
 
 // startPlay
 // callbacks:
