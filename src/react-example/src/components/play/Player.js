@@ -64,6 +64,10 @@ const Player = () => {
           dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_WEBSOCKET,websocket:result.websocket});
         },
         onPlayStopped: () => {
+          streamRef.current = new MediaStream();
+          if (videoElement.current) {
+            videoElement.current.srcObject = null;
+          }
           dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_CONNECTED,connected:false});
         }
       });
