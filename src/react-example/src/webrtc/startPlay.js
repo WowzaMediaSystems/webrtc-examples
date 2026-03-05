@@ -3,15 +3,14 @@ import getSecureToken from './SecureToken';
 
 // Utilities
 
-let repeaterRetryCount = 0;
-let sessionId = '[empty]';
 
-const getStreamInfo = (playSettings) => {
+
+const getStreamInfo = (playSettings, session) => {
 
   return {
     applicationName:playSettings.applicationName,
     streamName:playSettings.streamName,
-    sessionId:sessionId
+    sessionId: session.sessionId
   };
 }
 
@@ -66,37 +65,15 @@ const peerConnectionOnError = (error, callbacks) => {
 
 // Websocket Functions
 
-const websocketOnOpen = (playSettings, websocket, callbacks) => {
+const websocketOnOpen = (playSettings, websocket, callbacks, session) => {
 
   let peerConnection;
   
   try {
     peerConnection = new RTCPeerConnection();
-    peerConnection.oniceconnectionstatechange = () => {
-      console.log('ICE state:', peerConnection.iceConnectionState);
-      if (peerConnection.iceConnectionState === 'connected') {
-        setTimeout(() => {
-          peerConnection.getStats().then(stats => {
-            stats.forEach(report => {
-              if (report.type === 'inbound-rtp') {
-                console.log('inbound-rtp:', report.kind, 'packetsReceived:', report.packetsReceived, 'bytesReceived:', report.bytesReceived);
-              }
-            });
-          });
-        }, 2000);
-      }
-    };
-    peerConnection.onicegatheringstatechange = () => {
-      console.log('ICE gathering state:', peerConnection.iceGatheringState);
-    };
-    peerConnection.onconnectionstatechange = (event) => {
-      console.log('Connection state:', peerConnection.connectionState);
-      // ... rest of your existing handler
-    };
     peerConnection.addTransceiver('video', { direction: 'recvonly' });
     peerConnection.addTransceiver('audio', { direction: 'recvonly' });
     peerConnection.ontrack = (event) => {
-      console.log('ontrack fired:', event.streams, event.track);
       if (callbacks.onPeerConnectionOnTrack)
         callbacks.onPeerConnectionOnTrack(event);
     };
@@ -114,9 +91,9 @@ const websocketOnOpen = (playSettings, websocket, callbacks) => {
       }
     }
 
-    websocket.addEventListener ("message", (event) => { websocketOnMessage(event, playSettings, peerConnection, websocket, callbacks); });
+    websocket.addEventListener ("message", (event) => { websocketOnMessage(event, playSettings, peerConnection, websocket, callbacks, session); });
 
-    websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks);
+    websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks, session);
 
   }
   catch (e) {
@@ -126,7 +103,7 @@ const websocketOnOpen = (playSettings, websocket, callbacks) => {
     callbacks.onSetPeerConnection({peerConnection:peerConnection});
 }
 
-const websocketOnMessage = (event, playSettings, peerConnection, websocket, callbacks) => {
+const websocketOnMessage = (event, playSettings, peerConnection, websocket, callbacks, session) => {
 
   let msgJSON = JSON.parse(event.data);
   console.log(`Websocket Response: ${JSON.stringify(msgJSON)}`);
@@ -134,9 +111,9 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
   console.log(`Status: ${msgStatus}`);
   if (msgStatus === 514 || msgStatus === 504) // repeater stream not ready
   {
-    repeaterRetryCount++;
+    session.repeaterRetryCount++;
 
-    if (repeaterRetryCount < 10) {
+    if (session.repeaterRetryCount < 10) {
       setTimeout(() => { websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks) }, 1000);
     } else {
       websocketOnError({message:'Live stream repeater timeout: ' + playSettings.streamName}, callbacks);
@@ -152,7 +129,7 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
     if (msgJSON.message) {
       const message = msgJSON.message;
       if (message.connectionId) {
-        sessionId = message.connectionId;
+        session.sessionId = message.connectionId;
       }
       if (message.sdp) {
         console.log("SDP Data: " + message.sdp);
@@ -164,9 +141,6 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
           .setRemoteDescription(new RTCSessionDescription(sdpData))
           .then(() => {
             console.log("Remote Description Set Successfully.");
-            console.log("ICE connection state:", peerConnection.iceConnectionState);
-            console.log("Connection state:", peerConnection.connectionState);
-            console.log("Signaling state:", peerConnection.signalingState);
           })
           .catch((err) => peerConnectionOnError(err, callbacks));
 
@@ -182,8 +156,8 @@ const websocketOnError = (error, callbacks) => {
     callbacks.onError({message:'Websocket Error: '+error.message});
 }
 
-const createOfferPayload = (playSettings, secureToken = null) => {
-  const streamInfo = getStreamInfo(playSettings);
+const createOfferPayload = (playSettings, session, secureToken = null) => {
+  const streamInfo = getStreamInfo(playSettings, session);
   const offerPayload = {
       messageType: "OFFER",
       action: "VIEW",
@@ -198,9 +172,8 @@ const createOfferPayload = (playSettings, secureToken = null) => {
     return offerPayload;
 }
 
-const websocketSendPlayGetOffer = async (playSettings, websocket, peerConnection, callbacks) => {
+const websocketSendPlayGetOffer = async (playSettings, websocket, peerConnection, callbacks, session) => {
   try {
-    console.log('websocketSendPlayGetOffer called, transceivers:', peerConnection.getTransceivers().length);
     const secureTokenData = getSecureTokenData(playSettings);
     const secureToken = await getSecureToken(secureTokenData);
 
@@ -210,7 +183,7 @@ const websocketSendPlayGetOffer = async (playSettings, websocket, peerConnection
     await waitForIceGathering(peerConnection);
     console.log('Local SDP:', peerConnection.localDescription.sdp);
 
-    const offerPayload = createOfferPayload(playSettings, secureToken);
+    const offerPayload = createOfferPayload(playSettings, session, secureToken);
     offerPayload.sdp = peerConnection.localDescription.sdp;
 
     console.log("sendPlayGetOffer: " + JSON.stringify(offerPayload));
@@ -250,17 +223,20 @@ const waitForIceGathering = (pc) => {
 const startPlay = (playSettings, websocket, callbacks) => 
 {
   try {
+    const session = {
+      sessionId: '[empty]',
+      repeaterRetryCount: 0
+    };
     if (websocket == null)
     {
       websocket = new WebSocket (playSettings.signalingURL + "?webrtcImplementation=modern");
     }
     if (websocket != null)
     {
-      repeaterRetryCount = 0;
 
       websocket.binaryType = 'arraybuffer';
 
-      websocket.addEventListener ("open", () => { websocketOnOpen(playSettings, websocket, callbacks); });
+      websocket.addEventListener ("open", () => { websocketOnOpen(playSettings, websocket, callbacks, session); });
       websocket.addEventListener ("error", (error) => { websocketOnError(error, callbacks); });
 
       if (callbacks.onSetWebsocket)
