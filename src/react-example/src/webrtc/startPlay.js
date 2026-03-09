@@ -195,7 +195,7 @@ const startPlay = (playSettings, websocket, callbacks) =>
   try {
     if (websocket == null)
     {
-      websocket = new WebSocket (playSettings.signalingURL);
+      websocket = new WebSocket (playSettings.signalingURL + "?webrtcImplementation=modern");
     }
     if (websocket != null)
     {
