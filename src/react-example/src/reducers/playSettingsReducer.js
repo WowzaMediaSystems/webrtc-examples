@@ -12,7 +12,8 @@ const initialState = {
   playStart: false,
   playStarting: false,
   playStop: false,
-  playStopping: false
+  playStopping: false,
+  useWhep: false,
 }
 
 const playSettingsReducer = (state = initialState, action) => {
@@ -23,6 +24,8 @@ const playSettingsReducer = (state = initialState, action) => {
       return { ...state, applicationName: action.applicationName };
     case PlaySettingsActions.SET_PLAY_STREAM_NAME:
       return { ...state, streamName: action.streamName };
+    case PlaySettingsActions.SET_PLAY_USE_WHEP:
+      return { ...state, useWhep: action.useWhep };
     case PlaySettingsActions.SET_PLAY_SECRET:
       console.log(`Secret: ${action.secret}`)
       return { ...state, secret: action.secret };

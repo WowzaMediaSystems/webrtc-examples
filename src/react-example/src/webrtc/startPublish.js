@@ -252,7 +252,7 @@ const startPublish = (publishSettings, websocket, callbacks) =>
     }
     else {
       if (websocket == null) {
-        websocket = new WebSocket (publishSettings.signalingURL + "?appName=" + publishSettings.applicationName);
+        websocket = new WebSocket (publishSettings.signalingURL + "?webrtcImplementation=modern");
       }
       if(publishSettings.applicationName.length === 0){
         throw {message: "Application name required"}
