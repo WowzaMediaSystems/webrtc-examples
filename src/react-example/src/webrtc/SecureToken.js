@@ -26,6 +26,9 @@ let mySecureTokenData = {
 */
 
 const getSecureToken = async (secureTokenData) => { 
+  if (!secureTokenData) {
+    return null;
+  }
   console.log("Token data" + JSON.stringify(secureTokenData));
   if (secureTokenData.secret) {
     let prefix = secureTokenData.prefix;
