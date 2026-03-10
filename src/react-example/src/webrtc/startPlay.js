@@ -220,17 +220,15 @@ const waitForIceGathering = (pc) => {
 // - onSetPeerConnection({peerConnection:obj})
 // - onSetWebsocket({websocket:obj})
 
-const startPlay = (playSettings, websocket, callbacks) => 
+const startPlay = (playSettings, callbacks) => 
 {
   try {
     const session = {
       sessionId: '[empty]',
       repeaterRetryCount: 0
     };
-    if (websocket == null)
-    {
-      websocket = new WebSocket (playSettings.signalingURL + "?appName=" + playSettings.applicationName);
-    }
+    const websocket = new WebSocket (playSettings.signalingURL + "?appName=" + playSettings.applicationName);
+    
     if (websocket != null)
     {
 
