@@ -11,6 +11,7 @@ import stopPlay from '../../webrtc/stopPlay';
 const Player = () => {
 
   const videoElement = useRef(null);
+  const streamRef = useRef(new MediaStream());
 
   const dispatch = useDispatch();
   const playSettings = useSelector ((state) => state.playSettings);
@@ -40,16 +41,11 @@ const Player = () => {
           dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_WEBSOCKET,websocket:result.websocket});
         },
         onPeerConnectionOnTrack: (event) => {
-          if (event.track != null && event.track.kind != null)
-          {
-            if (event.track.kind === 'audio')
-            {
-              dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_AUDIO_TRACK,audioTrack:event.track});
-            }
-            else if (event.track.kind === 'video')
-            {
-              dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_VIDEO_TRACK,videoTrack:event.track});
-            }
+          console.log('ontrack:', event.track.kind, 'muted:', event.track.muted, 'readyState:', event.track.readyState);
+          streamRef.current.addTrack(event.track);
+          if (videoElement.current) {
+            videoElement.current.srcObject = streamRef.current;
+            console.log('srcObject set, tracks:', streamRef.current.getTracks().map(t => t.kind));
           }
         }
       });
@@ -70,6 +66,10 @@ const Player = () => {
           dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_WEBSOCKET,websocket:result.websocket});
         },
         onPlayStopped: () => {
+          streamRef.current = new MediaStream();
+          if (videoElement.current) {
+            videoElement.current.srcObject = null;
+          }
           dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_CONNECTED,connected:false});
         }
       });
@@ -82,34 +82,20 @@ const Player = () => {
 
   }, [dispatch,videoElement,playSettings,peerConnection,websocket,connected]);
 
-  useEffect(() => {
-
-    if (connected)
-    {
-      let newStream = new MediaStream();
-      if (audioTrack != null)
-        newStream.addTrack(audioTrack);
-
-      if (videoTrack != null)
-        newStream.addTrack(videoTrack);
-
-      if (videoElement != null && videoElement.current != null)
-        videoElement.current.srcObject = newStream;
-    }
-    else
-    {
-      if (videoElement != null && videoElement.current != null)
-        videoElement.current.srcObject = null;
-    }
-
-  }, [audioTrack, videoTrack, connected, videoElement]);
-
-  if (!connected)
-    return null;
 
   return (
-    <video id="player-video" ref={videoElement} autoPlay playsInline muted controls></video>
-  );
+  <>
+    <video 
+      id="player-video" 
+      ref={videoElement} 
+      autoPlay 
+      playsInline 
+      muted 
+      controls
+      style={{ display: connected ? 'block' : 'none' }}
+    />
+  </>
+);
 }
 
 export default Player;
