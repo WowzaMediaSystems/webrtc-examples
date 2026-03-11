@@ -88,11 +88,7 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
           applicationName: playSettings.applicationName,
           streamName: playSettings.streamName,
           connectionId: session.sessionId,
-          candidate: {
-            candidate: event.candidate.candidate,
-            sdpMid: event.candidate.sdpMid,
-            sdpMLineIndex: event.candidate.sdpMLineIndex
-          }
+          candidate: event.candidate.candidate,
         };
 
         if (secureToken) {

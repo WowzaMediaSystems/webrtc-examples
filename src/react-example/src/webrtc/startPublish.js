@@ -63,11 +63,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
           applicationName: publishSettings.applicationName,
           streamName: publishSettings.streamName,
           connectionId: session.sessionId,
-          candidate: {
-            candidate: event.candidate.candidate,
-            sdpMid: event.candidate.sdpMid,
-            sdpMLineIndex: event.candidate.sdpMLineIndex
-          }
+          candidate: event.candidate.candidate,
         };
         console.log('Sending ICE candidate:', JSON.stringify(candidatePayload));
         websocket.send(JSON.stringify(candidatePayload));
