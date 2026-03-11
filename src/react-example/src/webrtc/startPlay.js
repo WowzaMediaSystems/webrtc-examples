@@ -109,7 +109,7 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
           applicationName: playSettings.applicationName,
           streamName: playSettings.streamName,
           connectionId: session.sessionId,
-          candidate: null
+          candidate: ""
         };
         console.log('Sending end of candidates:', JSON.stringify(endOfCandidatesPayload));
         websocket.send(JSON.stringify(endOfCandidatesPayload));

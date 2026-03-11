@@ -79,7 +79,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
           applicationName: publishSettings.applicationName,
           streamName: publishSettings.streamName,
           connectionId: session.sessionId,
-          candidate: null
+          candidate: ""
         };
         console.log('Sending end of candidates:', JSON.stringify(endOfCandidatesPayload));
         websocket.send(JSON.stringify(endOfCandidatesPayload));
