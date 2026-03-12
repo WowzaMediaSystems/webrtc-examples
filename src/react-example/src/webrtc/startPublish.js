@@ -67,20 +67,15 @@ const peerConnectionCreateOfferSuccess = (description, publishSettings, websocke
 const peerConnectionCreateOfferSuccess = (description, publishSettings, websocket, peerConnection, callbacks) => {
 
   console.log("peerConnectionCreateOfferSuccess: Setting local description SDP: ");
-  // console.log(description.sdp); // This is the initial SDP without candidates
 
   peerConnection
   .setLocalDescription(description)
   .then(() => {
     
-    // --- STALLING LOGIC FOR NON-TRICKLE ICE ---
     
-    // Create a helper function to send the offer once candidates are gathered
     const sendOfferPayload = () => {
-      const streamInfo = getStreamInfo(publishSettings);
       
-      // IMPORTANT: Grab the updated SDP from the peerConnection, 
-      // NOT the original 'description' variable!
+      const streamInfo = getStreamInfo(publishSettings);
       const updatedSdp = peerConnection.localDescription.sdp; 
       
       console.log("ICE Gathering Complete. Sending Offer with Candidates:");
@@ -98,16 +93,14 @@ const peerConnectionCreateOfferSuccess = (description, publishSettings, websocke
       websocket.send(JSON.stringify(payload));
     };
 
-    // Check if it somehow completed instantly
+
     if (peerConnection.iceGatheringState === 'complete') {
         sendOfferPayload();
     } else {
-        // Otherwise, wait for the gathering state to become 'complete'
         peerConnection.onicegatheringstatechange = () => {
             console.log("ICE Gathering State changed to: " + peerConnection.iceGatheringState);
             if (peerConnection.iceGatheringState === 'complete') {
                 sendOfferPayload();
-                // Clear the listener so it doesn't fire again
                 peerConnection.onicegatheringstatechange = null;
             }
         };
