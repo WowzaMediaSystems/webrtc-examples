@@ -19,6 +19,7 @@ const getUserData = (publishSettings) => {
 
 // PeerConnection Functions
 
+/*
 const peerConnectionCreateOfferSuccess = (description, publishSettings, websocket, peerConnection, callbacks) => {
 
   console.log("peerConnectionCreateOfferSuccess: SDP:");
@@ -42,12 +43,78 @@ const peerConnectionCreateOfferSuccess = (description, publishSettings, websocke
   console.log(description.sdp);
 
   peerConnection
-    .setLocalDescription(description)
-    .then(() => websocket.send('{"direction":"publish", "command":"sendOffer", "streamInfo":' + JSON.stringify(getStreamInfo(publishSettings)) + ', "sdp":' + JSON.stringify(description) + ', "userData":' + JSON.stringify(getUserData(publishSettings)) + '}'))
-    .catch((error)=>{
-      let newError = {message:"Peer connection failed",...error};
-      peerConnectionOnError(newError,callbacks);
-    });
+  .setLocalDescription(description)
+  .then(() => {
+    const streamInfo = getStreamInfo(publishSettings);
+    const payload = {
+      messageType: "OFFER",
+      action: "PUBLISH",
+      sdp: description.sdp,
+      applicationName: streamInfo.applicationName,
+      streamName: streamInfo.streamName,
+      connectionId: streamInfo.sessionId,
+      //userData: getUserData(publishSettings) TODO do we need this?
+    };
+
+    websocket.send(JSON.stringify(payload));
+  })
+  .catch((error) => {
+    const newError = { message: "Peer connection failed", ...error };
+    peerConnectionOnError(newError, callbacks);
+  });
+}
+*/
+// PeerConnection Functions
+
+const peerConnectionCreateOfferSuccess = (description, publishSettings, websocket, peerConnection, callbacks) => {
+
+  console.log("peerConnectionCreateOfferSuccess: Setting local description SDP: ");
+
+  peerConnection
+  .setLocalDescription(description)
+  .then(() => {
+    
+    
+    const sendOfferPayload = () => {
+      
+      const streamInfo = getStreamInfo(publishSettings);
+      const updatedSdp = peerConnection.localDescription.sdp; 
+      
+      console.log("ICE Gathering Complete. Sending Offer with Candidates:");
+      console.log(updatedSdp);
+
+      const payload = {
+        messageType: "OFFER",
+        action: "PUBLISH",
+        sdp: updatedSdp, 
+        applicationName: streamInfo.applicationName,
+        streamName: streamInfo.streamName,
+        connectionId: streamInfo.sessionId,
+      };
+
+      websocket.send(JSON.stringify(payload));
+    };
+
+
+    if (peerConnection.iceGatheringState === 'complete') {
+        sendOfferPayload();
+    } else {
+        peerConnection.onicegatheringstatechange = () => {
+            console.log("ICE Gathering State changed to: " + peerConnection.iceGatheringState);
+            if (peerConnection.iceGatheringState === 'complete') {
+                sendOfferPayload();
+                peerConnection.onicegatheringstatechange = null;
+            }
+        };
+    }
+    
+    // -------------------------------------------
+
+  })
+  .catch((error) => {
+    const newError = { message: "Peer connection failed", ...error };
+    peerConnectionOnError(newError, callbacks);
+  });
 }
 
 const peerConnectionOnError = (error, callbacks) => {
@@ -113,7 +180,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks) => {
 const websocketOnMessage = (event, publishSettings, peerConnection, callbacks) => {
 
   let msgJSON = JSON.parse(event.data);
-  let msgStatus = Number(msgJSON['status']);
+  let msgStatus = Number(msgJSON['statusCode']);
 
   if(msgStatus === 504) {
     // we need to swallow these because they happen as new streams join and we don't want to break the connection over it
@@ -123,7 +190,11 @@ const websocketOnMessage = (event, publishSettings, peerConnection, callbacks) =
   }
   else {
 
-    let sdpData = msgJSON['sdp'];
+    let sdpData = {
+      "sdp" : msgJSON['message']['sdp'],
+      "type": "answer"
+    }
+
     if (sdpData !== undefined) {
 
       let mungeData = {};
@@ -143,13 +214,13 @@ const websocketOnMessage = (event, publishSettings, peerConnection, callbacks) =
         );
     }
 
-    let iceCandidates = msgJSON['iceCandidates'];
-    if (iceCandidates !== undefined) {
-      for (let index in iceCandidates) {
-        console.log('websocketOnMessage.iceCandidates: ' + iceCandidates[index]);
-        peerConnection.addIceCandidate(new RTCIceCandidate(iceCandidates[index]));
-      }
-    }
+    // let iceCandidates = msgJSON['iceCandidates'];
+    // if (iceCandidates !== undefined) {
+    //   for (let index in iceCandidates) {
+    //     console.log('websocketOnMessage.iceCandidates: ' + iceCandidates[index]);
+    //     peerConnection.addIceCandidate(new RTCIceCandidate(iceCandidates[index]));
+    //   }
+    // }
   }
 }
 
@@ -188,7 +259,7 @@ const startPublish = (publishSettings, websocket, callbacks) =>
     else {
       validateStreamParams(publishSettings);
       if (websocket == null) {
-        websocket = new WebSocket (publishSettings.signalingURL + "?appName=" + publishSettings.applicationName);
+        websocket = new WebSocket (publishSettings.signalingURL + "?webrtcImplementation=modern");
       }
       if (websocket != null)
       {
