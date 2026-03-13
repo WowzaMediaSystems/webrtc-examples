@@ -125,6 +125,12 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
 const websocketOnMessage = (event, publishSettings, peerConnection, callbacks, session) => {
 
   let msgJSON = JSON.parse(event.data);
+
+  if (msgJSON.messageType === "CANDIDATE") {
+    peerConnection.addIceCandidate(new RTCIceCandidate({ candidate: msgJSON.candidate }));
+    return;
+  }
+
   let msgStatus = Number(msgJSON['statusCode']);
 
   if (msgStatus === 504) {
@@ -149,16 +155,6 @@ const websocketOnMessage = (event, publishSettings, peerConnection, callbacks, s
       peerConnection
         .setRemoteDescription(new RTCSessionDescription(sdpData))
         .catch((error) => { peerConnectionOnError(error, callbacks); });
-    }
-
-    if (msgJSON.message?.iceCandidates) {
-      for (const candidate of msgJSON.message.iceCandidates) {
-        peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-      }
-    }
-
-    if (msgJSON.message?.iceCandidate) {
-      peerConnection.addIceCandidate(new RTCIceCandidate(msgJSON.message.iceCandidate));
     }
   }
 }

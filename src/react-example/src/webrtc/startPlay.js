@@ -141,6 +141,12 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
 
   let msgJSON = JSON.parse(event.data);
   console.log(`Websocket Response: ${JSON.stringify(msgJSON)}`);
+
+  if (msgJSON.messageType === "CANDIDATE") {
+    peerConnection.addIceCandidate(new RTCIceCandidate({ candidate: msgJSON.candidate }));
+    return;
+  }
+
   let msgStatus = Number(msgJSON['statusCode']);
   console.log(`Status: ${msgStatus}`);
   if (msgStatus === 514 || msgStatus === 504) // repeater stream not ready
@@ -177,7 +183,6 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
             console.log("Remote Description Set Successfully.");
           })
           .catch((err) => peerConnectionOnError(err, callbacks));
-
         }
       }
   }
@@ -228,22 +233,6 @@ const websocketSendPlayGetOffer = async (playSettings, websocket, peerConnection
     }
   }
 }
-
-const waitForIceGathering = (pc) => {
-  return new Promise((resolve) => {
-    if (pc.iceGatheringState === "complete") {
-      resolve();
-    } else {
-      const checkState = () => {
-        if (pc.iceGatheringState === "complete") {
-          pc.removeEventListener("icegatheringstatechange", checkState);
-          resolve();
-        }
-      };
-      pc.addEventListener("icegatheringstatechange", checkState);
-    }
-  });
-};
 
 // startPlay
 // callbacks:
