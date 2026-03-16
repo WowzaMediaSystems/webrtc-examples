@@ -127,7 +127,7 @@ const websocketOnMessage = (event, publishSettings, peerConnection, callbacks, s
   let msgJSON = JSON.parse(event.data);
 
   if (msgJSON.messageType === "CANDIDATE") {
-    peerConnection.addIceCandidate(new RTCIceCandidate({ candidate: msgJSON.candidate }));
+    peerConnection.addIceCandidate(new RTCIceCandidate({ candidate: msgJSON.candidate, sdpMLineIndex: 0 }));
     return;
   }
 

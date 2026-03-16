@@ -143,7 +143,7 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
   console.log(`Websocket Response: ${JSON.stringify(msgJSON)}`);
 
   if (msgJSON.messageType === "CANDIDATE") {
-    peerConnection.addIceCandidate(new RTCIceCandidate({ candidate: msgJSON.candidate }));
+    peerConnection.addIceCandidate(new RTCIceCandidate({ candidate: msgJSON.candidate, sdpMLineIndex: 0 }));
     return;
   }
 
