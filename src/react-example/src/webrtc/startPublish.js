@@ -226,6 +226,7 @@ const startPublish = (publishSettings, websocket, callbacks) =>
 const startPublishWhip = async (publishSettings, callbacks) => {
   let peerConnection;
   let sessionUrl;
+  const pendingCandidates = [];
 
   try {
     validateStreamParams(publishSettings);
@@ -236,6 +237,21 @@ const startPublishWhip = async (publishSettings, callbacks) => {
       const connected = event.currentTarget.connectionState === "connected";
       if (callbacks.onConnectionStateChange)
         callbacks.onConnectionStateChange({ connected });
+    };
+
+    peerConnection.onicecandidate = async (event) => {
+      const candidate = event.candidate ? event.candidate.candidate : "";
+
+      if (!sessionUrl) {
+        pendingCandidates.push(candidate);
+        return;
+      }
+
+      await fetch(sessionUrl, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/trickle-ice-sdpfrag" },
+        body: candidate
+      });
     };
 
     let audioSender;
@@ -253,18 +269,14 @@ const startPublishWhip = async (publishSettings, callbacks) => {
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 
-    await waitForIceGathering(peerConnection);
-
     console.log("Sending WHIP Offer:");
     console.log(peerConnection.localDescription.sdp);
 
-    const whipUrl = `${publishSettings.signalingURL}/${publishSettings.applicationName}/${publishSettings.streamName}/whip`
+    const whipUrl = `${publishSettings.signalingURL}/${publishSettings.applicationName}/${publishSettings.streamName}/whip`;
 
     const response = await fetch(whipUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/sdp"
-      },
+      headers: { "Content-Type": "application/sdp" },
       body: peerConnection.localDescription.sdp
     });
 
@@ -274,6 +286,15 @@ const startPublishWhip = async (publishSettings, callbacks) => {
 
     const locationHeader = response.headers.get("Location");
     sessionUrl = new URL(locationHeader, publishSettings.signalingURL).toString();
+
+    for (const candidate of pendingCandidates) {
+      await fetch(sessionUrl, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/trickle-ice-sdpfrag" },
+        body: candidate
+      });
+    }
+    pendingCandidates.length = 0;
 
     const answerSDP = await response.text();
 
@@ -288,11 +309,10 @@ const startPublishWhip = async (publishSettings, callbacks) => {
     if (callbacks.onSetPeerConnection)
       callbacks.onSetPeerConnection({ peerConnection });
 
-    // Store session URL for deleting on stop
     peerConnection._whipSessionUrl = sessionUrl;
 
   } catch (e) {
-    console.log(e.message)
+    console.log(e.message);
     if (callbacks.onError)
       callbacks.onError(e);
   }
