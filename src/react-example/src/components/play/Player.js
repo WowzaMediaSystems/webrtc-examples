@@ -25,7 +25,7 @@ const Player = () => {
     if (playSettings.playStart && !playSettings.playStarting && !connected)
     {
       dispatch({type:PlaySettingsActions.SET_PLAY_FLAGS, playStart:false, playStarting:true});
-      startPlay(playSettings,websocket,{
+      startPlay(playSettings, {
         onError: (error) => {
           dispatch({type:ErrorsActions.SET_ERROR_MESSAGE,message:error.message});
         },
