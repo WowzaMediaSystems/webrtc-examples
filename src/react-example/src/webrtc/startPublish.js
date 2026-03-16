@@ -1,157 +1,104 @@
-
 // Utilities
 
-const getStreamInfo = (publishSettings) => {
-
+const getStreamInfo = (publishSettings, session) => {
   return {
-    applicationName:publishSettings.applicationName,
-    streamName:publishSettings.streamName,
-    sessionId:"[empty]"
+    applicationName: publishSettings.applicationName,
+    streamName: publishSettings.streamName,
+    sessionId: session.sessionId
   };
 }
 
 const getUserData = (publishSettings) => {
-
   return { param1: 'value1' };
 }
 
 // PeerConnection Functions
 
-/*
-const peerConnectionCreateOfferSuccess = (description, publishSettings, websocket, peerConnection, callbacks) => {
-
-  console.log("peerConnectionCreateOfferSuccess: SDP:");
-  console.log(description.sdp+'');
-
-  let mungeData = {};
-
-  if (publishSettings.audioBitrate != null)
-    mungeData.audioBitrate = publishSettings.audioBitrate;
-  if (publishSettings.videoBitrate != null)
-    mungeData.videoBitrate = publishSettings.videoBitrate;
-  if (publishSettings.videoFrameRate != null)
-    mungeData.videoFrameRate = publishSettings.videoFrameRate;
-  if (publishSettings.videoCodec != null)
-    mungeData.videoCodec = publishSettings.videoCodec;
-  if (publishSettings.audioCodec != null)
-    mungeData.audioCodec = publishSettings.audioCodec;
-
-
-  console.log("peerConnectionCreateOfferSuccess: Setting local description SDP: ");
-  console.log(description.sdp);
-
-  peerConnection
-  .setLocalDescription(description)
-  .then(() => {
-    const streamInfo = getStreamInfo(publishSettings);
-    const payload = {
-      messageType: "OFFER",
-      action: "PUBLISH",
-      sdp: description.sdp,
-      applicationName: streamInfo.applicationName,
-      streamName: streamInfo.streamName,
-      connectionId: streamInfo.sessionId,
-      //userData: getUserData(publishSettings) TODO do we need this?
-    };
-
-    websocket.send(JSON.stringify(payload));
-  })
-  .catch((error) => {
-    const newError = { message: "Peer connection failed", ...error };
-    peerConnectionOnError(newError, callbacks);
-  });
-}
-*/
-// PeerConnection Functions
-
-const peerConnectionCreateOfferSuccess = (description, publishSettings, websocket, peerConnection, callbacks) => {
-
+const peerConnectionCreateOfferSuccess = (description, publishSettings, websocket, peerConnection, callbacks, session) => {
   console.log("peerConnectionCreateOfferSuccess: Setting local description SDP: ");
 
   peerConnection
-  .setLocalDescription(description)
-  .then(() => {
-    
-    
-    const sendOfferPayload = () => {
-      
-      const streamInfo = getStreamInfo(publishSettings);
-      const updatedSdp = peerConnection.localDescription.sdp; 
-      
-      console.log("ICE Gathering Complete. Sending Offer with Candidates:");
-      console.log(updatedSdp);
-
+    .setLocalDescription(description)
+    .then(() => {
+      const streamInfo = getStreamInfo(publishSettings, session);
       const payload = {
         messageType: "OFFER",
         action: "PUBLISH",
-        sdp: updatedSdp, 
+        sdp: peerConnection.localDescription.sdp,
         applicationName: streamInfo.applicationName,
         streamName: streamInfo.streamName,
         connectionId: streamInfo.sessionId,
       };
-
+      console.log("Sending offer:", JSON.stringify(payload));
       websocket.send(JSON.stringify(payload));
-    };
-
-
-    if (peerConnection.iceGatheringState === 'complete') {
-        sendOfferPayload();
-    } else {
-        peerConnection.onicegatheringstatechange = () => {
-            console.log("ICE Gathering State changed to: " + peerConnection.iceGatheringState);
-            if (peerConnection.iceGatheringState === 'complete') {
-                sendOfferPayload();
-                peerConnection.onicegatheringstatechange = null;
-            }
-        };
-    }
-    
-    // -------------------------------------------
-
-  })
-  .catch((error) => {
-    const newError = { message: "Peer connection failed", ...error };
-    peerConnectionOnError(newError, callbacks);
-  });
+    })
+    .catch((error) => {
+      const newError = { message: "Peer connection failed", ...error };
+      peerConnectionOnError(newError, callbacks);
+    });
 }
 
 const peerConnectionOnError = (error, callbacks) => {
   console.log('peerConnectionOnError');
   console.log(error);
   if (callbacks.onError)
-    callbacks.onError({message:'PeerConnection Error: '+error.message});
+    callbacks.onError({ message: 'PeerConnection Error: ' + error.message });
 }
 
 
 // Websocket Functions
 
-const websocketOnOpen = (publishSettings, websocket, callbacks) => {
+const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
 
   let peerConnection;
 
   try {
     peerConnection = new RTCPeerConnection();
 
+    peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        const candidatePayload = {
+          messageType: "CANDIDATE",
+          action: "PUBLISH",
+          applicationName: publishSettings.applicationName,
+          streamName: publishSettings.streamName,
+          connectionId: session.sessionId,
+          candidate: event.candidate.candidate,
+        };
+        console.log('Sending ICE candidate:', JSON.stringify(candidatePayload));
+        websocket.send(JSON.stringify(candidatePayload));
+      } else {
+        // End of candidates
+        const endOfCandidatesPayload = {
+          messageType: "CANDIDATE",
+          action: "PUBLISH",
+          applicationName: publishSettings.applicationName,
+          streamName: publishSettings.streamName,
+          connectionId: session.sessionId,
+          candidate: ""
+        };
+        console.log('Sending end of candidates:', JSON.stringify(endOfCandidatesPayload));
+        websocket.send(JSON.stringify(endOfCandidatesPayload));
+      }
+    };
+
     peerConnection.onnegotiationneeded = (event) => {
       peerConnection.createOffer()
-      .then((description) => {
-        peerConnectionCreateOfferSuccess(description,publishSettings,websocket,peerConnection,callbacks);
-      })
-      .catch((e)=>{
-        peerConnectionOnError(e,callbacks);
-      })
+        .then((description) => {
+          peerConnectionCreateOfferSuccess(description, publishSettings, websocket, peerConnection, callbacks, session);
+        })
+        .catch((e) => {
+          peerConnectionOnError(e, callbacks);
+        })
     }
 
     peerConnection.onconnectionstatechange = (event) => {
-      if (event.currentTarget.connectionState === 'connected')
-      {
+      if (event.currentTarget.connectionState === 'connected') {
         if (callbacks.onConnectionStateChange)
-          callbacks.onConnectionStateChange({connected:true});
-      }
-      else
-      {
+          callbacks.onConnectionStateChange({ connected: true });
+      } else {
         if (callbacks.onConnectionStateChange)
-          callbacks.onConnectionStateChange({connected:false});
+          callbacks.onConnectionStateChange({ connected: false });
       }
     }
 
@@ -163,62 +110,52 @@ const websocketOnOpen = (publishSettings, websocket, callbacks) => {
       videoSender = peerConnection.addTrack(publishSettings.videoTrack);
 
     if (callbacks.onSetSenders)
-      callbacks.onSetSenders({audioSender:audioSender,videoSender:videoSender});
+      callbacks.onSetSenders({ audioSender: audioSender, videoSender: videoSender });
 
-    websocket.addEventListener ("message", (event) => { websocketOnMessage(event, publishSettings, peerConnection, callbacks); });
+    websocket.addEventListener("message", (event) => { websocketOnMessage(event, publishSettings, peerConnection, callbacks, session); });
 
   }
   catch (e) {
     websocketOnError(e, callbacks);
   }
   if (callbacks.onSetPeerConnection)
-    callbacks.onSetPeerConnection({peerConnection:peerConnection});
+    callbacks.onSetPeerConnection({ peerConnection: peerConnection });
 }
 
-const websocketOnMessage = (event, publishSettings, peerConnection, callbacks) => {
+const websocketOnMessage = (event, publishSettings, peerConnection, callbacks, session) => {
 
   let msgJSON = JSON.parse(event.data);
+
+  if (msgJSON.messageType === "CANDIDATE") {
+    peerConnection.addIceCandidate(new RTCIceCandidate({ candidate: msgJSON.candidate, sdpMLineIndex: 0 }));
+    return;
+  }
+
   let msgStatus = Number(msgJSON['statusCode']);
 
-  if(msgStatus === 504) {
-    // we need to swallow these because they happen as new streams join and we don't want to break the connection over it
+  if (msgStatus === 504) {
     console.log("New stream connecting to Wowza Streaming Engine");
-  }else if (msgStatus !== 200) {
-    websocketOnError({message:msgJSON['statusDescription']},callbacks);
-  }
-  else {
+  } else if (msgStatus !== 200) {
+    websocketOnError({ message: msgJSON['statusDescription'] }, callbacks);
+  } else {
 
-    let sdpData = {
-      "sdp" : msgJSON['message']['sdp'],
-      "type": "answer"
+    if (msgJSON.message?.connectionId) {
+      session.sessionId = msgJSON.message.connectionId;
     }
 
-    if (sdpData !== undefined) {
-
-      let mungeData = {};
-
-      if (publishSettings.audioBitrate !== undefined)
-        mungeData.audioBitrate = publishSettings.audioBitrate;
-      if (publishSettings.videoBitrate !== undefined)
-        mungeData.videoBitrate = publishSettings.videoBitrate;
+    if (msgJSON.message?.sdp) {
+      let sdpData = {
+        "sdp": msgJSON.message.sdp,
+        "type": "answer"
+      }
 
       console.log("Setting remote description SDP:");
       console.log(sdpData.sdp);
 
       peerConnection
-        .setRemoteDescription(new RTCSessionDescription(sdpData),
-          () => {},
-          (error) => { peerConnectionOnError(error,callbacks); }
-        );
+        .setRemoteDescription(new RTCSessionDescription(sdpData))
+        .catch((error) => { peerConnectionOnError(error, callbacks); });
     }
-
-    // let iceCandidates = msgJSON['iceCandidates'];
-    // if (iceCandidates !== undefined) {
-    //   for (let index in iceCandidates) {
-    //     console.log('websocketOnMessage.iceCandidates: ' + iceCandidates[index]);
-    //     peerConnection.addIceCandidate(new RTCIceCandidate(iceCandidates[index]));
-    //   }
-    // }
   }
 }
 
@@ -226,7 +163,7 @@ const websocketOnError = (error, callbacks) => {
   console.log('Websocket Error');
   console.log(error);
   if (callbacks.onError)
-    callbacks.onError({message:'Websocket Error: '+error.message});
+    callbacks.onError({ message: 'Websocket Error: ' + error.message });
 }
 
 // startPublish
@@ -256,15 +193,20 @@ const startPublish = (publishSettings, websocket, callbacks) =>
     }
     else {
       validateStreamParams(publishSettings);
+
+      const session = {
+        sessionId: '[empty]'
+      };
+      
       if (websocket == null) {
-        websocket = new WebSocket (publishSettings.signalingURL + "?webrtcImplementation=modern");
+        websocket = new WebSocket(publishSettings.signalingURL + "?webrtcImplementation=modern");
       }
-      if (websocket != null)
-      {
+
+      if (websocket != null) {
         console.log(publishSettings);
         websocket.binaryType = 'arraybuffer';
 
-        websocket.addEventListener("open", () => { websocketOnOpen(publishSettings, websocket, callbacks); });
+        websocket.addEventListener("open", () => { websocketOnOpen(publishSettings, websocket, callbacks, session); });
         websocket.addEventListener("error", (error) => { websocketOnError(error, callbacks); });
 
         if (callbacks.onSetWebsocket)
@@ -272,12 +214,10 @@ const startPublish = (publishSettings, websocket, callbacks) =>
       }
     }
   }
-  catch (e)
-  {
+  catch (e) {
     if (callbacks.onError)
       callbacks.onError(e);
   }
-
 }
 
 const startPublishWhip = async (publishSettings, callbacks) => {
