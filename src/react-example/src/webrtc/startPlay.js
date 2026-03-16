@@ -66,9 +66,11 @@ const peerConnectionOnError = (error, callbacks) => {
 
 // Websocket Functions
 
-const websocketOnOpen = (playSettings, websocket, callbacks, session) => {
+const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
 
   let peerConnection;
+  const secureTokenData = getSecureTokenData(playSettings);
+  const secureToken = await getSecureToken(secureTokenData);
   
   try {
     peerConnection = new RTCPeerConnection();
@@ -77,6 +79,38 @@ const websocketOnOpen = (playSettings, websocket, callbacks, session) => {
     peerConnection.ontrack = (event) => {
       if (callbacks.onPeerConnectionOnTrack)
         callbacks.onPeerConnectionOnTrack(event);
+    };
+
+    peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        const candidatePayload = {
+          messageType: "CANDIDATE",
+          action: "VIEW",
+          applicationName: playSettings.applicationName,
+          streamName: playSettings.streamName,
+          connectionId: session.sessionId,
+          candidate: event.candidate.candidate,
+        };
+
+        if (secureToken) {
+          candidatePayload.secureToken = secureToken;
+        }
+        
+        console.log('Sending ICE candidate:', JSON.stringify(candidatePayload));
+        websocket.send(JSON.stringify(candidatePayload));
+      } else {
+        // End of candidates
+        const endOfCandidatesPayload = {
+          messageType: "CANDIDATE",
+          action: "VIEW",
+          applicationName: playSettings.applicationName,
+          streamName: playSettings.streamName,
+          connectionId: session.sessionId,
+          candidate: ""
+        };
+        console.log('Sending end of candidates:', JSON.stringify(endOfCandidatesPayload));
+        websocket.send(JSON.stringify(endOfCandidatesPayload));
+      }
     };
 
     peerConnection.onconnectionstatechange = (event) => {
@@ -108,6 +142,12 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
 
   let msgJSON = JSON.parse(event.data);
   console.log(`Websocket Response: ${JSON.stringify(msgJSON)}`);
+
+  if (msgJSON.messageType === "CANDIDATE") {
+    peerConnection.addIceCandidate(new RTCIceCandidate({ candidate: msgJSON.candidate, sdpMLineIndex: 0 }));
+    return;
+  }
+
   let msgStatus = Number(msgJSON['statusCode']);
   console.log(`Status: ${msgStatus}`);
   if (msgStatus === 514 || msgStatus === 504) // repeater stream not ready
@@ -144,7 +184,6 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
             console.log("Remote Description Set Successfully.");
           })
           .catch((err) => peerConnectionOnError(err, callbacks));
-
         }
       }
   }
@@ -181,7 +220,6 @@ const websocketSendPlayGetOffer = async (playSettings, websocket, peerConnection
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 
-    await waitForIceGathering(peerConnection);
     console.log('Local SDP:', peerConnection.localDescription.sdp);
 
     const offerPayload = createOfferPayload(playSettings, session, secureToken);
@@ -197,22 +235,6 @@ const websocketSendPlayGetOffer = async (playSettings, websocket, peerConnection
   }
 }
 
-const waitForIceGathering = (pc) => {
-  return new Promise((resolve) => {
-    if (pc.iceGatheringState === "complete") {
-      resolve();
-    } else {
-      const checkState = () => {
-        if (pc.iceGatheringState === "complete") {
-          pc.removeEventListener("icegatheringstatechange", checkState);
-          resolve();
-        }
-      };
-      pc.addEventListener("icegatheringstatechange", checkState);
-    }
-  });
-};
-
 // startPlay
 // callbacks:
 // - onError({message:''})
@@ -224,23 +246,24 @@ const waitForIceGathering = (pc) => {
 const startPlay = (playSettings, websocket, callbacks) => 
 {
   try {
-    
     if (playSettings.useWhep) 
     {
       startPlayWhep(playSettings,callbacks);
-    }else
-    {
+    } else {
+      const session = {
+        sessionId: '[empty]',
+        repeaterRetryCount: 0
+      };
       if (websocket == null)
       {
         websocket = new WebSocket (playSettings.signalingURL + "?webrtcImplementation=modern");
       }
       if (websocket != null)
       {
-        repeaterRetryCount = 0;
 
         websocket.binaryType = 'arraybuffer';
 
-        websocket.addEventListener ("open", () => { websocketOnOpen(playSettings, websocket, callbacks); });
+        websocket.addEventListener ("open", () => { websocketOnOpen(playSettings, websocket, callbacks, session); });
         websocket.addEventListener ("error", (error) => { websocketOnError(error, callbacks); });
 
         if (callbacks.onSetWebsocket)
