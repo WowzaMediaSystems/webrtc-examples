@@ -1,7 +1,5 @@
 // Utilities
 
-import { waitForIceGathering } from "../utils/PeerConnectionUtils";
-
 const getStreamInfo = (publishSettings, session) => {
 
   return {
