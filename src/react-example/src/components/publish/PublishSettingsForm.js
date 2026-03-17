@@ -15,7 +15,7 @@ const PublishSettingsForm = () => {
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [isMicOn, setIsMicOn] = useState(true);
   const SIGNALING_URL_PLACEHOLDER = "wss://[ssl-certificate-domain-name]/webrtc-session.json";
-  const WHIP_URL_PLACEHOLDER = "http://[whip_domain_name]:[whip_port]";
+  const WHIP_URL_PLACEHOLDER = "https://[ssl-certificate-domain-name]:[port]/";
   const [urlPlaceholder, setUrlPlaceholder] = useState(SIGNALING_URL_PLACEHOLDER);
 
   const toggleCamera = () => {
