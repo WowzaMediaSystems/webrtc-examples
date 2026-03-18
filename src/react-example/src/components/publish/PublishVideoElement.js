@@ -1,7 +1,5 @@
 import React, { useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { SET_MEDIA_STREAM } from '../../actions/mediaActions';
-import { SET_PUBLISH_VIDEO_TRACK, SET_PUBLISH_AUDIO_TRACK } from '../../actions/publishSettingsActions';
 
 // Manage the HTML <video> element and the MediaStream used for publishing
 

@@ -15,7 +15,7 @@ const Player = () => {
 
   const dispatch = useDispatch();
   const playSettings = useSelector ((state) => state.playSettings);
-  const { peerConnection, websocket, connected, audioTrack, videoTrack } = useSelector ((state) => state.webrtcPlay);
+  const { peerConnection, websocket, connected } = useSelector ((state) => state.webrtcPlay);
 
   // Listen for changes in the play* flags in the playSettings store
   // and stop or stop playback accordingly

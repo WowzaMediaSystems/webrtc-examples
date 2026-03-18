@@ -11,10 +11,6 @@ const getStreamInfo = (publishSettings, session) => {
   };
 }
 
-const getUserData = (publishSettings) => {
-  return { param1: 'value1' };
-}
-
 // PeerConnection Functions
 
 const peerConnectionCreateOfferSuccess = (description, publishSettings, websocket, peerConnection, callbacks, session) => {
@@ -286,7 +282,7 @@ const startPublishWhip = async (publishSettings, callbacks) => {
     });
 
     if (!response.ok) {
-      throw { message: `WHIP failed: ${response.status}` };
+      throw new Error(`WHIP failed: ${response.status}`);
     }
 
     const locationHeader = response.headers.get("Location");

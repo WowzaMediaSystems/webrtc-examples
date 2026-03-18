@@ -15,11 +15,6 @@ const getStreamInfo = (playSettings, session) => {
   };
 }
 
-const getUserData = (playSettings) => {
-
-  return { param1: 'value1' };
-}
-
 const getSecureTokenData = (playSettings) => {
   // Only return secure token data if secret is provided
   if (!playSettings.secret) {
@@ -38,23 +33,6 @@ const getSecureTokenData = (playSettings) => {
 }
 
 // PeerConnection Functions
-
-const peerConnectionSetRemoteDescriptionSuccess = (description, playSettings, websocket, peerConnection, callbacks) => {
-
-  peerConnection
-    .setLocalDescription(description)
-    .then(() => {
-      const payload = createOfferPayload(playSettings);
-      if (description) {
-        payload.sdp = description.sdp;
-      }
-      websocket.send(JSON.stringify(payload));
-    })
-    .catch((error)=>{
-      let newError = {message:"Peer connection failed",...error};
-      peerConnectionOnError(newError,callbacks);
-    });
-}
 
 const peerConnectionOnError = (error, callbacks) => {
   console.log('peerConnectionOnError');
