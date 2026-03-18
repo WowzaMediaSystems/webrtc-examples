@@ -200,7 +200,7 @@ const startPublish = (publishSettings, websocket, callbacks) =>
       };
       
       if (websocket == null) {
-        websocket = new WebSocket(publishSettings.signalingURL + "?webrtcImplementation=modern");
+        websocket = new WebSocket(publishSettings.signalingURL + "?webrtcImplementation=v2");
       }
 
       if (websocket != null) {
