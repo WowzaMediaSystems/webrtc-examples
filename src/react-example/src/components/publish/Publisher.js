@@ -51,7 +51,7 @@ const Publisher = () => {
     if (publishSettings.publishStop && !publishSettings.publishStopping && webrtcPublish.connected)
     {
       dispatch({type:PublishSettingsActions.SET_PUBLISH_FLAGS, publishStop:false, publishStopping:true});
-      stopPublish(webrtcPublish.peerConnection,webrtcPublish.websocket,{
+      stopPublish(publishSettings.useWhip, webrtcPublish.peerConnection,webrtcPublish.websocket,{
         onSetPeerConnection: (result) => {
           dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_PEERCONNECTION,peerConnection:result.peerConnection});
         },

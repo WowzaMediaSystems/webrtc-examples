@@ -1,6 +1,7 @@
 // Utilities
 
 const getStreamInfo = (publishSettings, session) => {
+
   return {
     applicationName: publishSettings.applicationName,
     streamName: publishSettings.streamName,
@@ -174,22 +175,30 @@ const websocketOnError = (error, callbacks) => {
 // - onSetWebsocket({websocket:obj})
 // - onSetSenders({audioSender:obj,videoSender:obj})
 
-const startPublish = (publishSettings, websocket, callbacks) => {
+const validateStreamParams = (publishSettings) => {
+  if (!publishSettings.signalingURL)
+      throw { message: "WHIP URL required" };
+
+  if (publishSettings.applicationName.length === 0)
+    throw { message: "Application name required" };
+
+  if (publishSettings.streamName.length === 0)
+    throw { message: "Stream name required" };
+}
+
+const startPublish = (publishSettings, websocket, callbacks) =>
+{
   try {
     if (publishSettings.useWhip) {
-      startPublishWhip();
-    } else {
-      if (publishSettings.applicationName.length === 0) {
-        throw { message: "Application name required" }
-      }
-      if (publishSettings.streamName.length === 0) {
-        throw { message: "Stream name required" }
-      }
+      startPublishWhip(publishSettings, callbacks);
+    }
+    else {
+      validateStreamParams(publishSettings);
 
       const session = {
         sessionId: '[empty]'
       };
-
+      
       if (websocket == null) {
         websocket = new WebSocket(publishSettings.signalingURL + "?webrtcImplementation=modern");
       }
@@ -212,8 +221,100 @@ const startPublish = (publishSettings, websocket, callbacks) => {
   }
 }
 
-const startPublishWhip = () => {
-  console.log("Not implemented");
-}
+const startPublishWhip = async (publishSettings, callbacks) => {
+  let peerConnection;
+  let sessionUrl;
+  const pendingCandidates = [];
+
+  try {
+    validateStreamParams(publishSettings);
+
+    peerConnection = new RTCPeerConnection();
+
+    peerConnection.onconnectionstatechange = (event) => {
+      const connected = event.currentTarget.connectionState === "connected";
+      if (callbacks.onConnectionStateChange)
+        callbacks.onConnectionStateChange({ connected });
+    };
+
+    peerConnection.onicecandidate = async (event) => {
+      const candidate = event.candidate ? event.candidate.candidate : "";
+
+      if (!sessionUrl) {
+        pendingCandidates.push(candidate);
+        return;
+      }
+
+      await fetch(sessionUrl, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/trickle-ice-sdpfrag" },
+        body: candidate
+      });
+    };
+
+    let audioSender;
+    let videoSender;
+
+    if (publishSettings.audioTrack != null)
+      audioSender = peerConnection.addTrack(publishSettings.audioTrack);
+
+    if (publishSettings.videoTrack != null)
+      videoSender = peerConnection.addTrack(publishSettings.videoTrack);
+
+    if (callbacks.onSetSenders)
+      callbacks.onSetSenders({ audioSender, videoSender });
+
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+
+    console.log("Sending WHIP Offer:");
+    console.log(peerConnection.localDescription.sdp);
+
+    const whipUrl = `${publishSettings.signalingURL}/${publishSettings.applicationName}/${publishSettings.streamName}/whip`;
+
+    const response = await fetch(whipUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/sdp" },
+      body: peerConnection.localDescription.sdp
+    });
+
+    if (!response.ok) {
+      throw { message: `WHIP failed: ${response.status}` };
+    }
+
+    const locationHeader = response.headers.get("Location");
+    sessionUrl = new URL(locationHeader, publishSettings.signalingURL).toString();
+
+    for (const candidate of pendingCandidates) {
+      await fetch(sessionUrl, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/trickle-ice-sdpfrag" },
+        body: candidate
+      });
+    }
+    pendingCandidates.length = 0;
+
+    const answerSDP = await response.text();
+
+    console.log("Received WHIP Answer:");
+    console.log(answerSDP);
+
+    await peerConnection.setRemoteDescription({
+      type: "answer",
+      sdp: answerSDP
+    });
+
+    if (callbacks.onSetPeerConnection)
+      callbacks.onSetPeerConnection({ peerConnection });
+
+    peerConnection._whipSessionUrl = sessionUrl;
+
+  } catch (e) {
+    console.log(e.message);
+    if (callbacks.onError)
+      callbacks.onError(e);
+  }
+};
+
 
 export default startPublish;

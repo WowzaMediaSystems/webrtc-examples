@@ -245,22 +245,28 @@ const websocketSendPlayGetOffer = async (playSettings, websocket, peerConnection
 const startPlay = (playSettings, callbacks) => 
 {
   try {
-    const session = {
-      sessionId: '[empty]',
-      repeaterRetryCount: 0
-    };
-    const websocket = new WebSocket (playSettings.signalingURL + "?webrtcImplementation=modern");
-    
-    if (websocket != null)
+    if (playSettings.useWhep) 
     {
+      startPlayWhep(playSettings,callbacks);
+    } else {
+      const session = {
+        sessionId: '[empty]',
+        repeaterRetryCount: 0
+      };
+      
+      const websocket = new WebSocket (playSettings.signalingURL + "?webrtcImplementation=modern");
 
-      websocket.binaryType = 'arraybuffer';
+      if (websocket != null)
+      {
 
-      websocket.addEventListener ("open", () => { websocketOnOpen(playSettings, websocket, callbacks, session); });
-      websocket.addEventListener ("error", (error) => { websocketOnError(error, callbacks); });
+        websocket.binaryType = 'arraybuffer';
 
-      if (callbacks.onSetWebsocket)
-        callbacks.onSetWebsocket({websocket:websocket});
+        websocket.addEventListener ("open", () => { websocketOnOpen(playSettings, websocket, callbacks, session); });
+        websocket.addEventListener ("error", (error) => { websocketOnError(error, callbacks); });
+
+        if (callbacks.onSetWebsocket)
+          callbacks.onSetWebsocket({websocket:websocket});
+      }
     }
   }
   catch (e)
@@ -270,4 +276,91 @@ const startPlay = (playSettings, callbacks) =>
   }
 
 }
+
+const startPlayWhep = async (playSettings, callbacks) => {
+  let peerConnection;
+  let sessionUrl;
+  const pendingCandidates = [];
+
+  try {
+    peerConnection = new RTCPeerConnection();
+
+    peerConnection.addTransceiver("video", { direction: "recvonly" });
+    peerConnection.addTransceiver("audio", { direction: "recvonly" });
+
+    peerConnection.ontrack = (event) => {
+      if (callbacks.onPeerConnectionOnTrack) {
+        callbacks.onPeerConnectionOnTrack(event);
+      }
+    };
+
+    peerConnection.onconnectionstatechange = (event) => {
+      if (callbacks.onConnectionStateChange) {
+        callbacks.onConnectionStateChange({
+          connected: event.currentTarget.connectionState === "connected"
+        });
+      }
+    };
+
+    peerConnection.onicecandidate = async (event) => {
+      const candidate = event.candidate ? event.candidate.candidate : "";
+
+      if (!sessionUrl) {
+        pendingCandidates.push(candidate);
+        return;
+      }
+
+      await fetch(sessionUrl, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/trickle-ice-sdpfrag" },
+        body: candidate
+      });
+    };
+
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+
+    const whepUrl = `${playSettings.signalingURL}/${playSettings.applicationName}/${playSettings.streamName}/whep`;
+
+    const response = await fetch(whepUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/sdp" },
+      body: peerConnection.localDescription.sdp
+    });
+
+    if (!response.ok) {
+      throw new Error(`WHEP request failed: ${response.status}`);
+    }
+
+    const locationHeader = response.headers.get("Location");
+    if (locationHeader) {
+      const baseUrl = new URL(whepUrl);
+      sessionUrl = new URL(locationHeader, baseUrl).toString();
+      playSettings._whepSessionUrl = sessionUrl;
+
+      for (const candidate of pendingCandidates) {
+        await fetch(sessionUrl, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/trickle-ice-sdpfrag" },
+          body: candidate
+        });
+      }
+      pendingCandidates.length = 0;
+    }
+
+    const answerSdp = await response.text();
+
+    await peerConnection.setRemoteDescription({
+      type: "answer",
+      sdp: answerSdp
+    });
+
+    if (callbacks.onSetPeerConnection)
+      callbacks.onSetPeerConnection({ peerConnection });
+
+  } catch (error) {
+    if (callbacks.onError)
+      callbacks.onError(error);
+  }
+};
 export default startPlay;
