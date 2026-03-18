@@ -19,7 +19,7 @@ const playUrlParametersMap = {
 };
 
 const SIGNALING_URL_PLACEHOLDER = "wss://[ssl-certificate-domain-name]/webrtc-session.json";
-const WHEP_URL_PLACEHOLDER = "http://[whep_domain_name]:[whep_port]";
+const WHEP_URL_PLACEHOLDER = "https://[ssl-certificate-domain-name]:[port]/";
 
 const FormInput = ({ label, id, value, onChange, disabled, ...props }) => (
   <div className="form-group">
