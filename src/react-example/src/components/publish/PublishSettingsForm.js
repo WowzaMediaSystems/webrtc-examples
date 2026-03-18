@@ -29,9 +29,8 @@ const PublishSettingsForm = () => {
   const WHIP_URL_PLACEHOLDER = "https://[ssl-certificate-domain-name]:[port]/";
   const [urlPlaceholder, setUrlPlaceholder] = useState(SIGNALING_URL_PLACEHOLDER);
 
-  const [initialized, setInitialized] = useState(true); // already imported useState
+  const [initialized, setInitialized] = useState(true);
 
-  // Load settings from cookie and URL on mount
   useEffect(() => {
     const cookieValues = getCookieValues(CookieName);
     const queryParams = QueryString.parse(window.location.search);
@@ -60,7 +59,6 @@ const PublishSettingsForm = () => {
     setInitialized(true);
   }, [dispatch]);
 
-  // Save settings to cookie
   useEffect(() => {
     const cookieValues = getCookieValues(CookieName);
 
@@ -160,7 +158,6 @@ const PublishSettingsForm = () => {
     }
     dispatch(PublishSettingsActions.startPublish());
   };
-  
   if (!initialized) return null;
 
   return (
