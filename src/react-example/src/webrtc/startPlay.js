@@ -254,7 +254,7 @@ const startPlay = (playSettings, callbacks) =>
         repeaterRetryCount: 0
       };
       
-      const websocket = new WebSocket (playSettings.signalingURL + "?webrtcImplementation=modern");
+      const websocket = new WebSocket (playSettings.signalingURL + "?webrtcImplementation=v2");
 
       if (websocket != null)
       {
