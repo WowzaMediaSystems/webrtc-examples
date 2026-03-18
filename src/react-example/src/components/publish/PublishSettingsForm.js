@@ -5,6 +5,17 @@ import * as PublishSettingsActions from '../../actions/publishSettingsActions';
 import * as PublishOptions from '../../constants/PublishOptions';
 import PublishAudioDropdown from './PublishAudioDropdown';
 import PublishVideoDropdown from './PublishVideoDropdown';
+import Cookies from 'js-cookie';
+import QueryString from 'query-string';
+import { getCookieValues } from '../../utils/CookieUtils';
+import CookieName from '../../constants/CookieName';
+
+const publishUrlParametersMap = {
+  signalingURL: "publishSignalingURL",
+  applicationName: "publishApplicationName",
+  streamName: "publishStreamName",
+  useWhip: "publishUseWhip"
+};
 
 const PublishSettingsForm = () => {
 
@@ -17,6 +28,51 @@ const PublishSettingsForm = () => {
   const SIGNALING_URL_PLACEHOLDER = "wss://[ssl-certificate-domain-name]/webrtc-session.json";
   const WHIP_URL_PLACEHOLDER = "https://[ssl-certificate-domain-name]:[port]/";
   const [urlPlaceholder, setUrlPlaceholder] = useState(SIGNALING_URL_PLACEHOLDER);
+
+  const [initialized, setInitialized] = useState(true); // already imported useState
+
+  // Load settings from cookie and URL on mount
+  useEffect(() => {
+    const cookieValues = getCookieValues(CookieName);
+    const queryParams = QueryString.parse(window.location.search);
+    const savedValues = { ...cookieValues, ...queryParams };
+
+    const actionMap = {
+      signalingURL: PublishSettingsActions.SET_PUBLISH_SIGNALING_URL,
+      applicationName: PublishSettingsActions.SET_PUBLISH_APPLICATION_NAME,
+      streamName: PublishSettingsActions.SET_PUBLISH_STREAM_NAME,
+      useWhip: PublishSettingsActions.SET_PUBLISH_USE_WHIP,
+    };
+
+    Object.entries(publishUrlParametersMap).forEach(([stateKey, cookieKey]) => {
+      const value = savedValues[cookieKey];
+      if (value != null) {
+        const actionType = actionMap[stateKey];
+        if (actionType) {
+          const payload = stateKey === 'useWhip'
+            ? { [stateKey]: value === 'true' || value === true }
+            : { [stateKey]: value };
+          dispatch({ type: actionType, ...payload });
+        }
+      }
+    });
+
+    setInitialized(true);
+  }, [dispatch]);
+
+  // Save settings to cookie
+  useEffect(() => {
+    const cookieValues = getCookieValues(CookieName);
+
+    Object.entries(publishUrlParametersMap).forEach(([stateKey, cookieKey]) => {
+      if (publishSettings[stateKey] != null) {
+        cookieValues[cookieKey] = publishSettings[stateKey];
+      }
+    });
+
+    Cookies.set(CookieName, escape(JSON.stringify(cookieValues)));
+  }, [publishSettings]);
+
 
   const toggleCamera = () => {
     setIsCameraOn(!isCameraOn);
@@ -104,6 +160,8 @@ const PublishSettingsForm = () => {
     }
     dispatch(PublishSettingsActions.startPublish());
   };
+  
+  if (!initialized) return null;
 
   return (
     <div className="col-md-4 col-sm-12" id="publish-settings">

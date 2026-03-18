@@ -16,7 +16,8 @@ const playUrlParametersMap = {
   timeout: "playTimeout",
   prefix: "playPrefix",
   isIp: "playIsIp",
-  ip: "playIp"
+  ip: "playIp",
+  useWhep: "playUseWhep"
 };
 
 const SIGNALING_URL_PLACEHOLDER = "wss://[ssl-certificate-domain-name]/webrtc-session.json";
@@ -44,7 +45,7 @@ const FormCheckbox = ({ label, id, checked, onChange, disabled }) => (
       name={id}
       className="form-check-input orange-checkbox"
       type="checkbox"
-      value={checked || false}
+      checked={checked || false}
       disabled={disabled}
       onChange={onChange}
     />
@@ -79,15 +80,22 @@ const PlaySettingsForm = () => {
           timeout: PlaySettingsActions.SET_PLAY_TIMEOUT,
           prefix: PlaySettingsActions.SET_PLAY_PREFIX,
           isIp: PlaySettingsActions.SET_PLAY_IS_IP,
-          ip: PlaySettingsActions.SET_PLAY_IP
+          ip: PlaySettingsActions.SET_PLAY_IP,
+          useWhep: PlaySettingsActions.SET_PLAY_USE_WHEP
         };
+
+        const booleanKeys = ['isIp', 'useWhep'];
 
         const actionType = actionMap[stateKey];
         if (actionType) {
-          const payload = stateKey === 'isIp'
+          const payload = booleanKeys.includes(stateKey)
             ? { [stateKey]: value === 'true' || value === true }
             : { [stateKey]: value };
           dispatch({ type: actionType, ...payload });
+        }
+
+        if (stateKey === 'useWhep' && (value === 'true' || value === true)) {
+          setUrlPlaceholder(WHEP_URL_PLACEHOLDER);
         }
       }
     });
