@@ -4,6 +4,7 @@ import QueryString from 'query-string';
 import Cookies from 'js-cookie';
 
 import * as PlaySettingsActions from '../../actions/playSettingsActions';
+import * as ErrorsActions from '../../actions/errorsActions';
 import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
 
@@ -140,6 +141,15 @@ const PlaySettingsForm = () => {
   };
 
   const handlePlay = () => {
+
+    if (!playSettings.signalingURL || playSettings.signalingURL.trim() === '') {
+      dispatch({
+        type: ErrorsActions.SET_ERROR_MESSAGE,
+        message: 'Signaling URL is required'
+      });
+      return;
+    }
+
     dispatch(PlaySettingsActions.startPlay());
   } 
   const handleStop = () => dispatch(PlaySettingsActions.stopPlay());
