@@ -78,6 +78,7 @@ const PublishSettingsForm = () => {
       });
 
   }, [
+    dispatch,
     publishSettings.videoFrameSize,
     publishSettings.videoFrameRate,
     publishSettings.videoTrack

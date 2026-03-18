@@ -15,16 +15,16 @@ const PeerPlayer = (props) => {
   const [audioTrack, setAudioTrack] = useState();
   const [videoTrack, setVideoTrack] = useState();
   // const [playerType, setPlayerType] = useState((props.streamName === publishSettings.streamName) ? PUBLISH_PLAYER : PEER_PLAYER);
-  let mounted = true;
   let playerType = (props.streamName === publishSettings.streamName) ? PUBLISH_PLAYER : PEER_PLAYER;
 
+  const mounted = useRef(true);
+
   useEffect(() => {
-    if(mounted){
+    if (mounted.current) {
       console.log("mounted");
-      if(playerType === PUBLISH_PLAYER){
+      if (playerType === PUBLISH_PLAYER) {
         console.log("publish player");
-        if (stream != null && videoElement.current != null)
-        {
+        if (stream != null && videoElement.current != null) {
           videoElement.current.muted = true;
           videoElement.current.srcObject = stream;
         }
@@ -35,17 +35,13 @@ const PeerPlayer = (props) => {
           applicationName: publishSettings.applicationName,
           streamName: props.streamName,
         }
-        startPlay(playSettings,null,{
+        startPlay(playSettings, null, {
           onPeerConnectionOnTrack: (event) => {
             console.log("getting peer tracks");
-            if (event.track != null && event.track.kind != null)
-            {
-              if (event.track.kind === 'audio')
-              {
+            if (event.track != null && event.track.kind != null) {
+              if (event.track.kind === 'audio') {
                 setAudioTrack(event.track);
-              }
-              else if (event.track.kind === 'video')
-              {
+              } else if (event.track.kind === 'video') {
                 setVideoTrack(event.track);
               }
             }
@@ -53,7 +49,7 @@ const PeerPlayer = (props) => {
           onConnectionStateChange: (result) => {
             console.log("connected state");
             console.log(result);
-            if(mounted)
+            if (mounted.current)
               setConnected(result.connected);
           },
           onError: (e) => {
@@ -62,19 +58,18 @@ const PeerPlayer = (props) => {
         });
       }
     }
-    return () => mounted = false;
+    return () => { mounted.current = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoElement]);
 
   useEffect(() => {
-    if ((playerType === PEER_PLAYER) && connected && mounted) {
-      if(connected){
+    if ((playerType === PEER_PLAYER) && connected && mounted.current) {
+      if (connected) {
         let newStream = new MediaStream();
         if (audioTrack != null)
           newStream.addTrack(audioTrack);
-
         if (videoTrack != null)
           newStream.addTrack(videoTrack);
-
         if (videoElement != null && videoElement.current != null)
           videoElement.current.srcObject = newStream;
       } else {
@@ -82,7 +77,8 @@ const PeerPlayer = (props) => {
           videoElement.current.srcObject = null;
       }
     }
-    return () => mounted = false;
+    return () => { mounted.current = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connected]);
 
   return(

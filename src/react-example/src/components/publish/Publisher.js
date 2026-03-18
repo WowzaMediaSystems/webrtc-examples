@@ -86,7 +86,7 @@ const Publisher = () => {
         }
       });
     }
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   },[dispatch,audioTrack]);
 
   useEffect(() => {
@@ -98,6 +98,7 @@ const Publisher = () => {
       });
     }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   },[dispatch,videoTrack]);
 
 
