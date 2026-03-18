@@ -1,5 +1,7 @@
 // Utilities
 
+import { validateParams } from "../utils/ValidationUtils";
+
 const getStreamInfo = (publishSettings, session) => {
 
   return {
@@ -57,6 +59,8 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
     peerConnection = new RTCPeerConnection();
 
     peerConnection.onicecandidate = (event) => {
+      if (websocket.readyState !== WebSocket.OPEN) return;
+
       if (event.candidate) {
         const candidatePayload = {
           messageType: "CANDIDATE",
@@ -175,23 +179,15 @@ const websocketOnError = (error, callbacks) => {
 // - onSetWebsocket({websocket:obj})
 // - onSetSenders({audioSender:obj,videoSender:obj})
 
-const validateStreamParams = (publishSettings) => {
-
-  if (publishSettings.applicationName.length === 0)
-    throw { message: "Application name required" };
-
-  if (publishSettings.streamName.length === 0)
-    throw { message: "Stream name required" };
-}
-
 const startPublish = (publishSettings, websocket, callbacks) =>
 {
   try {
+    validateParams(publishSettings);
+
     if (publishSettings.useWhip) {
       startPublishWhip(publishSettings, callbacks);
     }
     else {
-      validateStreamParams(publishSettings);
 
       const session = {
         sessionId: '[empty]'
@@ -239,7 +235,6 @@ const startPublishWhip = async (publishSettings, callbacks) => {
   const pendingCandidates = [];
 
   try {
-    validateStreamParams(publishSettings);
 
     peerConnection = new RTCPeerConnection();
 

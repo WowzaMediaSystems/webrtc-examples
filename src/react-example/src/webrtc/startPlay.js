@@ -1,5 +1,6 @@
 import stopPlay from './stopPlay';
 import getSecureToken from './SecureToken';
+import { validateParams } from '../utils/ValidationUtils';
 
 // Utilities
 
@@ -157,13 +158,13 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
       setTimeout(() => { websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks) }, 1000);
     } else {
       websocketOnError({message:'Live stream repeater timeout: ' + playSettings.streamName}, callbacks);
-      stopPlay(peerConnection, websocket, callbacks);
+      stopPlay(playSettings, peerConnection, websocket, callbacks);
     }
 
   } else if (msgStatus !== 200) {
 
     websocketOnError({message:msgJSON['statusDescription']},callbacks);
-    stopPlay(peerConnection, websocket, callbacks);
+    stopPlay(playSettings, peerConnection, websocket, callbacks);
 
   } else {
     if (msgJSON.message) {
@@ -245,6 +246,8 @@ const websocketSendPlayGetOffer = async (playSettings, websocket, peerConnection
 const startPlay = (playSettings, callbacks) => 
 {
   try {
+    validateParams(playSettings);
+
     if (playSettings.useWhep) 
     {
       startPlayWhep(playSettings,callbacks);
