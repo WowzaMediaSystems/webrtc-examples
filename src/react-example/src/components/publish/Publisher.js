@@ -26,7 +26,10 @@ const Publisher = () => {
       dispatch({type:PublishSettingsActions.SET_PUBLISH_FLAGS, publishStart:false, publishStarting:true});
       startPublish(publishSettings,webrtcPublish.websocket,{
         onError: (error) => {
-          dispatch({type:ErrorsActions.SET_ERROR_MESSAGE,message:error.message});
+          dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:error.message});
+          dispatch({type:PublishSettingsActions.SET_PUBLISH_FLAGS, publishStarting:false, publishStart:false});
+          dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_WEBSOCKET, websocket:null});
+          dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_PEERCONNECTION, peerConnection:null});
         },
         onConnectionStateChange: (result) => {
           dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_CONNECTED,connected:result.connected});
@@ -83,7 +86,7 @@ const Publisher = () => {
         }
       });
     }
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   },[dispatch,audioTrack]);
 
   useEffect(() => {
@@ -95,6 +98,7 @@ const Publisher = () => {
       });
     }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   },[dispatch,videoTrack]);
 
 

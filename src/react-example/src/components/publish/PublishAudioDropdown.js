@@ -1,10 +1,8 @@
 import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
-import * as ErrorsActions from '../../actions/errorsActions';
-import * as MediaActions from '../../actions/mediaActions';
+import useMediaStream from '../../hooks/useMediaStream';
 import * as PublishSettingsActions from '../../actions/publishSettingsActions';
-import * as PublishOptions from '../../constants/PublishOptions';
 
 import { SET_MEDIA_STREAM } from '../../actions/mediaActions';
 import { SET_PUBLISH_AUDIO_TRACK } from '../../actions/publishSettingsActions';
@@ -15,28 +13,27 @@ const PublishAudioDropdown = () => {
 
   const dispatch = useDispatch();
   const publishSettings = useSelector ((state) => state.publishSettings);
-  const { microphones, constraints, audioTracksMap, stream } = useSelector ((state) => state.media);
+  const { microphones, audioTracksMap } = useSelector ((state) => state.media);
   const { audioTrackDeviceId } = useSelector ((state) => state.publishSettings);
 
   // Handle audioTrack changes
+  const streamRef = useMediaStream();
+
   useEffect(() => {
     let newStream = new MediaStream();
     let audioTrack = undefined;
-    if (audioTrackDeviceId !== '' && audioTracksMap[audioTrackDeviceId] != null)
-    {
+    if (audioTrackDeviceId !== '' && audioTracksMap[audioTrackDeviceId] != null) {
       newStream.addTrack(audioTracksMap[audioTrackDeviceId]);
       audioTrack = audioTracksMap[audioTrackDeviceId];
     }
-    if (stream != null)
-    {
-      let videoTracks = stream.getVideoTracks();
+    if (streamRef.current != null) {
+      let videoTracks = streamRef.current.getVideoTracks();
       if (videoTracks.length > 0)
         newStream.addTrack(videoTracks[0]);
     }
-    dispatch({type:SET_MEDIA_STREAM,stream:newStream});
-    dispatch({type:SET_PUBLISH_AUDIO_TRACK,audioTrack:audioTrack});
-
-  },[dispatch, audioTracksMap, audioTrackDeviceId]);
+    dispatch({ type: SET_MEDIA_STREAM, stream: newStream });
+    dispatch({ type: SET_PUBLISH_AUDIO_TRACK, audioTrack: audioTrack });
+  }, [dispatch, audioTracksMap, audioTrackDeviceId, streamRef]);
 
   return(
     <div className="form-group">

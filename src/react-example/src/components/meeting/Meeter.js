@@ -92,7 +92,7 @@ const Meeter = () => {
       clearInterval(pollingInterval);
       dispatch({type:PublishSettingsActions.SET_PUBLISH_FLAGS, publishStop:false, publishStopping:true});
       dispatch({type:WebRTCMeetingActions.REMOVE_ALL_PLAYERS})
-      stopPublish(webrtcMeeting.peerConnection,webrtcMeeting.websocket,{
+      stopPublish(false, webrtcMeeting.peerConnection,webrtcMeeting.websocket,{
         onSetPeerConnection: (result) => {
           dispatch({type:WebRTCMeetingActions.SET_WEBRTC_MEETING_PEERCONNECTION,peerConnection:result.peerConnection});
         },

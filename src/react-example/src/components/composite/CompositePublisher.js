@@ -49,7 +49,7 @@ const CompositePublisher = () => {
     if (compositeSettings.publishStop && !compositeSettings.publishStopping && webrtcPublish.connected)
     {
       dispatch({type:compositeSettingsActions.SET_COMPOSITE_FLAGS, publishStop:false, publishStopping:true});
-      stopPublish(webrtcPublish.peerConnection,webrtcPublish.websocket,{
+      stopPublish(false, webrtcPublish.peerConnection,webrtcPublish.websocket,{
         onSetPeerConnection: (result) => {
           dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_PEERCONNECTION,peerConnection:result.peerConnection});
         },

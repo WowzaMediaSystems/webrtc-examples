@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import useMediaStream from '../../hooks/useMediaStream';
 import { SET_MEDIA_STREAM } from '../../actions/mediaActions';
 import { SET_PUBLISH_VIDEO_TRACK, SET_PUBLISH_AUDIO_TRACK } from '../../actions/publishSettingsActions';
 import ShareLink from '../shared/ShareLink'
@@ -19,7 +20,6 @@ const MeetingSettingsForm = () => {
   const webrtcMeeting = useSelector ((state) => state.webrtcMeeting);
   const { cameras, microphones } = useSelector ((state) => state.media);
 
-  const { stream } = useSelector ((state) => state.media);
   const { videoTracksMap, displayScreenTrack, audioTracksMap } = useSelector ((state) => state.media);
   const { videoTrack1DeviceId, audioTrackDeviceId } = useSelector ((state) => state.publishSettings);
   const [ initialized, setInitialized ] = useState(false);
@@ -47,49 +47,44 @@ const MeetingSettingsForm = () => {
   },[dispatch]);
 
   // Handle videoTrack1 changes
+  const streamRef = useMediaStream();
+
   useEffect(() => {
     let newStream = new MediaStream();
     let videoTrack = undefined;
-    if (videoTrack1DeviceId === 'screen' && displayScreenTrack != null)
-    {
+    if (videoTrack1DeviceId === 'screen' && displayScreenTrack != null) {
       newStream.addTrack(displayScreenTrack);
       videoTrack = displayScreenTrack;
-    }
-    else if (videoTrack1DeviceId !== '' && videoTrack1DeviceId !== 'screen' && videoTracksMap[videoTrack1DeviceId] != null)
-    {
+    } else if (videoTrack1DeviceId !== '' && videoTrack1DeviceId !== 'screen' && videoTracksMap[videoTrack1DeviceId] != null) {
       newStream.addTrack(videoTracksMap[videoTrack1DeviceId]);
       videoTrack = videoTracksMap[videoTrack1DeviceId];
     }
-    if (stream != null)
-    {
-      let audioTracks = stream.getAudioTracks();
+    if (streamRef.current != null) {
+      let audioTracks = streamRef.current.getAudioTracks();
       if (audioTracks.length > 0)
         newStream.addTrack(audioTracks[0]);
     }
-    dispatch({type:SET_MEDIA_STREAM,stream:newStream});
-    dispatch({type:SET_PUBLISH_VIDEO_TRACK,videoTrack:videoTrack});
+    dispatch({ type: SET_MEDIA_STREAM, stream: newStream });
+    dispatch({ type: SET_PUBLISH_VIDEO_TRACK, videoTrack: videoTrack });
 
-  }, [dispatch, videoTracksMap, displayScreenTrack, videoTrack1DeviceId])
+  }, [dispatch, videoTracksMap, displayScreenTrack, videoTrack1DeviceId, streamRef]);
 
   // Handle audioTrack changes
   useEffect(() => {
     let newStream = new MediaStream();
     let audioTrack = undefined;
-    if (audioTrackDeviceId !== '' && audioTracksMap[audioTrackDeviceId] != null)
-    {
+    if (audioTrackDeviceId !== '' && audioTracksMap[audioTrackDeviceId] != null) {
       newStream.addTrack(audioTracksMap[audioTrackDeviceId]);
       audioTrack = audioTracksMap[audioTrackDeviceId];
     }
-    if (stream != null)
-    {
-      let videoTracks = stream.getVideoTracks();
+    if (streamRef.current != null) {
+      let videoTracks = streamRef.current.getVideoTracks();
       if (videoTracks.length > 0)
         newStream.addTrack(videoTracks[0]);
     }
-    dispatch({type:SET_MEDIA_STREAM,stream:newStream});
-    dispatch({type:SET_PUBLISH_AUDIO_TRACK,audioTrack:audioTrack});
-
-  },[dispatch, audioTracksMap, audioTrackDeviceId]);
+    dispatch({ type: SET_MEDIA_STREAM, stream: newStream });
+    dispatch({ type: SET_PUBLISH_AUDIO_TRACK, audioTrack: audioTrack });
+  }, [dispatch, audioTracksMap, audioTrackDeviceId, streamRef]);
 
   if (!initialized)
     return null;
