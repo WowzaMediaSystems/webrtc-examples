@@ -1,5 +1,6 @@
 // Utilities
 
+import ICE_SERVERS from "../constants/IceServers";
 import { validateParams } from "../utils/ValidationUtils";
 
 const getStreamInfo = (publishSettings, session) => {
@@ -52,7 +53,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
   let peerConnection;
 
   try {
-    peerConnection = new RTCPeerConnection();
+    peerConnection = new RTCPeerConnection(ICE_SERVERS);
 
     peerConnection.onicecandidate = (event) => {
       if (websocket.readyState !== WebSocket.OPEN) return;
@@ -232,7 +233,7 @@ const startPublishWhip = async (publishSettings, callbacks) => {
 
   try {
 
-    peerConnection = new RTCPeerConnection();
+    peerConnection = new RTCPeerConnection(ICE_SERVERS);
 
     peerConnection.onconnectionstatechange = (event) => {
       const connected = event.currentTarget.connectionState === "connected";
