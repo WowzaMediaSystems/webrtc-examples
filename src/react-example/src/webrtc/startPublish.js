@@ -50,6 +50,7 @@ const peerConnectionOnError = (error, callbacks) => {
 const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
 
   let peerConnection;
+  const pendingCandidates = [];
 
   try {
     peerConnection = new RTCPeerConnection();
@@ -66,8 +67,13 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
           connectionId: session.sessionId,
           candidate: event.candidate.candidate,
         };
-        console.log('Sending ICE candidate:', JSON.stringify(candidatePayload));
-        websocket.send(JSON.stringify(candidatePayload));
+        
+        if (session.sessionId === '[empty]') {
+          pendingCandidates.push(candidatePayload);
+        } else {
+          console.log('Sending ICE candidate:', JSON.stringify(candidatePayload));
+          websocket.send(JSON.stringify(candidatePayload));
+        }
       } else {
         // End of candidates
         const endOfCandidatesPayload = {
@@ -78,8 +84,12 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
           connectionId: session.sessionId,
           candidate: ""
         };
-        console.log('Sending end of candidates:', JSON.stringify(endOfCandidatesPayload));
-        websocket.send(JSON.stringify(endOfCandidatesPayload));
+         if (session.sessionId === '[empty]') {
+          pendingCandidates.push(endOfCandidatesPayload);
+         } else {
+          console.log('Sending end of candidates:', JSON.stringify(endOfCandidatesPayload));
+          websocket.send(JSON.stringify(endOfCandidatesPayload));
+         }
       }
     };
 
@@ -113,7 +123,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
     if (callbacks.onSetSenders)
       callbacks.onSetSenders({ audioSender: audioSender, videoSender: videoSender });
 
-    websocket.addEventListener("message", (event) => { websocketOnMessage(event, publishSettings, peerConnection, callbacks, session); });
+    websocket.addEventListener("message", (event) => { websocketOnMessage(event, websocket, peerConnection, callbacks, session, pendingCandidates); });
 
   }
   catch (e) {
@@ -123,7 +133,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
     callbacks.onSetPeerConnection({ peerConnection: peerConnection });
 }
 
-const websocketOnMessage = (event, publishSettings, peerConnection, callbacks, session) => {
+const websocketOnMessage = (event, websocket, peerConnection, callbacks, session, pendingCandidates) => {
 
   let msgJSON = JSON.parse(event.data);
 
@@ -142,6 +152,13 @@ const websocketOnMessage = (event, publishSettings, peerConnection, callbacks, s
 
     if (msgJSON.message?.connectionId) {
       session.sessionId = msgJSON.message.connectionId;
+
+      for (const candidate of pendingCandidates) {
+        candidate.connectionId = session.sessionId;
+        console.log('Sending queued ICE candidate:', JSON.stringify(candidate));
+        websocket.send(JSON.stringify(candidate));
+      }
+      pendingCandidates.length = 0;
     }
 
     if (msgJSON.message?.sdp) {
