@@ -48,6 +48,7 @@ const peerConnectionOnError = (error, callbacks) => {
 const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
 
   let peerConnection;
+  const pendingCandidates = [];
   const secureTokenData = getSecureTokenData(playSettings);
   const secureToken = await getSecureToken(secureTokenData);
   
@@ -74,11 +75,14 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
         if (secureToken) {
           candidatePayload.secureToken = secureToken;
         }
-        
-        console.log('Sending ICE candidate:', JSON.stringify(candidatePayload));
-        websocket.send(JSON.stringify(candidatePayload));
+
+        if (session.sessionId === '[empty]') {
+          pendingCandidates.push(candidatePayload);
+        } else {
+          console.log('Sending ICE candidate:', JSON.stringify(candidatePayload));
+          websocket.send(JSON.stringify(candidatePayload));
+        }
       } else {
-        // End of candidates
         const endOfCandidatesPayload = {
           messageType: "CANDIDATE",
           action: "VIEW",
@@ -87,25 +91,26 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
           connectionId: session.sessionId,
           candidate: ""
         };
-        console.log('Sending end of candidates:', JSON.stringify(endOfCandidatesPayload));
-        websocket.send(JSON.stringify(endOfCandidatesPayload));
+        if (session.sessionId === '[empty]') {
+          pendingCandidates.push(endOfCandidatesPayload);
+        } else {
+          console.log('Sending end of candidates:', JSON.stringify(endOfCandidatesPayload));
+          websocket.send(JSON.stringify(endOfCandidatesPayload));
+        }
       }
     };
 
     peerConnection.onconnectionstatechange = (event) => {
-      if (event.currentTarget.connectionState === 'connected')
-      {
+      if (event.currentTarget.connectionState === 'connected') {
         if (callbacks.onConnectionStateChange)
           callbacks.onConnectionStateChange({connected:true});
-      }
-      else
-      {
+      } else {
         if (callbacks.onConnectionStateChange)
           callbacks.onConnectionStateChange({connected:false});
       }
     }
 
-    websocket.addEventListener ("message", (event) => { websocketOnMessage(event, playSettings, peerConnection, websocket, callbacks, session); });
+    websocket.addEventListener("message", (event) => { websocketOnMessage(event, playSettings, peerConnection, websocket, callbacks, session, pendingCandidates); });
 
     websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks, session);
 
@@ -117,20 +122,20 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
     callbacks.onSetPeerConnection({peerConnection:peerConnection});
 }
 
-const websocketOnMessage = (event, playSettings, peerConnection, websocket, callbacks, session) => {
+const websocketOnMessage = (event, playSettings, peerConnection, websocket, callbacks, session, pendingCandidates) => {
 
   let msgJSON = JSON.parse(event.data);
   console.log(`Websocket Response: ${JSON.stringify(msgJSON)}`);
 
-  if (msgJSON.messageType === "CANDIDATE") {
+  if (msgJSON.messageType?.toLowerCase() === "candidate") {
     peerConnection.addIceCandidate(new RTCIceCandidate({ candidate: msgJSON.candidate, sdpMLineIndex: 0 }));
     return;
   }
 
   let msgStatus = Number(msgJSON['statusCode']);
   console.log(`Status: ${msgStatus}`);
-  if (msgStatus === 514 || msgStatus === 504) // repeater stream not ready
-  {
+
+  if (msgStatus === 514 || msgStatus === 504) {
     session.repeaterRetryCount++;
 
     if (session.repeaterRetryCount < 10) {
@@ -142,7 +147,7 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
 
   } else if (msgStatus !== 200) {
 
-    websocketOnError({message:msgJSON['statusDescription']},callbacks);
+    websocketOnError({message:msgJSON['statusDescription']}, callbacks);
     stopPlay(playSettings, peerConnection, websocket, callbacks);
 
   } else {
@@ -150,6 +155,13 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
       const message = msgJSON.message;
       if (message.connectionId) {
         session.sessionId = message.connectionId;
+
+        for (const candidate of pendingCandidates) {
+          candidate.connectionId = session.sessionId;
+          console.log('Sending queued ICE candidate:', JSON.stringify(candidate));
+          websocket.send(JSON.stringify(candidate));
+        }
+        pendingCandidates.length = 0;
       }
       if (message.sdp) {
         console.log("SDP Data: " + message.sdp);
@@ -163,8 +175,8 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
             console.log("Remote Description Set Successfully.");
           })
           .catch((err) => peerConnectionOnError(err, callbacks));
-        }
       }
+    }
   }
 }
 
