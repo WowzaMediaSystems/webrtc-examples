@@ -1,6 +1,7 @@
 import stopPlay from './stopPlay';
 import getSecureToken from './SecureToken';
 import { validateParams } from '../utils/ValidationUtils';
+import ICE_SERVERS from '../constants/IceServers';
 
 // Utilities
 
@@ -51,7 +52,7 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
   const secureToken = await getSecureToken(secureTokenData);
   
   try {
-    peerConnection = new RTCPeerConnection();
+    peerConnection = new RTCPeerConnection(ICE_SERVERS);
     peerConnection.addTransceiver('video', { direction: 'recvonly' });
     peerConnection.addTransceiver('audio', { direction: 'recvonly' });
     peerConnection.ontrack = (event) => {
@@ -264,7 +265,7 @@ const startPlayWhep = async (playSettings, callbacks) => {
   const pendingCandidates = [];
 
   try {
-    peerConnection = new RTCPeerConnection();
+    peerConnection = new RTCPeerConnection(ICE_SERVERS);
 
     peerConnection.addTransceiver("video", { direction: "recvonly" });
     peerConnection.addTransceiver("audio", { direction: "recvonly" });
