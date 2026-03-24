@@ -39,7 +39,7 @@ const Nav = (props) => {
               </a>
               <span></span>
             </li>
-            <li className="nav-item page">
+            {/* <li className="nav-item page">
               <Link to="/composite">
                 Composite
               </Link>
@@ -50,7 +50,7 @@ const Nav = (props) => {
                 Meeting
               </Link>
               <span></span>
-            </li>
+            </li> */}
           </>
         )}
         { props.buildComponent === 'composite' && (
