@@ -9,6 +9,7 @@ import Cookies from 'js-cookie';
 import QueryString from 'query-string';
 import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
+import { isValidStunUrl, STUN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
 
 const publishUrlParametersMap = {
   signalingURL: "publishSignalingURL",
@@ -31,15 +32,6 @@ const PublishSettingsForm = () => {
   const [urlPlaceholder, setUrlPlaceholder] = useState(SIGNALING_URL_PLACEHOLDER);
 
   const [initialized, setInitialized] = useState(true);
-
-  const isValidStunUrl = (url) => {
-    try {
-      const parsed = new URL(url);
-      return parsed.protocol === 'stun:';
-    } catch {
-      return false;
-    }
-  }
 
   useEffect(() => {
     const cookieValues = getCookieValues(CookieName);
@@ -228,7 +220,7 @@ const PublishSettingsForm = () => {
                 className="form-control"
                 id="stunServer"
                 name="stunServer"
-                placeholder="stun:<host>:<port>, stun:<host>:<port>"
+                placeholder={STUN_SERVER_PLACEHOLDER}
                 maxLength="1024"
                 value={publishSettings.stunServerURL}
                 disabled={webrtcPublish.connected}

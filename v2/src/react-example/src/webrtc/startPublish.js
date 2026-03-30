@@ -1,5 +1,6 @@
 // Utilities
 
+import { addStunServer } from "../utils/IceServersUtils";
 import { validateParams } from "../utils/ValidationUtils";
 
 const getStreamInfo = (publishSettings, session) => {
@@ -42,19 +43,6 @@ const peerConnectionOnError = (error, callbacks) => {
   console.log(error);
   if (callbacks.onError)
     callbacks.onError({ message: 'PeerConnection Error: ' + error.message });
-}
-
-const addStunServer = (publishSettings, session) => {
-  const peerConnectionConfig = session.peerConnectionConfig;
-  if (publishSettings.stunServerURL !== '') {
-    const urls = publishSettings.stunServerURL.split(',').map(url => url.trim()).filter(Boolean);
-    urls.forEach(url => {
-      console.log(`STUN server URL: ${url}`);
-      peerConnectionConfig.iceServers.push({ urls: url });
-    });
-  } else {
-    console.log('No STUN server provided');
-  }
 }
 
 // Websocket Functions

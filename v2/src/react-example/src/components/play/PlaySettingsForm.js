@@ -7,9 +7,11 @@ import * as PlaySettingsActions from '../../actions/playSettingsActions';
 import * as ErrorsActions from '../../actions/errorsActions';
 import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
+import { isValidStunUrl, STUN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
 
 const playUrlParametersMap = {
   signalingURL: "playSignalingURL",
+  stunServerURL: "stunServerURL",
   applicationName: "playApplicationName",
   streamName: "playStreamName",
   secret: "playSecret",
@@ -74,6 +76,7 @@ const PlaySettingsForm = () => {
       if (value != null) {
         const actionMap = {
           signalingURL: PlaySettingsActions.SET_PLAY_SIGNALING_URL,
+          stunServerURL: PlaySettingsActions.SET_PLAY_STUN_SERVER_URL,
           applicationName: PlaySettingsActions.SET_PLAY_APPLICATION_NAME,
           streamName: PlaySettingsActions.SET_PLAY_STREAM_NAME,
           secret: PlaySettingsActions.SET_PLAY_SECRET,
@@ -158,6 +161,19 @@ const PlaySettingsForm = () => {
       return;
     }
 
+    console.log(`STUN server: ${[playSettings].stunServerURL}`);
+    if (playSettings.stunServerURL !== '') {
+      const urls = playSettings.stunServerURL.split(',').map(url => url.trim()).filter(Boolean);
+      const invalidUrl = urls.find(url => !isValidStunUrl(url));
+      if (invalidUrl) {
+        dispatch({
+          type: ErrorsActions.SET_ERROR_MESSAGE,
+          message: `Invalid STUN server url: ${invalidUrl}`
+        });
+        return;
+      }
+    }
+
     dispatch(PlaySettingsActions.startPlay());
   } 
   const handleStop = () => dispatch(PlaySettingsActions.stopPlay());
@@ -187,6 +203,18 @@ const PlaySettingsForm = () => {
 
         <div className="row">
           <div className="col-6">
+            <FormCheckbox
+              label="Use WHEP"
+              id="playUseWhep"
+              checked={playSettings.useWhep}
+              disabled={connected}
+              onChange={handleCheckboxChange(PlaySettingsActions.SET_PLAY_USE_WHEP, 'useWhep')}
+            />
+          </div>
+        </div>
+
+        <div className="row">
+          <div className="col-6">
             <FormInput
               label="Application Name"
               id="playApplicationName"
@@ -209,17 +237,25 @@ const PlaySettingsForm = () => {
             />
           </div>
         </div>
+
         <div className="row">
-          <div className="col-6">
-            <FormCheckbox
-              label="Use WHEP"
-              id="playUseWhep"
-              checked={playSettings.useWhep}
-              disabled={connected}
-              onChange={handleCheckboxChange(PlaySettingsActions.SET_PLAY_USE_WHEP, 'useWhep')}
-            />
-          </div>
-        </div>
+                  <div className="col-12">
+                    <div className="form-group">
+                      <label htmlFor="stunServer">STUN server</label>
+                      <input type="text"
+                        className="form-control"
+                        id="stunServer"
+                        name="stunServer"
+                        placeholder={STUN_SERVER_PLACEHOLDER}
+                        maxLength="1024"
+                        value={playSettings.stunServerURL}
+                        disabled={connected}
+                        onChange={(e)=>dispatch({type:PlaySettingsActions.SET_PLAY_STUN_SERVER_URL, stunServerURL:e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+
         {/* Secure Token Section */}
         <div className="row">
           <div className="col-12">

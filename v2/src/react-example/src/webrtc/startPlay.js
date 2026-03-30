@@ -1,7 +1,7 @@
 import stopPlay from './stopPlay';
 import getSecureToken from './SecureToken';
 import { validateParams } from '../utils/ValidationUtils';
-import ICE_SERVERS from '../constants/IceServers';
+import { addStunServer } from '../utils/IceServersUtils';
 
 // Utilities
 
@@ -53,7 +53,8 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
   const secureToken = await getSecureToken(secureTokenData);
   
   try {
-    peerConnection = new RTCPeerConnection(ICE_SERVERS);
+    addStunServer(playSettings, session);
+    peerConnection = new RTCPeerConnection(session.iceServers);
     peerConnection.addTransceiver('video', { direction: 'recvonly' });
     peerConnection.addTransceiver('audio', { direction: 'recvonly' });
     peerConnection.ontrack = (event) => {
@@ -245,7 +246,8 @@ const startPlay = (playSettings, callbacks) =>
     } else {
       const session = {
         sessionId: '[empty]',
-        repeaterRetryCount: 0
+        repeaterRetryCount: 0,
+        peerConnectionConfig: {iceServers: []}
       };
       
       const websocket = new WebSocket (playSettings.signalingURL + "?webrtcImplementation=v2");
@@ -271,13 +273,14 @@ const startPlay = (playSettings, callbacks) =>
 
 }
 
-const startPlayWhep = async (playSettings, callbacks) => {
+const startPlayWhep = async (playSettings, session, callbacks) => {
   let peerConnection;
   let sessionUrl;
   const pendingCandidates = [];
 
   try {
-    peerConnection = new RTCPeerConnection(ICE_SERVERS);
+    addStunServer(playSettings, session);
+    peerConnection = new RTCPeerConnection(session.iceServers);
 
     peerConnection.addTransceiver("video", { direction: "recvonly" });
     peerConnection.addTransceiver("audio", { direction: "recvonly" });
