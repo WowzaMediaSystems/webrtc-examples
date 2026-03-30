@@ -12,6 +12,7 @@ import CookieName from '../../constants/CookieName';
 
 const publishUrlParametersMap = {
   signalingURL: "publishSignalingURL",
+  stunServerURL: "publishStunServerURL",
   applicationName: "publishApplicationName",
   streamName: "publishStreamName",
   useWhip: "publishUseWhip"
@@ -31,6 +32,15 @@ const PublishSettingsForm = () => {
 
   const [initialized, setInitialized] = useState(true);
 
+  const isValidStunUrl = (url) => {
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === 'stun:';
+    } catch {
+      return false;
+    }
+  }
+
   useEffect(() => {
     const cookieValues = getCookieValues(CookieName);
     const queryParams = QueryString.parse(window.location.search);
@@ -38,6 +48,7 @@ const PublishSettingsForm = () => {
 
     const actionMap = {
       signalingURL: PublishSettingsActions.SET_PUBLISH_SIGNALING_URL,
+      stunServerURL: PublishSettingsActions.SET_PUBLISH_STUN_SERVER_URL,
       applicationName: PublishSettingsActions.SET_PUBLISH_APPLICATION_NAME,
       streamName: PublishSettingsActions.SET_PUBLISH_STREAM_NAME,
       useWhip: PublishSettingsActions.SET_PUBLISH_USE_WHIP,
@@ -156,6 +167,19 @@ const PublishSettingsForm = () => {
       });
       return;
     }
+    console.log(`STUN server: ${publishSettings.stunServerURL}`);
+    if (publishSettings.stunServerURL !== '') {
+      const urls = publishSettings.stunServerURL.split(',').map(url => url.trim()).filter(Boolean);
+      const invalidUrl = urls.find(url => !isValidStunUrl(url));
+      if (invalidUrl) {
+        dispatch({
+          type: ErrorsActions.SET_ERROR_MESSAGE,
+          message: `Invalid STUN server url: ${invalidUrl}`
+        });
+        return;
+      }
+    }
+
     dispatch(PublishSettingsActions.startPublish());
   };
   if (!initialized) return null;
@@ -180,6 +204,40 @@ const PublishSettingsForm = () => {
             </div>
           </div>
         </div>
+
+        <div className="form-check form-switch form-check-inline mb-3">
+          <label className='form-check-label mr-3' htmlFor="publishUseWhip">
+            Use WHIP
+          </label>
+          <input
+            className='form-check-input form-switch orange-checkbox'
+            type="checkbox"
+            id="publishUseWhip"
+            name="publishUseWhip"
+            checked={publishSettings.useWhip || false}
+            disabled={webrtcPublish.connected}
+            onChange={handleUseWhip(PublishSettingsActions.SET_PUBLISH_USE_WHIP, 'useWhip')}
+          />
+        </div>
+
+        <div className="row">
+          <div className="col-12">
+            <div className="form-group">
+              <label htmlFor="stunServer">STUN server</label>
+              <input type="text"
+                className="form-control"
+                id="stunServer"
+                name="stunServer"
+                placeholder="stun:<host>:<port>, stun:<host>:<port>"
+                maxLength="1024"
+                value={publishSettings.stunServerURL}
+                disabled={webrtcPublish.connected}
+                onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_STUN_SERVER_URL,stunServerURL:e.target.value})}
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="row">
           <div className="col-lg-6 col-sm-12">
             <div className="form-group">
@@ -209,23 +267,6 @@ const PublishSettingsForm = () => {
               />
             </div>
           </div>
-        </div>
-
-        <div className="form-check form-switch form-check-inline mb-3">
-          <label className='form-check-label mr-3' htmlFor="publishUseWhip">
-            Use WHIP
-          </label>
-          <input
-            className='form-check-input form-switch orange-checkbox'
-            type="checkbox"
-            id="publishUseWhip"
-            name="publishUseWhip"
-            checked={publishSettings.useWhip || false}
-            disabled={webrtcPublish.connected}
-            onChange={handleUseWhip(PublishSettingsActions.SET_PUBLISH_USE_WHIP, 'useWhip')}
-
-          />
-
         </div>
 
         <div className="row">

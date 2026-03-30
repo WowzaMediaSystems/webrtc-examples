@@ -2,6 +2,7 @@ import * as PublishSettingsActions from '../actions/publishSettingsActions';
 
 const initialState = {
   signalingURL: '',
+  stunServerURL: '',
   applicationName: '',
   streamName: '',
   streamInfo: undefined,
@@ -28,6 +29,8 @@ const publishSettingsReducer = (state = initialState, action) => {
   switch (action.type) {
     case PublishSettingsActions.SET_PUBLISH_SIGNALING_URL:
       return { ...state, signalingURL:action.signalingURL };
+    case PublishSettingsActions.SET_PUBLISH_STUN_SERVER_URL:
+      return { ...state, stunServerURL: action.stunServerURL};
     case PublishSettingsActions.SET_PUBLISH_APPLICATION_NAME:
       return { ...state, applicationName:action.applicationName };
     case PublishSettingsActions.SET_PUBLISH_STREAM_NAME:

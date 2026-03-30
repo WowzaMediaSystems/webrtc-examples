@@ -1,6 +1,5 @@
 // Utilities
 
-import ICE_SERVERS from "../constants/IceServers";
 import { validateParams } from "../utils/ValidationUtils";
 
 const getStreamInfo = (publishSettings, session) => {
@@ -45,6 +44,18 @@ const peerConnectionOnError = (error, callbacks) => {
     callbacks.onError({ message: 'PeerConnection Error: ' + error.message });
 }
 
+const addStunServer = (publishSettings, session) => {
+  const peerConnectionConfig = session.peerConnectionConfig;
+  if (publishSettings.stunServerURL !== '') {
+    const urls = publishSettings.stunServerURL.split(',').map(url => url.trim()).filter(Boolean);
+    urls.forEach(url => {
+      console.log(`STUN server URL: ${url}`);
+      peerConnectionConfig.iceServers.push({ urls: url });
+    });
+  } else {
+    console.log('No STUN server provided');
+  }
+}
 
 // Websocket Functions
 
@@ -54,7 +65,9 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
   const pendingCandidates = [];
 
   try {
-    peerConnection = new RTCPeerConnection(ICE_SERVERS);
+
+    addStunServer(publishSettings, session);
+    peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
 
     peerConnection.onicecandidate = (event) => {
       if (websocket.readyState !== WebSocket.OPEN) return;
@@ -196,16 +209,18 @@ const websocketOnError = (error, callbacks) => {
 const startPublish = (publishSettings, websocket, callbacks) =>
 {
   try {
+    
+    const session = {
+        sessionId: '[empty]',
+        peerConnectionConfig: {iceServers: []}
+      };
+
     validateParams(publishSettings);
 
     if (publishSettings.useWhip) {
-      startPublishWhip(publishSettings, callbacks);
+      startPublishWhip(publishSettings, session, callbacks);
     }
     else {
-
-      const session = {
-        sessionId: '[empty]'
-      };
       
       if (websocket == null) {
         websocket = new WebSocket(publishSettings.signalingURL + "?webrtcImplementation=v2");
@@ -243,14 +258,15 @@ const startPublish = (publishSettings, websocket, callbacks) =>
   }
 }
 
-const startPublishWhip = async (publishSettings, callbacks) => {
+const startPublishWhip = async (publishSettings, session, callbacks) => {
   let peerConnection;
   let sessionUrl;
   const pendingCandidates = [];
 
   try {
 
-    peerConnection = new RTCPeerConnection(ICE_SERVERS);
+    addStunServer(publishSettings, session);
+    peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
 
     peerConnection.onconnectionstatechange = (event) => {
       const connected = event.currentTarget.connectionState === "connected";
