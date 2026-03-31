@@ -234,31 +234,6 @@ const PlaySettingsForm = () => {
           </div>
         </div>
 
-        <div className="row">
-          <div className="col-6">
-            <FormInput
-              label="Application Name"
-              id="playApplicationName"
-              type="text"
-              maxLength={256}
-              value={playSettings.applicationName}
-              disabled={connected}
-              onChange={handleInputChange(PlaySettingsActions.SET_PLAY_APPLICATION_NAME, 'applicationName')}
-            />
-          </div>
-          <div className="col-6">
-            <FormInput
-              label="Stream Name"
-              id="playStreamName"
-              type="text"
-              maxLength={256}
-              value={playSettings.streamName}
-              disabled={connected}
-              onChange={handleInputChange(PlaySettingsActions.SET_PLAY_STREAM_NAME, 'streamName')}
-            />
-          </div>
-        </div>
-
         <div className="row mb-2">
           <div className="col-12">
             <button
@@ -342,6 +317,31 @@ const PlaySettingsForm = () => {
             </div>
           </>
         )}
+
+        <div className="row">
+          <div className="col-6">
+            <FormInput
+              label="Application Name"
+              id="playApplicationName"
+              type="text"
+              maxLength={256}
+              value={playSettings.applicationName}
+              disabled={connected}
+              onChange={handleInputChange(PlaySettingsActions.SET_PLAY_APPLICATION_NAME, 'applicationName')}
+            />
+          </div>
+          <div className="col-6">
+            <FormInput
+              label="Stream Name"
+              id="playStreamName"
+              type="text"
+              maxLength={256}
+              value={playSettings.streamName}
+              disabled={connected}
+              onChange={handleInputChange(PlaySettingsActions.SET_PLAY_STREAM_NAME, 'streamName')}
+            />
+          </div>
+        </div>
 
         {/* Secure Token Section */}
         <div className="row">
