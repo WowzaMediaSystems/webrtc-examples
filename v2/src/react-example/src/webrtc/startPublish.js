@@ -1,6 +1,6 @@
 // Utilities
 
-import { addStunServer } from "../utils/IceServersUtils";
+import { addIceServers } from "../utils/IceServersUtils";
 import { validateParams } from "../utils/ValidationUtils";
 
 const getStreamInfo = (publishSettings, session) => {
@@ -54,7 +54,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
 
   try {
 
-    addStunServer(publishSettings, session);
+    addIceServers(publishSettings, session);
     peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
 
     peerConnection.onicecandidate = (event) => {
@@ -253,7 +253,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
 
   try {
 
-    addStunServer(publishSettings, session);
+    addIceServers(publishSettings, session);
     peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
 
     peerConnection.onconnectionstatechange = (event) => {

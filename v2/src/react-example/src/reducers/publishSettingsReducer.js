@@ -3,6 +3,9 @@ import * as PublishSettingsActions from '../actions/publishSettingsActions';
 const initialState = {
   signalingURL: '',
   stunServerURL: '',
+  turnServerURL: '',
+  turnUsername: '',
+  turnPassword: '',
   applicationName: '',
   streamName: '',
   streamInfo: undefined,
@@ -31,6 +34,12 @@ const publishSettingsReducer = (state = initialState, action) => {
       return { ...state, signalingURL:action.signalingURL };
     case PublishSettingsActions.SET_PUBLISH_STUN_SERVER_URL:
       return { ...state, stunServerURL: action.stunServerURL};
+    case PublishSettingsActions.SET_PUBLISH_TURN_SERVER_URL:
+      return { ...state, turnServerURL: action.turnServerURL};
+    case PublishSettingsActions.SET_PUBLISH_TURN_USERNAME:
+      return { ...state, turnUsername: action.turnUsername};
+    case PublishSettingsActions.SET_PUBLISH_TURN_PASSWORD:
+      return { ...state, turnPassword: action.turnPassword};
     case PublishSettingsActions.SET_PUBLISH_APPLICATION_NAME:
       return { ...state, applicationName:action.applicationName };
     case PublishSettingsActions.SET_PUBLISH_STREAM_NAME:

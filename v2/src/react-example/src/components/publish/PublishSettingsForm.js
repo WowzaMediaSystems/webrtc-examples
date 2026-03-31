@@ -9,11 +9,14 @@ import Cookies from 'js-cookie';
 import QueryString from 'query-string';
 import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
-import { isValidStunUrl, STUN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
+import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
 
 const publishUrlParametersMap = {
   signalingURL: "publishSignalingURL",
   stunServerURL: "publishStunServerURL",
+  turnServerURL: "publishTurnServerURL",
+  turnUsername: "publishTurnUsername",
+  turnPassword: "publishTurnPassword",
   applicationName: "publishApplicationName",
   streamName: "publishStreamName",
   useWhip: "publishUseWhip"
@@ -32,6 +35,8 @@ const PublishSettingsForm = () => {
   const [urlPlaceholder, setUrlPlaceholder] = useState(SIGNALING_URL_PLACEHOLDER);
 
   const [initialized, setInitialized] = useState(true);
+  const [iceServersExpanded, setIceServersExpanded] = useState(false);
+
 
   useEffect(() => {
     const cookieValues = getCookieValues(CookieName);
@@ -41,6 +46,9 @@ const PublishSettingsForm = () => {
     const actionMap = {
       signalingURL: PublishSettingsActions.SET_PUBLISH_SIGNALING_URL,
       stunServerURL: PublishSettingsActions.SET_PUBLISH_STUN_SERVER_URL,
+      turnServerURL: PublishSettingsActions.SET_PUBLISH_TURN_SERVER_URL,
+      turnUsername: PublishSettingsActions.SET_PUBLISH_TURN_USERNAME,
+      turnPassword: PublishSettingsActions.SET_PUBLISH_TURN_PASSWORD,
       applicationName: PublishSettingsActions.SET_PUBLISH_APPLICATION_NAME,
       streamName: PublishSettingsActions.SET_PUBLISH_STREAM_NAME,
       useWhip: PublishSettingsActions.SET_PUBLISH_USE_WHIP,
@@ -159,7 +167,7 @@ const PublishSettingsForm = () => {
       });
       return;
     }
-    console.log(`STUN server: ${publishSettings.stunServerURL}`);
+
     if (publishSettings.stunServerURL !== '') {
       const urls = publishSettings.stunServerURL.split(',').map(url => url.trim()).filter(Boolean);
       const invalidUrl = urls.find(url => !isValidStunUrl(url));
@@ -170,6 +178,21 @@ const PublishSettingsForm = () => {
         });
         return;
       }
+    } else {
+      console.log("No STUN servers provided");
+    }
+
+    if (publishSettings.turnServerURL !== '') {
+      if (!isValidTurnUrl(publishSettings.turnServerURL)) {
+        dispatch({
+          type: ErrorsActions.SET_ERROR_MESSAGE,
+          message: `Invalid TURN server url: ${publishSettings.turnServerURL}`
+        });
+        return;
+      }
+      
+    } else {
+      console.log("No TURN server provided");
     }
 
     dispatch(PublishSettingsActions.startPublish());
@@ -212,23 +235,89 @@ const PublishSettingsForm = () => {
           />
         </div>
 
-        <div className="row">
+        <div className="row mb-2">
           <div className="col-12">
-            <div className="form-group">
-              <label htmlFor="stunServer">STUN server</label>
-              <input type="text"
-                className="form-control"
-                id="stunServer"
-                name="stunServer"
-                placeholder={STUN_SERVER_PLACEHOLDER}
-                maxLength="1024"
-                value={publishSettings.stunServerURL}
-                disabled={webrtcPublish.connected}
-                onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_STUN_SERVER_URL,stunServerURL:e.target.value})}
-              />
-            </div>
+            <button
+              type="button"
+              className={`btn btn-sm w-100 d-flex align-items-center justify-content-between btn-ice-servers`}
+              onClick={() => setIceServersExpanded(!iceServersExpanded)}
+            >
+              <span>ICE Servers</span>
+              <i className={`bi bi-chevron-${iceServersExpanded ? 'up' : 'down'}`}></i>
+            </button>
           </div>
         </div>
+
+        {iceServersExpanded && (
+          <>
+          <div className="border border-top-0 rounded-bottom p-3 mb-3">
+            <div className="row">
+              <div className="col-12">
+                <div className="form-group">
+                  <label htmlFor="stunServer">STUN server</label>
+                  <input type="text"
+                    className="form-control"
+                    id="stunServer"
+                    name="stunServer"
+                    placeholder={STUN_SERVER_PLACEHOLDER}
+                    maxLength="1024"
+                    value={publishSettings.stunServerURL}
+                    disabled={webrtcPublish.connected}
+                    onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_STUN_SERVER_URL,stunServerURL:e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="row">
+              <div className="col-12">
+                <div className="form-group">
+                  <label htmlFor="turnServer">TURN server</label>
+                  <input type="text"
+                    className="form-control"
+                    id="turnServer"
+                    name="turnServer"
+                    maxLength="1024"
+                    placeholder={TURN_SERVER_PLACEHOLDER}
+                    value={publishSettings.turnServerURL}
+                    disabled={webrtcPublish.connected}
+                    onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_TURN_SERVER_URL,turnServerURL:e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="row">
+              <div className="col-lg-6 col-sm-12">
+                <div className="form-group">
+                  <label htmlFor="turnUsername">TURN username</label>
+                  <input type="text"
+                    className="form-control"
+                    id="turnUsername"
+                    name="turnUsername"
+                    maxLength="256"
+                    value={publishSettings.turnUsername}
+                    disabled={webrtcPublish.connected}
+                    onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_TURN_USERNAME,turnUsername:e.target.value})}
+                  />
+                </div>
+              </div>
+              <div className="col-lg-6 col-sm-12">
+                <div className="form-group">
+                  <label htmlFor="turnPassword">TURN password</label>
+                  <input type="password"
+                    className="form-control"
+                    id="turnPassword"
+                    name="turnPassword"
+                    maxLength="256"
+                    value={publishSettings.turnPassword}
+                    disabled={webrtcPublish.connected}
+                    onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_TURN_PASSWORD,turnPassword:e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+            </div>
+          </>
+        )}
 
         <div className="row">
           <div className="col-lg-6 col-sm-12">
