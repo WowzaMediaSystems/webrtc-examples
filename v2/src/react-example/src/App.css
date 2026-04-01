@@ -177,3 +177,22 @@ ul.navbar-nav {
   background-color: #FF8400;
   border-color: #FF8400;
 }
+
+.btn-ice-servers {
+  background-color: #FF8400;
+  border-color: #EEEEEE;
+  color: #EEEEEE;
+}
+
+.btn-ice-servers:hover {
+  background-color: #FF8400;
+  border-color: #EEEEEE;
+  color: #EEEEEE;
+}
+
+.btn-ice-servers:active:focus {
+  background-color: #FF8400 !important;
+  border-color: #EEEEEE !important;
+  color: #EEEEEE !important;
+}
+

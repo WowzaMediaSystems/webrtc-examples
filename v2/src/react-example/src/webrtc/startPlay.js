@@ -1,7 +1,8 @@
 import stopPlay from './stopPlay';
 import getSecureToken from './SecureToken';
 import { validateParams } from '../utils/ValidationUtils';
-import ICE_SERVERS from '../constants/IceServers';
+import { addIceServers } from '../utils/IceServersUtils';
+
 
 // Utilities
 
@@ -53,7 +54,8 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
   const secureToken = await getSecureToken(secureTokenData);
   
   try {
-    peerConnection = new RTCPeerConnection(ICE_SERVERS);
+    addIceServers(playSettings, session);
+    peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
     peerConnection.addTransceiver('video', { direction: 'recvonly' });
     peerConnection.addTransceiver('audio', { direction: 'recvonly' });
     peerConnection.ontrack = (event) => {
@@ -239,14 +241,16 @@ const startPlay = (playSettings, callbacks) =>
   try {
     validateParams(playSettings);
 
+    const session = {
+      sessionId: '[empty]',
+      repeaterRetryCount: 0,
+      peerConnectionConfig: {iceServers: []}
+    };
+
     if (playSettings.useWhep) 
     {
-      startPlayWhep(playSettings,callbacks);
+      startPlayWhep(playSettings, session, callbacks);
     } else {
-      const session = {
-        sessionId: '[empty]',
-        repeaterRetryCount: 0
-      };
       
       const websocket = new WebSocket (playSettings.signalingURL + "?webrtcImplementation=v2");
 
@@ -271,13 +275,14 @@ const startPlay = (playSettings, callbacks) =>
 
 }
 
-const startPlayWhep = async (playSettings, callbacks) => {
+const startPlayWhep = async (playSettings, session, callbacks) => {
   let peerConnection;
   let sessionUrl;
   const pendingCandidates = [];
 
   try {
-    peerConnection = new RTCPeerConnection(ICE_SERVERS);
+    addIceServers(playSettings, session);
+    peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
 
     peerConnection.addTransceiver("video", { direction: "recvonly" });
     peerConnection.addTransceiver("audio", { direction: "recvonly" });

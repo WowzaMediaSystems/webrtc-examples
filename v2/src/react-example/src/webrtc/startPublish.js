@@ -1,6 +1,6 @@
 // Utilities
 
-import ICE_SERVERS from "../constants/IceServers";
+import { addIceServers } from "../utils/IceServersUtils";
 import { validateParams } from "../utils/ValidationUtils";
 
 const getStreamInfo = (publishSettings, session) => {
@@ -45,7 +45,6 @@ const peerConnectionOnError = (error, callbacks) => {
     callbacks.onError({ message: 'PeerConnection Error: ' + error.message });
 }
 
-
 // Websocket Functions
 
 const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
@@ -54,7 +53,9 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
   const pendingCandidates = [];
 
   try {
-    peerConnection = new RTCPeerConnection(ICE_SERVERS);
+
+    addIceServers(publishSettings, session);
+    peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
 
     peerConnection.onicecandidate = (event) => {
       if (websocket.readyState !== WebSocket.OPEN) return;
@@ -196,16 +197,18 @@ const websocketOnError = (error, callbacks) => {
 const startPublish = (publishSettings, websocket, callbacks) =>
 {
   try {
+    
+    const session = {
+        sessionId: '[empty]',
+        peerConnectionConfig: {iceServers: []}
+      };
+
     validateParams(publishSettings);
 
     if (publishSettings.useWhip) {
-      startPublishWhip(publishSettings, callbacks);
+      startPublishWhip(publishSettings, session, callbacks);
     }
     else {
-
-      const session = {
-        sessionId: '[empty]'
-      };
       
       if (websocket == null) {
         websocket = new WebSocket(publishSettings.signalingURL + "?webrtcImplementation=v2");
@@ -243,14 +246,15 @@ const startPublish = (publishSettings, websocket, callbacks) =>
   }
 }
 
-const startPublishWhip = async (publishSettings, callbacks) => {
+const startPublishWhip = async (publishSettings, session, callbacks) => {
   let peerConnection;
   let sessionUrl;
   const pendingCandidates = [];
 
   try {
 
-    peerConnection = new RTCPeerConnection(ICE_SERVERS);
+    addIceServers(publishSettings, session);
+    peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
 
     peerConnection.onconnectionstatechange = (event) => {
       const connected = event.currentTarget.connectionState === "connected";

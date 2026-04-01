@@ -7,9 +7,14 @@ import * as PlaySettingsActions from '../../actions/playSettingsActions';
 import * as ErrorsActions from '../../actions/errorsActions';
 import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
+import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
 
 const playUrlParametersMap = {
   signalingURL: "playSignalingURL",
+  stunServerURL: "playStunServerURL",
+  turnServerURL: "playTurnServerURL",
+  turnUsername: "playTurnUsername",
+  turnPassword: "playTurnPassword",
   applicationName: "playApplicationName",
   streamName: "playStreamName",
   secret: "playSecret",
@@ -58,6 +63,7 @@ const FormCheckbox = ({ label, id, checked, onChange, disabled }) => (
 const PlaySettingsForm = () => {
   const dispatch = useDispatch();
   const [initialized, setInitialized] = useState(false);
+  const [iceServersExpanded, setIceServersExpanded] = useState(false);
   const playSettings = useSelector((state) => state.playSettings);
   const webrtcPlay = useSelector((state) => state.webrtcPlay);
 
@@ -74,6 +80,10 @@ const PlaySettingsForm = () => {
       if (value != null) {
         const actionMap = {
           signalingURL: PlaySettingsActions.SET_PLAY_SIGNALING_URL,
+          stunServerURL: PlaySettingsActions.SET_PLAY_STUN_SERVER_URL,
+          turnServerURL: PlaySettingsActions.SET_PLAY_TURN_SERVER_URL,
+          turnUsername: PlaySettingsActions.SET_PLAY_TURN_USERNAME,
+          turnPassword: PlaySettingsActions.SET_PLAY_TURN_PASSWORD,
           applicationName: PlaySettingsActions.SET_PLAY_APPLICATION_NAME,
           streamName: PlaySettingsActions.SET_PLAY_STREAM_NAME,
           secret: PlaySettingsActions.SET_PLAY_SECRET,
@@ -158,6 +168,33 @@ const PlaySettingsForm = () => {
       return;
     }
 
+    if (playSettings.stunServerURL !== '') {
+      const urls = playSettings.stunServerURL.split(',').map(url => url.trim()).filter(Boolean);
+      const invalidUrl = urls.find(url => !isValidStunUrl(url));
+      if (invalidUrl) {
+        dispatch({
+          type: ErrorsActions.SET_ERROR_MESSAGE,
+          message: `Invalid STUN server url: ${invalidUrl}`
+        });
+        return;
+      }
+    } else {
+      console.log("No STUN servers provided");
+    }
+
+    if (playSettings.turnServerURL !== '') {
+      if (!isValidTurnUrl(playSettings.turnServerURL)) {
+        dispatch({
+          type: ErrorsActions.SET_ERROR_MESSAGE,
+          message: `Invalid TURN server url: ${playSettings.turnServerURL}`
+        });
+        return;
+      }
+      
+    } else {
+      console.log("No TURN server provided");
+    }
+
     dispatch(PlaySettingsActions.startPlay());
   } 
   const handleStop = () => dispatch(PlaySettingsActions.stopPlay());
@@ -187,6 +224,102 @@ const PlaySettingsForm = () => {
 
         <div className="row">
           <div className="col-6">
+            <FormCheckbox
+              label="Use WHEP"
+              id="playUseWhep"
+              checked={playSettings.useWhep}
+              disabled={connected}
+              onChange={handleCheckboxChange(PlaySettingsActions.SET_PLAY_USE_WHEP, 'useWhep')}
+            />
+          </div>
+        </div>
+
+        <div className="row mb-2">
+          <div className="col-12">
+            <button
+              type="button"
+              className={`btn btn-sm w-100 d-flex align-items-center justify-content-between btn-ice-servers`}
+              onClick={() => setIceServersExpanded(!iceServersExpanded)}
+            >
+              <span>ICE Servers</span>
+              <i className={`bi bi-chevron-${iceServersExpanded ? 'up' : 'down'}`}></i>
+            </button>
+          </div>
+        </div>
+
+        {iceServersExpanded && (
+          <>
+          <div className="border border-top-0 rounded-bottom p-3 mb-3">
+            <div className="row">
+              <div className="col-12">
+                <div className="form-group">
+                  <label htmlFor="stunServer">STUN server</label>
+                  <input type="text"
+                    className="form-control"
+                    id="stunServer"
+                    name="stunServer"
+                    placeholder={STUN_SERVER_PLACEHOLDER}
+                    maxLength="1024"
+                    value={playSettings.stunServerURL}
+                    disabled={connected}
+                    onChange={(e)=>dispatch({type:PlaySettingsActions.SET_PLAY_STUN_SERVER_URL,stunServerURL:e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="row">
+              <div className="col-12">
+                <div className="form-group">
+                  <label htmlFor="turnServer">TURN server</label>
+                  <input type="text"
+                    className="form-control"
+                    id="turnServer"
+                    name="turnServer"
+                    maxLength="1024"
+                    placeholder={TURN_SERVER_PLACEHOLDER}
+                    value={playSettings.turnServerURL}
+                    disabled={connected}
+                    onChange={(e)=>dispatch({type:PlaySettingsActions.SET_PLAY_TURN_SERVER_URL,turnServerURL:e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="row">
+              <div className="col-lg-6 col-sm-12">
+                <div className="form-group">
+                  <label htmlFor="turnUsername">TURN username</label>
+                  <input type="text"
+                    className="form-control"
+                    id="turnUsername"
+                    name="turnUsername"
+                    maxLength="256"
+                    value={playSettings.turnUsername}
+                    disabled={connected}
+                    onChange={(e)=>dispatch({type:PlaySettingsActions.SET_PLAY_TURN_USERNAME,turnUsername:e.target.value})}
+                  />
+                </div>
+              </div>
+              <div className="col-lg-6 col-sm-12">
+                <div className="form-group">
+                  <label htmlFor="turnPassword">TURN password</label>
+                  <input type="password"
+                    className="form-control"
+                    id="turnPassword"
+                    name="turnPassword"
+                    maxLength="256"
+                    value={playSettings.turnPassword}
+                    disabled={connected}
+                    onChange={(e)=>dispatch({type:PlaySettingsActions.SET_PLAY_TURN_PASSWORD,turnPassword:e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+            </div>
+          </>
+        )}
+
+        <div className="row">
+          <div className="col-6">
             <FormInput
               label="Application Name"
               id="playApplicationName"
@@ -209,17 +342,7 @@ const PlaySettingsForm = () => {
             />
           </div>
         </div>
-        <div className="row">
-          <div className="col-6">
-            <FormCheckbox
-              label="Use WHEP"
-              id="playUseWhep"
-              checked={playSettings.useWhep}
-              disabled={connected}
-              onChange={handleCheckboxChange(PlaySettingsActions.SET_PLAY_USE_WHEP, 'useWhep')}
-            />
-          </div>
-        </div>
+
         {/* Secure Token Section */}
         <div className="row">
           <div className="col-12">
