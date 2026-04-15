@@ -7,5 +7,4 @@ export const compositePublishUrlParameters = [
   "audioBitrate",
   "audioCodec",
   "videoBitrate",
-  "videoCodec"
 ]

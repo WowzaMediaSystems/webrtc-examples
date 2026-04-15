@@ -406,25 +406,7 @@ const PublishSettingsForm = () => {
               </div>
             </div>
           </div>
-          <div className="col-lg-6 col-sm-12">
-            <div className="form-group">
-              <label htmlFor="videoCodec">Video Codec</label>
-              <div className="input-group">
-                <select className="form-select"
-                  id="videoCodec"
-                  name="videoCodec"
-                  value={publishSettings.videoCodec}
-                  disabled={webrtcPublish.connected}
-                  onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_VIDEO_CODEC,videoCodec:e.target.value})}
-                >
-                  { PublishOptions.videoCodecs.map((codec,key) => {
-                    return <option key={key} value={codec.value}>{codec.name}</option>
-                  })}
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
+        </div> 
         <div className="row">
           <div className="col-lg-6 col-sm-12">
             <div className="form-group">

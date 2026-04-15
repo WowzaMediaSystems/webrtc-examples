@@ -3,7 +3,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import QueryString from 'query-string';
 
 import * as compositeSettingsActions from '../../actions/compositeSettingsActions';
-import * as PublishOptions from '../../constants/PublishOptions';
 import { compositePublishUrlParameters, compositePublishUrlParametersPrefix } from '../../constants/CompositeOptions';
 import { getCookieValues, setCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
@@ -42,9 +41,6 @@ const CompositePublishSettingsForm = () => {
           break;
         case (compositePublishUrlParametersPrefix+'videoBitrate'):
           dispatch({type:compositeSettingsActions.SET_COMPOSITE_VIDEO_BITRATE,videoBitrate:savedValues[param]});
-          break;
-        case (compositePublishUrlParametersPrefix+'videoCodec'):
-          dispatch({type:compositeSettingsActions.SET_COMPOSITE_VIDEO_CODEC,videoCodec:savedValues[param]});
           break;
         default:
       }
@@ -160,23 +156,6 @@ const CompositePublishSettingsForm = () => {
               <div className="input-group-append">
                 <span className="input-group-text">Kbps</span>
               </div>
-            </div>
-          </div>
-        </div>
-        <div className="col-lg-6 col-sm-12">
-          <div className="form-group">
-            <label htmlFor="videoCodec">Video Codec</label>
-            <div className="input-group">
-              <select className="form-control" 
-                id="videoCodec" 
-                name="videoCodec"
-                value={compositeSettings.videoCodec}
-                onChange={(e)=>dispatch({type:compositeSettingsActions.SET_COMPOSITE_VIDEO_CODEC,videoCodec:e.target.value})}
-              >
-                { PublishOptions.videoCodecs.map((codec,key) => { 
-                  return <option key={key} value={codec.value}>{codec.name}</option>
-                })}
-              </select>
             </div>
           </div>
         </div>

@@ -14,7 +14,6 @@ const initialState = {
   videoTrack: undefined,
   videoTrack1DeviceId: '',
   videoTrack2DeviceId: '',
-  videoCodec: 'VP8',
   videoFrameRate: '30',
   videoFrameSize: 'default',
   userData: undefined,
@@ -46,8 +45,6 @@ const compositeReducer = (state = initialState, action) => {
       return { ...state, audioTrackDeviceId:action.audioTrackDeviceId };
     case compositeSettingsActions.SET_COMPOSITE_VIDEO_BITRATE:
       return { ...state, videoBitrate:action.videoBitrate };
-    case compositeSettingsActions.SET_COMPOSITE_VIDEO_CODEC:
-      return { ...state, videoCodec:action.videoCodec };
     case compositeSettingsActions.SET_COMPOSITE_VIDEO_FRAME_SIZE_AND_RATE:
       let frameState = { ...state };
       if (action.videoFrameSize != null) frameState.videoFrameSize = action.videoFrameSize;

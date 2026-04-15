@@ -17,7 +17,6 @@ const initialState = {
   videoTrack: {},
   videoTrack1DeviceId: '',
   videoTrack2DeviceId: '',
-  videoCodec: 'VP8',
   videoFrameRate: '30',
   videoFrameSize: 'default',
   userData: undefined,
@@ -56,8 +55,6 @@ const publishSettingsReducer = (state = initialState, action) => {
       return { ...state, audioTrackDeviceId:action.audioTrackDeviceId };
     case PublishSettingsActions.SET_PUBLISH_VIDEO_BITRATE:
       return { ...state, videoBitrate:action.videoBitrate };
-    case PublishSettingsActions.SET_PUBLISH_VIDEO_CODEC:
-      return { ...state, videoCodec:action.videoCodec };
     case PublishSettingsActions.SET_PUBLISH_VIDEO_FRAME_SIZE_AND_RATE:
       let frameState = { ...state };
       if (action.videoFrameSize != null) frameState.videoFrameSize = action.videoFrameSize;
