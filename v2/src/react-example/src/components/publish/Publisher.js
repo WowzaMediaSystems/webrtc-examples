@@ -76,13 +76,17 @@ const Publisher = () => {
 
   // Handle Mic and Cam Track Changes
   const { audioTrack, videoTrack } = useSelector ((state) => state.publishSettings);
-  const { peerConnection, audioSender, videoSender } = useSelector((state) => state.webrtcPublish);
+  const {
+    peerConnection,
+    peerConnectionAudioSender: audioSender,
+    peerConnectionVideoSender: videoSender,
+  } = useSelector((state) => state.webrtcPublish);
 
   useEffect(() => {
     if (peerConnection != null) {
       replaceAudioTrack(audioTrack, audioSender, peerConnection, {
         onSetSenders: (senders) => {
-          dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_PEERCONNECTION_VIDEO_SENDER,peerConnectionVideoSender:senders.videoSender});
+          dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_PEERCONNECTION_AUDIO_SENDER,peerConnectionAudioSender:senders.audioSender});
         }
       });
     }
@@ -93,7 +97,7 @@ const Publisher = () => {
     if (peerConnection != null) {
       replaceVideoTrack(videoTrack, videoSender, peerConnection, {
         onSetSenders: (senders) => {
-          dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_PEERCONNECTION_AUDIO_SENDER,peerConnectionAudioSender:senders.audioSender});
+          dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_PEERCONNECTION_VIDEO_SENDER,peerConnectionVideoSender:senders.videoSender});
         }
       });
     }

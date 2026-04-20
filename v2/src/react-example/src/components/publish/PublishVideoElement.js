@@ -8,11 +8,15 @@ const PublishVideoElement = () => {
   const videoElement = useRef();
   const { stream } = useSelector ((state) => state.media);
 
-  // Set srcObject on the videoElement every time the stream changes
+  // Set srcObject on the videoElement every time the stream changes. We must
+  // also clear it when the stream is null — iOS Safari keeps the camera
+  // hardware pinned until the <video> element detaches its srcObject.
   useEffect(() => {
-    if (stream != null && videoElement.current != null)
-    {
+    if (videoElement.current == null) return;
+    if (stream != null) {
       videoElement.current.srcObject = stream;
+    } else {
+      videoElement.current.srcObject = null;
     }
   },[stream, videoElement]);
 
