@@ -9,11 +9,8 @@ const initialState = {
   applicationName: '',
   streamName: '',
   streamInfo: undefined,
-  audioBitrate: '64',
-  audioCodec: 'opus',
   audioTrack: {},
   audioTrackDeviceId: '',
-  videoBitrate: '3500',
   videoTrack: {},
   videoTrack1DeviceId: '',
   videoTrack2DeviceId: '',
@@ -45,16 +42,10 @@ const publishSettingsReducer = (state = initialState, action) => {
       return { ...state, streamName:action.streamName };
     case PublishSettingsActions.SET_PUBLISH_STREAM_INFO:
       return { ...state, streamInfo:action.streamInfo };
-    case PublishSettingsActions.SET_PUBLISH_AUDIO_BITRATE:
-      return { ...state, audioBitrate:action.audioBitrate };
-    case PublishSettingsActions.SET_PUBLISH_AUDIO_CODEC:
-      return { ...state, audioCodec:action.audioCodec };
     case PublishSettingsActions.SET_PUBLISH_AUDIO_TRACK:
       return { ...state, audioTrack:action.audioTrack };
     case PublishSettingsActions.SET_PUBLISH_AUDIO_TRACK_DEVICEID:
       return { ...state, audioTrackDeviceId:action.audioTrackDeviceId };
-    case PublishSettingsActions.SET_PUBLISH_VIDEO_BITRATE:
-      return { ...state, videoBitrate:action.videoBitrate };
     case PublishSettingsActions.SET_PUBLISH_VIDEO_FRAME_SIZE_AND_RATE:
       let frameState = { ...state };
       if (action.videoFrameSize != null) frameState.videoFrameSize = action.videoFrameSize;

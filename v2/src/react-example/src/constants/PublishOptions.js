@@ -40,9 +40,6 @@ export const publishUrlParameters = [
   "signalingURL",
   "applicationName",
   "streamName",
-  "audioBitrate",
-  "audioCodec",
-  "videoBitrate",
   "videoFrameRate",
   "videoFrameSize"
 ]
