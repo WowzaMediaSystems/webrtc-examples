@@ -8,6 +8,7 @@ import * as ErrorsActions from '../../actions/errorsActions';
 import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
 import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
+import ExternalLinks from '../../constants/ExternalLinks';
 
 const playUrlParametersMap = {
   signalingURL: "playSignalingURL",
@@ -436,6 +437,11 @@ const PlaySettingsForm = () => {
             >
               <img alt="Copy Link" className="noll" src="./images/file_copy-24px.svg" />
             </button>
+          </div>
+        </div>
+        <div className="row mt-2">
+          <div className="col-12 text-center">
+            <small>{ExternalLinks.legacyLinkText} <a href={ExternalLinks.legacyPlay} target="_blank" rel="noopener noreferrer">{ExternalLinks.legacyLinkLabel}</a></small>
           </div>
         </div>
       </form>
