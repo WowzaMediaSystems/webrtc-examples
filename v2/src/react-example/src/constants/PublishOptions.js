@@ -1,9 +1,3 @@
-export const videoCodecs = [
-  { value:"VP8", name:"VP8" },
-  { value:"VP9", name:"VP9" },
-  { value:"42e01f", name:"H.264" }
-];
-
 export const videoFrameSizes = [
   { value:"default", name:"Default" },
   { value:"1920x1080", name:"1920x1080" },
@@ -46,10 +40,6 @@ export const publishUrlParameters = [
   "signalingURL",
   "applicationName",
   "streamName",
-  "audioBitrate",
-  "audioCodec",
-  "videoBitrate",
-  "videoCodec",
   "videoFrameRate",
   "videoFrameSize"
 ]
