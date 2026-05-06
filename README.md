@@ -5,8 +5,6 @@ Welcome to the official Wowza Media Systems Web Real-time Communication (WebRTC)
 
 - **Publish** — stream video and audio (or screen share) from a browser to Wowza Streaming Engine
 - **Play** — play back a live WebRTC stream from Wowza Streaming Engine in a browser
-- **Meeting** — host a session with multiple participants, each publishing and receiving streams
-- **Composite** — combine multiple video and audio inputs into a single outgoing stream
 
 ## Contents
 
@@ -40,7 +38,6 @@ You'll need to set up WebRTC for Wowza Streaming Engine to run the examples. For
 - **Configurable ICE servers** — STUN and TURN servers can now be set from the UI. Multiple servers can be provided as a comma-separated list. Credentials for TURN servers (username and password) are also configurable.
 - **SecureToken support** — Wowza Secure Token hash generation is now available in the React example. The token is computed client-side using the Web Crypto API (SHA-256) and sent with the publish/play request. See `v2/src/react-example/src/webrtc/SecureToken.js` for usage notes.
 - **Form validation** — Required fields (application name and stream name) are validated before a connection is attempted, surfacing errors early instead of failing silently.
-- **`useMediaStream` hook** — A custom React hook that exposes the active media stream as a stable ref, preventing stale closures in callbacks that depend on the current stream.
 
 ### Directory structure
 
