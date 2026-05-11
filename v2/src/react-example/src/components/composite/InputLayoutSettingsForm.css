@@ -1,0 +1,52 @@
+.composite-layout .composite-layout-button {
+  position:relative;
+  width:150px;
+  height:75px;
+}
+
+.composite-layout .composite-layout-button .composite-layout-button-label {
+  font-size:150%;
+}
+
+.composite-layout .composite-layout-button .composite-layout-pip {
+  position:absolute;
+  width:40px;
+  height:25px;
+  border:1px solid gray;
+  border-radius:3px;
+  font-size:100%;
+}
+.composite-layout .composite-layout-button .composite-layout-pip.pip-top-left {
+  top:10px;
+  left:10px;
+}
+.composite-layout .composite-layout-button .composite-layout-pip.pip-top-right {
+  top:10px;
+  right:10px;
+}
+.composite-layout .composite-layout-button .composite-layout-pip.pip-bottom-left {
+  bottom:10px;
+  left:10px;
+}
+.composite-layout .composite-layout-button .composite-layout-pip.pip-bottom-right {
+  bottom:10px;
+  right:10px;
+}
+
+.composite-layout .composite-layout-button .composite-layout-quarter {
+  position:absolute;
+  width:75px;
+  height:38px;
+  border:1px solid gray;
+  border-radius:3px;
+  font-size:100%;
+  padding-top:0.4em;
+}
+.composite-layout .composite-layout-button .composite-layout-quarter.quarter-left {
+  top:17px;
+  left:0px;
+}
+.composite-layout .composite-layout-button .composite-layout-quarter.quarter-right {
+  top:17px;
+  right:0px;
+}
