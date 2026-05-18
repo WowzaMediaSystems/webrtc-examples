@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  BrowserRouter as Router,
+  HashRouter as Router,
   Switch,
   Route,
   Redirect
@@ -32,7 +32,7 @@ const App = () => {
     <StoreProvider store={store}>
       <CompositorUserMedia />
       <Devices />
-      <Router basename={process.env.REACT_APP_BASENAME}>
+      <Router>
         <div className="container-fluid">
           <Nav buildComponent={ buildComponent }/>
           <Errors />

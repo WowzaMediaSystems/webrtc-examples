@@ -1,5 +1,5 @@
 import React from 'react';
-// import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import wowzaLogo from '../../images/wowza-logo.svg'
 
 const Nav = (props) => {
@@ -28,15 +28,15 @@ const Nav = (props) => {
         { props.buildComponent === 'develop' && (
           <>
             <li className="nav-item page">
-              <a href="/publish">
+              <Link to="/publish">
                 Publish
-              </a>
+              </Link>
               <span></span>
             </li>
             <li className="nav-item page">
-              <a href="/play">
+              <Link to="/play">
                 Play
-              </a>
+              </Link>
               <span></span>
             </li>
             {/* <li className="nav-item page">
