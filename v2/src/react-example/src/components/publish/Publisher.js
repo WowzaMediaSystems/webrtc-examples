@@ -43,6 +43,9 @@ const Publisher = () => {
         onSetSenders: (senders) => {
           dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_PEERCONNECTION_AUDIO_SENDER,peerConnectionAudioSender:senders.audioSender});
           dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_PEERCONNECTION_VIDEO_SENDER,peerConnectionVideoSender:senders.videoSender});
+        },
+        onSimulcastRejected: (info) => {
+          dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:info.message});
         }
       });
     }

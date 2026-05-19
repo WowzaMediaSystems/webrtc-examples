@@ -2,9 +2,52 @@
 
 import { addIceServers } from "../utils/IceServersUtils";
 import { validateParams } from "../utils/ValidationUtils";
+import {
+  SIMULCAST_REJECTED_MESSAGE,
+  addSimulcastVideoSender,
+  ensureSimulcastSDP,
+  simulcastAcceptedInAnswer
+} from "../utils/SimulcastUtils";
+
+// Orchestration dispatcher: simulcast vs. single-track is a publish-flow
+// decision, so it lives here. The simulcast mechanics live in SimulcastUtils.
+const addVideoSender = (peerConnection, videoTrack, useSimulcast) => {
+  if (videoTrack == null) return undefined;
+  if (useSimulcast) return addSimulcastVideoSender(peerConnection, videoTrack);
+  return peerConnection.addTrack(videoTrack);
+};
+
+// Detach handlers before closing so the stale PC/WS don't fire "closed" /
+// error events into the next attempt's callbacks
+const tearDownConnection = (peerConnection, websocket) => {
+  if (peerConnection) {
+    peerConnection.onicecandidate = null;
+    peerConnection.onnegotiationneeded = null;
+    peerConnection.onconnectionstatechange = null;
+    try { peerConnection.close(); } catch (_) {}
+  }
+  if (websocket) {
+    try { websocket.close(); } catch (_) {}
+  }
+};
+
+// Single owner of "abandon this attempt and retry without simulcast". WS and
+// WHIP both route through here (and the WHIP-only DELETE lives alongside 
+// the rest of the cleanup, not orphaned in the caller).
+const retryWithoutSimulcast = ({
+  publishSettings, callbacks, peerConnection, websocket, whipSessionUrl
+}) => {
+  tearDownConnection(peerConnection, websocket);
+  if (whipSessionUrl) {
+    fetch(whipSessionUrl, { method: "DELETE" }).catch(() => {});
+  }
+  if (callbacks.onSimulcastRejected) {
+    callbacks.onSimulcastRejected({ message: SIMULCAST_REJECTED_MESSAGE });
+  }
+  startPublish({ ...publishSettings, useSimulcast: false }, null, callbacks);
+};
 
 const getStreamInfo = (publishSettings, session) => {
-
   return {
     applicationName: publishSettings.applicationName,
     streamName: publishSettings.streamName,
@@ -21,10 +64,13 @@ const peerConnectionCreateOfferSuccess = (description, publishSettings, websocke
     .setLocalDescription(description)
     .then(() => {
       const streamInfo = getStreamInfo(publishSettings, session);
+      const offerSdp = publishSettings.useSimulcast
+        ? ensureSimulcastSDP(peerConnection.localDescription.sdp)
+        : peerConnection.localDescription.sdp;
       const payload = {
         messageType: "OFFER",
         action: "PUBLISH",
-        sdp: peerConnection.localDescription.sdp,
+        sdp: offerSdp,
         applicationName: streamInfo.applicationName,
         streamName: streamInfo.streamName,
         connectionId: streamInfo.sessionId,
@@ -119,13 +165,12 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
     let videoSender = undefined;
     if (publishSettings.audioTrack != null)
       audioSender = peerConnection.addTrack(publishSettings.audioTrack);
-    if (publishSettings.videoTrack != null)
-      videoSender = peerConnection.addTrack(publishSettings.videoTrack);
+    videoSender = addVideoSender(peerConnection, publishSettings.videoTrack, publishSettings.useSimulcast);
 
     if (callbacks.onSetSenders)
       callbacks.onSetSenders({ audioSender: audioSender, videoSender: videoSender });
 
-    websocket.addEventListener("message", (event) => { websocketOnMessage(event, websocket, peerConnection, callbacks, session, pendingCandidates); });
+    websocket.addEventListener("message", (event) => { websocketOnMessage(event, publishSettings, websocket, peerConnection, callbacks, session, pendingCandidates); });
 
   }
   catch (e) {
@@ -135,7 +180,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
     callbacks.onSetPeerConnection({ peerConnection: peerConnection });
 }
 
-const websocketOnMessage = (event, websocket, peerConnection, callbacks, session, pendingCandidates) => {
+const websocketOnMessage = (event, publishSettings, websocket, peerConnection, callbacks, session, pendingCandidates) => {
 
   let msgJSON = JSON.parse(event.data);
 
@@ -174,6 +219,13 @@ const websocketOnMessage = (event, websocket, peerConnection, callbacks, session
 
       peerConnection
         .setRemoteDescription(new RTCSessionDescription(sdpData))
+        .then(() => {
+          if (publishSettings.useSimulcast && !simulcastAcceptedInAnswer(sdpData.sdp)) {
+            retryWithoutSimulcast({
+              publishSettings, callbacks, peerConnection, websocket
+            });
+          }
+        })
         .catch((error) => { peerConnectionOnError(error, callbacks); });
     }
   }
@@ -193,6 +245,7 @@ const websocketOnError = (error, callbacks) => {
 // - onSetPeerConnection({peerConnection:obj})
 // - onSetWebsocket({websocket:obj})
 // - onSetSenders({audioSender:obj,videoSender:obj})
+// - onSimulcastRejected({message:''}) - The publisher will automatically retry without simulcast.
 
 const startPublish = (publishSettings, websocket, callbacks) =>
 {
@@ -283,8 +336,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     if (publishSettings.audioTrack != null)
       audioSender = peerConnection.addTrack(publishSettings.audioTrack);
 
-    if (publishSettings.videoTrack != null)
-      videoSender = peerConnection.addTrack(publishSettings.videoTrack);
+    videoSender = addVideoSender(peerConnection, publishSettings.videoTrack, publishSettings.useSimulcast);
 
     if (callbacks.onSetSenders)
       callbacks.onSetSenders({ audioSender, videoSender });
@@ -292,15 +344,19 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 
+    const offerSdp = publishSettings.useSimulcast
+      ? ensureSimulcastSDP(peerConnection.localDescription.sdp)
+      : peerConnection.localDescription.sdp;
+
     console.log("Sending WHIP Offer:");
-    console.log(peerConnection.localDescription.sdp);
+    console.log(offerSdp);
 
     const whipUrl = `${publishSettings.signalingURL}/${publishSettings.applicationName}/${publishSettings.streamName}/whip`;
 
     const response = await fetch(whipUrl, {
       method: "POST",
       headers: { "Content-Type": "application/sdp" },
-      body: peerConnection.localDescription.sdp
+      body: offerSdp
     });
 
     if (!response.ok) {
@@ -328,6 +384,13 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
       type: "answer",
       sdp: answerSDP
     });
+
+    if (publishSettings.useSimulcast && !simulcastAcceptedInAnswer(answerSDP)) {
+      retryWithoutSimulcast({
+        publishSettings, callbacks, peerConnection, whipSessionUrl: sessionUrl
+      });
+      return;
+    }
 
     if (callbacks.onSetPeerConnection)
       callbacks.onSetPeerConnection({ peerConnection });

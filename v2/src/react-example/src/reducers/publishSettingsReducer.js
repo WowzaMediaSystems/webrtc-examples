@@ -18,6 +18,7 @@ const initialState = {
   videoFrameSize: 'default',
   userData: undefined,
   useWhip: false,
+  useSimulcast: false,
   publishStart: false,
   publishStarting: false,
   publishStop: false,
@@ -61,6 +62,8 @@ const publishSettingsReducer = (state = initialState, action) => {
       return { ...state, userData:action.userData };
     case PublishSettingsActions.SET_PUBLISH_USE_WHIP:
       return { ...state, useWhip: action.useWhip };
+    case PublishSettingsActions.SET_PUBLISH_USE_SIMULCAST:
+      return { ...state, useSimulcast: action.useSimulcast };
     case PublishSettingsActions.SET_PUBLISH_FLAGS:
       let publishFlagsState = { ...state };
       if (action.publishStart != null) publishFlagsState.publishStart = action.publishStart;
