@@ -14,10 +14,10 @@ export const SIMULCAST_ENCODINGS = [
   { rid: "l", maxBitrate: 200000, scaleResolutionDownBy: 4.0 }
 ];
 
-// User-facing copy. Lives here because it pairs with simulcastAcceptedInAnswer
-// and the onSimulcastRejected callback — keep them co-located.
+// User-facing copy. Lives here because it pairs with simulcastAcceptedInAnswer —
+// keep the wire-level detection and the message it triggers co-located.
 export const SIMULCAST_REJECTED_MESSAGE =
-  "Simulcast was rejected by the server. Retrying without simulcast.";
+  "Simulcast was rejected by the server. Disable Simulcast and try again.";
 
 // Returns the RTCRtpSender so callers match the contract of addTrack().
 export const addSimulcastVideoSender = (peerConnection, videoTrack) => {

@@ -31,20 +31,19 @@ const tearDownConnection = (peerConnection, websocket) => {
   }
 };
 
-// Single owner of "abandon this attempt and retry without simulcast". WS and
-// WHIP both route through here (and the WHIP-only DELETE lives alongside 
+// Single owner of "abandon this attempt and surface the failure". WS and
+// WHIP both route through here (and the WHIP-only DELETE lives alongside
 // the rest of the cleanup, not orphaned in the caller).
-const retryWithoutSimulcast = ({
-  publishSettings, callbacks, peerConnection, websocket, whipSessionUrl
+const reportSimulcastRejection = ({
+  callbacks, peerConnection, websocket, whipSessionUrl
 }) => {
   tearDownConnection(peerConnection, websocket);
   if (whipSessionUrl) {
     fetch(whipSessionUrl, { method: "DELETE" }).catch(() => {});
   }
-  if (callbacks.onSimulcastRejected) {
-    callbacks.onSimulcastRejected({ message: SIMULCAST_REJECTED_MESSAGE });
+  if (callbacks.onError) {
+    callbacks.onError({ message: SIMULCAST_REJECTED_MESSAGE });
   }
-  startPublish({ ...publishSettings, useSimulcast: false }, null, callbacks);
 };
 
 const getStreamInfo = (publishSettings, session) => {
@@ -221,8 +220,8 @@ const websocketOnMessage = (event, publishSettings, websocket, peerConnection, c
         .setRemoteDescription(new RTCSessionDescription(sdpData))
         .then(() => {
           if (publishSettings.useSimulcast && !simulcastAcceptedInAnswer(sdpData.sdp)) {
-            retryWithoutSimulcast({
-              publishSettings, callbacks, peerConnection, websocket
+            reportSimulcastRejection({
+              callbacks, peerConnection, websocket
             });
           }
         })
@@ -245,7 +244,6 @@ const websocketOnError = (error, callbacks) => {
 // - onSetPeerConnection({peerConnection:obj})
 // - onSetWebsocket({websocket:obj})
 // - onSetSenders({audioSender:obj,videoSender:obj})
-// - onSimulcastRejected({message:''}) - The publisher will automatically retry without simulcast.
 
 const startPublish = (publishSettings, websocket, callbacks) =>
 {
@@ -386,8 +384,8 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     });
 
     if (publishSettings.useSimulcast && !simulcastAcceptedInAnswer(answerSDP)) {
-      retryWithoutSimulcast({
-        publishSettings, callbacks, peerConnection, whipSessionUrl: sessionUrl
+      reportSimulcastRejection({
+        callbacks, peerConnection, whipSessionUrl: sessionUrl
       });
       return;
     }
