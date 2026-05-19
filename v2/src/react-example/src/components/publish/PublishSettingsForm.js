@@ -26,7 +26,8 @@ const publishUrlParametersMap = {
   applicationName: "publishApplicationName",
   streamName: "publishStreamName",
   useWhip: "publishUseWhip",
-  authToken: "publishAuthToken"
+  authToken: "publishAuthToken",
+  useSimulcast: "publishUseSimulcast",
 };
 
 const PublishSettingsForm = () => {
@@ -60,14 +61,17 @@ const PublishSettingsForm = () => {
       streamName: PublishSettingsActions.SET_PUBLISH_STREAM_NAME,
       useWhip: PublishSettingsActions.SET_PUBLISH_USE_WHIP,
       authToken: PublishSettingsActions.SET_PUBLISH_AUTH_TOKEN,
+      useSimulcast: PublishSettingsActions.SET_PUBLISH_USE_SIMULCAST,
     };
+
+    const booleanKeys = new Set(['useWhip', 'useSimulcast']);
 
     Object.entries(publishUrlParametersMap).forEach(([stateKey, cookieKey]) => {
       const value = savedValues[cookieKey];
       if (value != null) {
         const actionType = actionMap[stateKey];
         if (actionType) {
-          const payload = stateKey === 'useWhip'
+          const payload = booleanKeys.has(stateKey)
             ? { [stateKey]: value === 'true' || value === true }
             : { [stateKey]: value };
           dispatch({ type: actionType, ...payload });
@@ -263,6 +267,24 @@ const PublishSettingsForm = () => {
               </div>
             </div>
           )}
+        </div>
+
+        <div className="form-check form-switch form-check-inline mb-3">
+          <label className='form-check-label mr-3' htmlFor="publishUseSimulcast">
+            Simulcast
+          </label>
+          <input
+            className='form-check-input form-switch orange-checkbox'
+            type="checkbox"
+            id="publishUseSimulcast"
+            name="publishUseSimulcast"
+            checked={publishSettings.useSimulcast || false}
+            disabled={webrtcPublish.connected}
+            onChange={(e) => dispatch({
+              type: PublishSettingsActions.SET_PUBLISH_USE_SIMULCAST,
+              useSimulcast: e.target.checked
+            })}
+          />
         </div>
 
         <div className="row mb-2">
