@@ -19,6 +19,7 @@ const initialState = {
   userData: undefined,
   useWhip: false,
   authToken: '',
+  useSimulcast: false,
   publishStart: false,
   publishStarting: false,
   publishStop: false,
@@ -64,6 +65,8 @@ const publishSettingsReducer = (state = initialState, action) => {
       return { ...state, useWhip: action.useWhip };
     case PublishSettingsActions.SET_PUBLISH_AUTH_TOKEN:
       return { ...state, authToken: action.authToken };
+    case PublishSettingsActions.SET_PUBLISH_USE_SIMULCAST:
+      return { ...state, useSimulcast: action.useSimulcast };
     case PublishSettingsActions.SET_PUBLISH_FLAGS:
       let publishFlagsState = { ...state };
       if (action.publishStart != null) publishFlagsState.publishStart = action.publishStart;
