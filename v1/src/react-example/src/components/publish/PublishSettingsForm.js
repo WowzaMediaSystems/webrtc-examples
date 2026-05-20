@@ -5,6 +5,11 @@ import * as PublishSettingsActions from '../../actions/publishSettingsActions';
 import * as PublishOptions from '../../constants/PublishOptions';
 import PublishAudioDropdown from './PublishAudioDropdown';
 import PublishVideoDropdown from './PublishVideoDropdown';
+import videoOnImage from '../../images/videocam-32px.svg';
+import videoOffImage from '../../images/videocam-off-32px.svg';
+import micOnImage from '../../images/mic-32px.svg';
+import micOffImage from '../../images/mic-off-32px.svg';
+import fileCopyImage from '../../images/file_copy-24px.svg';
 
 const PublishSettingsForm = () => {
 
@@ -130,8 +135,8 @@ const PublishSettingsForm = () => {
           </div>
           <div className="col-2">
             <button id="camera-toggle" className="control-button">
-              <img alt="" className="noll" id="video-off" src="/images/videocam-32px.svg" />
-              <img alt="" className="noll" id="video-on" src="/images/videocam-off-32px.svg" />
+              <img alt="" className="noll" id="video-off" src={videoOffImage} />
+              <img alt="" className="noll" id="video-on" src={videoOnImage} />
             </button>
           </div>
         </div>
@@ -141,8 +146,8 @@ const PublishSettingsForm = () => {
           </div>
           <div className="col-2">
             <button id="mute-toggle" className="control-button">
-              <img alt="" className="noll" id="mute-off" src="/images/mic-32px.svg" />
-              <img alt="" className="noll" id="mute-on" src="/images/mic-off-32px.svg" />
+              <img alt="" className="noll" id="mute-off" src={micOnImage} />
+              <img alt="" className="noll" id="mute-on" src={micOffImage} />
             </button>
           </div>
         </div>
@@ -162,7 +167,7 @@ const PublishSettingsForm = () => {
           </div>
           <div className="col-2">
             <button id="publish-share-link" type="button" className="control-button mt-0">
-              <img alt="" className="noll" id="mute-off" src="/images/file_copy-24px.svg" />
+              <img alt="" className="noll" id="mute-off" src={fileCopyImage}/>
             </button>
           </div>
         </div>
