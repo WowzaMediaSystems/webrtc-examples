@@ -9,6 +9,7 @@ import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
 import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
 import ExternalLinks from '../../constants/ExternalLinks';
+import fileCopyImage from '../../images/file_copy-24px.svg';
 
 const playUrlParametersMap = {
   signalingURL: "playSignalingURL",
@@ -435,7 +436,7 @@ const PlaySettingsForm = () => {
               onClick={handleShareLink}
               title="Copy share link"
             >
-              <img alt="Copy Link" className="noll" src="./images/file_copy-24px.svg" />
+              <img alt="Copy Link" className="noll" src={fileCopyImage} />
             </button>
           </div>
         </div>
