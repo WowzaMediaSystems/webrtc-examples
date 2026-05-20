@@ -6,6 +6,7 @@ import Cookies from 'js-cookie';
 import * as PlaySettingsActions from '../../actions/playSettingsActions';
 import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
+import ExternalLinks from '../../constants/ExternalLinks';
 
 const playUrlParametersMap = {
   "signalingURL":"playSignalingURL",
@@ -134,6 +135,11 @@ const PlaySettingsForm = () => {
               <img alt="" className="noll" id="mute-off" src={fileCopy} />
             </button>
           </div> */}
+        </div>
+        <div className="row mt-2">
+          <div className="col-12 text-center">
+            <small>{ExternalLinks.modernLinkText} <a href={ExternalLinks.modernPlay} target="_blank" rel="noopener noreferrer">{ExternalLinks.modernLinkLabel}</a></small>
+          </div>
         </div>
       </form>
     </div>
