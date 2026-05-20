@@ -11,6 +11,8 @@ import micOnImage from '../../images/mic-32px.svg';
 import micOffImage from '../../images/mic-off-32px.svg';
 import fileCopyImage from '../../images/file_copy-24px.svg';
 
+import ExternalLinks from '../../constants/ExternalLinks';
+
 const PublishSettingsForm = () => {
 
   const dispatch = useDispatch();
@@ -169,6 +171,11 @@ const PublishSettingsForm = () => {
             <button id="publish-share-link" type="button" className="control-button mt-0">
               <img alt="" className="noll" id="mute-off" src={fileCopyImage}/>
             </button>
+          </div>
+        </div>
+        <div className="row mt-2">
+          <div className="col-12 text-center">
+            <small>{ExternalLinks.modernLinkText} <a href={ExternalLinks.modernPublish} target="_blank" rel="noopener noreferrer">{ExternalLinks.modernLinkLabel}</a></small>
           </div>
         </div>
       </form>
