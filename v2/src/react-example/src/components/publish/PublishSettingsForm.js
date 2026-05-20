@@ -11,6 +11,11 @@ import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
 import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
 import ExternalLinks from '../../constants/ExternalLinks';
+import videoOnImage from '../../images/videocam-32px.svg';
+import videoOffImage from '../../images/videocam-off-32px.svg';
+import micOnImage from '../../images/mic-32px.svg';
+import micOffImage from '../../images/mic-off-32px.svg';
+import fileCopyImage from '../../images/file_copy-24px.svg';
 
 const publishUrlParametersMap = {
   signalingURL: "publishSignalingURL",
@@ -404,7 +409,7 @@ const PublishSettingsForm = () => {
                 alt=""
                 className="noll"
                 id={isCameraOn ? "video-off" : "video-on"}
-                src={isCameraOn ? "/images/videocam-32px.svg" : "/images/videocam-off-32px.svg"}
+                src={isCameraOn ? videoOnImage : videoOffImage}
               />
             </button>
           </div>
@@ -423,7 +428,7 @@ const PublishSettingsForm = () => {
                 alt=""
                 className="noll"
                 id={isMicOn ? "mute-on" : "mute-off"}
-                src={isMicOn ? "/images/mic-32px.svg" : "/images/mic-off-32px.svg"} />
+                src={isMicOn ? micOnImage : micOffImage} />
             </button>
           </div>
         </div>
@@ -443,7 +448,7 @@ const PublishSettingsForm = () => {
           </div>
           <div className="col-2">
             <button id="publish-share-link" type="button" className="control-button mt-0">
-              <img alt="" className="noll" id="mute-off" src="/images/file_copy-24px.svg" />
+              <img alt="" className="noll" id="mute-off" src={fileCopyImage} />
             </button>
           </div>
         </div>
