@@ -28,27 +28,60 @@ export const addSimulcastVideoSender = (peerConnection, videoTrack) => {
   return transceiver.sender;
 };
 
-// Safety net: Chrome/Firefox emit a=rid / a=simulcast lines automatically when
-// sendEncodings is set, but older Safari versions don't. Ensure the wire SDP
-// always advertises simulcast when the user opted in.
+// RFC 8851 per-RID restriction string for one encoding. Only max-br today —
+// extend here (max-width, max-height, max-fps, …) if we want more layer
+// hints later.
+const ridRestrictions = (encoding) => {
+  const parts = [];
+  if (encoding.maxBitrate != null) parts.push(`max-br=${encoding.maxBitrate}`);
+  return parts.join(";");
+};
+
 export const ensureSimulcastSDP = (sdp) => {
-  if (!sdp || sdp.includes("a=simulcast:")) return sdp;
+  if (!sdp) return sdp;
 
   const eol = sdp.includes("\r\n") ? "\r\n" : "\n";
   const lines = sdp.split(/\r?\n/);
   const videoIndex = lines.findIndex((line) => line.startsWith("m=video"));
   if (videoIndex === -1) return sdp;
 
-  let insertIndex = lines.length;
+  let sectionEnd = lines.length;
   for (let i = videoIndex + 1; i < lines.length; i++) {
-    if (lines[i].startsWith("m=")) { insertIndex = i; break; }
+    if (lines[i].startsWith("m=")) { sectionEnd = i; break; }
   }
 
-  const rids = SIMULCAST_ENCODINGS.map((e) => e.rid);
-  const ridLines = rids.map((rid) => `a=rid:${rid} send`);
-  lines.splice(insertIndex, 0, ...ridLines, `a=simulcast:send ${rids.join(";")}`);
+  // Strip any existing a=rid:* send and a=simulcast: lines in the video
+  // section so we can re-emit them with restrictions in the preferred order.
+  const filtered = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (i >= videoIndex && i < sectionEnd) {
+      if (/^a=rid:\S+\s+send\b/.test(lines[i])) continue;
+      if (/^a=simulcast:/.test(lines[i])) continue;
+    }
+    filtered.push(lines[i]);
+  }
 
-  return lines.join(eol);
+  const newVideoIndex = filtered.findIndex((line) => line.startsWith("m=video"));
+  let insertIndex = filtered.length;
+  for (let i = newVideoIndex + 1; i < filtered.length; i++) {
+    if (filtered[i].startsWith("m=")) { insertIndex = i; break; }
+  }
+
+  const ridLines = SIMULCAST_ENCODINGS.map((enc) => {
+    const restrictions = ridRestrictions(enc);
+    return restrictions
+      ? `a=rid:${enc.rid} send ${restrictions}`
+      : `a=rid:${enc.rid} send`;
+  });
+  const rids = SIMULCAST_ENCODINGS.map((enc) => enc.rid);
+
+  filtered.splice(
+    insertIndex, 0,
+    ...ridLines,
+    `a=simulcast:send ${rids.join(";")}`
+  );
+
+  return filtered.join(eol);
 };
 
 // RFC 8853: simulcast is accepted only when the answerer mirrors back an
