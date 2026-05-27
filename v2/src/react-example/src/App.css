@@ -79,6 +79,21 @@
   padding-bottom:57%;
   background-color:rgba(102, 102, 102, 1);
   border-radius:0.75em;
+  position: relative;
+}
+
+#rendition-badge {
+  position: absolute;
+  top: 0.75em;
+  right: 0.75em;
+  padding: 0.25em 0.6em;
+  background: rgba(0, 0, 0, 0.65);
+  color: #FFFFFF;
+  font-size: 0.85em;
+  font-family: monospace;
+  border-radius: 0.4em;
+  pointer-events: none;
+  z-index: 2;
 }
 
 #publish-content,

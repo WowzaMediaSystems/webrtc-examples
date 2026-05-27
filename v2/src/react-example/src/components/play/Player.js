@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import * as PlaySettingsActions from '../../actions/playSettingsActions';
@@ -12,6 +12,8 @@ const Player = () => {
 
   const videoElement = useRef(null);
   const streamRef = useRef(new MediaStream());
+  const maxWidthRef = useRef(0);
+  const [videoSize, setVideoSize] = useState({ width: 0, height: 0 });
 
   const dispatch = useDispatch();
   const playSettings = useSelector ((state) => state.playSettings);
@@ -82,18 +84,50 @@ const Player = () => {
 
   }, [dispatch,videoElement,playSettings,peerConnection,websocket,connected]);
 
+  // Watch the <video> element's dimensions
+  useEffect(() => {
+    const video = videoElement.current;
+    if (!video) return;
+
+    const updateSize = () => {
+      const width = video.videoWidth;
+      const height = video.videoHeight;
+      if (width > maxWidthRef.current) maxWidthRef.current = width;
+      setVideoSize({ width, height });
+    };
+
+    video.addEventListener('resize', updateSize);
+    updateSize();
+    return () => video.removeEventListener('resize', updateSize);
+  }, [connected]);
+
+  // Reset the "max width seen" baseline between sessions so a new connection
+  // doesn't inherit the previous publisher's reference resolution.
+  useEffect(() => {
+    if (!connected) {
+      maxWidthRef.current = 0;
+      setVideoSize({ width: 0, height: 0 });
+    }
+  }, [connected]);
+
+  const showBadge = connected && videoSize.width > 0;
 
   return (
   <>
-    <video 
-      id="player-video" 
-      ref={videoElement} 
-      autoPlay 
-      playsInline 
-      muted 
+    <video
+      id="player-video"
+      ref={videoElement}
+      autoPlay
+      playsInline
+      muted
       controls
       style={{ display: connected ? 'block' : 'none' }}
     />
+    {showBadge && (
+      <div id="rendition-badge">
+        {videoSize.width}&times;{videoSize.height}
+      </div>
+    )}
   </>
 );
 }
