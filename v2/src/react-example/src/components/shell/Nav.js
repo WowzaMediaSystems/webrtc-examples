@@ -87,7 +87,7 @@ const Nav = (props) => {
           <a href="https://www.wowza.com/docs/wowza-streaming-engine-product-articles">Docs</a>
         </li>
         <li className="nav-item mr-3">
-          <a href="https://www.wowza.com/developer">Developer Portal</a>
+          <a href="https://developer.wowza.com">Developer Portal</a>
         </li>
       </ul>
     </nav>
