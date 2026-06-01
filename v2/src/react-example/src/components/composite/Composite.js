@@ -5,10 +5,12 @@ import CompositePublishSettingsForm from './CompositePublishSettingsForm';
 import Compositor from './Compositor';
 import InputLayoutSettingsForm from './InputLayoutSettingsForm';
 import CompositePublisher from './CompositePublisher';
+import Devices from '../media/Devices';
 
 import './Composite.css';
 
 import adapter from 'webrtc-adapter';
+import CompositorUserMedia from '../media/CompositorUserMedia';
 
 const Composite = () => {
 
@@ -27,6 +29,8 @@ const Composite = () => {
 
   return (
     <div className="container-fluid mt-3" id="composite-content">
+      <CompositorUserMedia />
+      <Devices/>
       <div id="composite-content-inner">
         <div className="row justify-content-center">
           <div className="col-md-8 col-sm-12">
