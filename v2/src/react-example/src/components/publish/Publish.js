@@ -3,12 +3,16 @@ import React from 'react';
 import PublishVideoElement from './PublishVideoElement';
 import PublishLiveIndicator from './PublishLiveIndicator';
 import PublishSettingsForm from './PublishSettingsForm';
+import CompositorUserMedia from '../media/CompositorUserMedia';
+import Devices from '../../components/media/Devices';
 import Publisher from './Publisher';
 
 const Publish = () => {
 
   return (
     <div className="container-fluid mt-3" id="publish-content">
+      <CompositorUserMedia />
+      <Devices />
       <div className="row justify-content-center">
         <div className="col-md-8 col-sm-12">
           <div id="publish-video-container">
