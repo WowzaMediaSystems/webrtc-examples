@@ -1,4 +1,5 @@
 import * as PublishSettingsActions from '../actions/publishSettingsActions';
+import { DEFAULT_SIMULCAST_RENDITIONS } from '../utils/SimulcastUtils';
 
 const initialState = {
   signalingURL: '',
@@ -20,6 +21,7 @@ const initialState = {
   useWhip: false,
   authToken: '',
   useSimulcast: false,
+  simulcastRenditions: DEFAULT_SIMULCAST_RENDITIONS,
   publishStart: false,
   publishStarting: false,
   publishStop: false,
@@ -67,6 +69,8 @@ const publishSettingsReducer = (state = initialState, action) => {
       return { ...state, authToken: action.authToken };
     case PublishSettingsActions.SET_PUBLISH_USE_SIMULCAST:
       return { ...state, useSimulcast: action.useSimulcast };
+    case PublishSettingsActions.SET_PUBLISH_SIMULCAST_RENDITIONS:
+      return { ...state, simulcastRenditions: action.simulcastRenditions };
     case PublishSettingsActions.SET_PUBLISH_FLAGS:
       let publishFlagsState = { ...state };
       if (action.publishStart != null) publishFlagsState.publishStart = action.publishStart;

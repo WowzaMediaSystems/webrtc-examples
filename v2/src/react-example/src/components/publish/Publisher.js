@@ -9,6 +9,7 @@ import startPublish from '../../webrtc/startPublish';
 import stopPublish from '../../webrtc/stopPublish';
 import replaceAudioTrack from '../../webrtc/replaceAudioTrack';
 import replaceVideoTrack from '../../webrtc/replaceVideoTrack';
+import { applySimulcastParameters } from '../../utils/SimulcastUtils';
 
 const Publisher = () => {
 
@@ -105,6 +106,18 @@ const Publisher = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[dispatch,videoTrack]);
 
+  // Apply the simulcast scale down values, which can change mid-stream.
+  // Re-runs on connect so edits made while connecting are picked up.
+  useEffect(() => {
+    if (!webrtcPublish.connected || !publishSettings.useSimulcast || videoSender == null) return;
+
+    applySimulcastParameters(videoSender, publishSettings.simulcastRenditions)
+      .catch((error) => {
+        dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:'Simulcast update failed: ' + error.message});
+      });
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[dispatch,publishSettings.simulcastRenditions,webrtcPublish.connected]);
 
   return <></>;
 }
