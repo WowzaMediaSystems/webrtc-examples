@@ -10,6 +10,9 @@ import QueryString from 'query-string';
 import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
 import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
+import { parseSimulcastRenditions, getSimulcastRenditionsError } from '../../utils/SimulcastUtils';
+import PublishSimulcastSettings from './PublishSimulcastSettings';
+import CollapsibleSection from '../shared/CollapsibleSection';
 import ExternalLinks from '../../constants/ExternalLinks';
 
 const publishUrlParametersMap = {
@@ -21,7 +24,8 @@ const publishUrlParametersMap = {
   applicationName: "publishApplicationName",
   streamName: "publishStreamName",
   useWhip: "publishUseWhip",
-  useSimulcast: "publishUseSimulcast"
+  useSimulcast: "publishUseSimulcast",
+  simulcastRenditions: "publishSimulcastRenditions",
 };
 
 const PublishSettingsForm = () => {
@@ -37,7 +41,6 @@ const PublishSettingsForm = () => {
   const [urlPlaceholder, setUrlPlaceholder] = useState(SIGNALING_URL_PLACEHOLDER);
 
   const [initialized, setInitialized] = useState(true);
-  const [iceServersExpanded, setIceServersExpanded] = useState(false);
 
 
   useEffect(() => {
@@ -55,21 +58,23 @@ const PublishSettingsForm = () => {
       streamName: PublishSettingsActions.SET_PUBLISH_STREAM_NAME,
       useWhip: PublishSettingsActions.SET_PUBLISH_USE_WHIP,
       useSimulcast: PublishSettingsActions.SET_PUBLISH_USE_SIMULCAST,
+      simulcastRenditions: PublishSettingsActions.SET_PUBLISH_SIMULCAST_RENDITIONS,
     };
 
     const booleanKeys = new Set(['useWhip', 'useSimulcast']);
 
     Object.entries(publishUrlParametersMap).forEach(([stateKey, cookieKey]) => {
-      const value = savedValues[cookieKey];
-      if (value != null) {
-        const actionType = actionMap[stateKey];
-        if (actionType) {
-          const payload = booleanKeys.has(stateKey)
-            ? { [stateKey]: value === 'true' || value === true }
-            : { [stateKey]: value };
-          dispatch({ type: actionType, ...payload });
-        }
+      let value = savedValues[cookieKey];
+      if (value == null) return;
+      const actionType = actionMap[stateKey];
+      if (!actionType) return;
+      if (booleanKeys.has(stateKey)) {
+        value = value === 'true' || value === true;
+      } else if (stateKey === 'simulcastRenditions') {
+        value = parseSimulcastRenditions(value);
+        if (value == null) return;
       }
+      dispatch({ type: actionType, [stateKey]: value });
     });
 
     setInitialized(true);
@@ -200,6 +205,17 @@ const PublishSettingsForm = () => {
       console.log("No TURN server provided");
     }
 
+    if (publishSettings.useSimulcast) {
+      const simulcastError = getSimulcastRenditionsError(publishSettings.simulcastRenditions);
+      if (simulcastError) {
+        dispatch({
+          type: ErrorsActions.SET_ERROR_MESSAGE,
+          message: simulcastError
+        });
+        return;
+      }
+    }
+
     dispatch(PublishSettingsActions.startPublish());
   };
   if (!initialized) return null;
@@ -240,40 +256,7 @@ const PublishSettingsForm = () => {
           />
         </div>
 
-        <div className="form-check form-switch form-check-inline mb-3">
-          <label className='form-check-label mr-3' htmlFor="publishUseSimulcast">
-            Simulcast
-          </label>
-          <input
-            className='form-check-input form-switch orange-checkbox'
-            type="checkbox"
-            id="publishUseSimulcast"
-            name="publishUseSimulcast"
-            checked={publishSettings.useSimulcast || false}
-            disabled={webrtcPublish.connected}
-            onChange={(e) => dispatch({
-              type: PublishSettingsActions.SET_PUBLISH_USE_SIMULCAST,
-              useSimulcast: e.target.checked
-            })}
-          />
-        </div>
-
-        <div className="row mb-2">
-          <div className="col-12">
-            <button
-              type="button"
-              className={`btn btn-sm w-100 d-flex align-items-center justify-content-between btn-ice-servers`}
-              onClick={() => setIceServersExpanded(!iceServersExpanded)}
-            >
-              <span>ICE Servers</span>
-              <i className={`bi bi-chevron-${iceServersExpanded ? 'up' : 'down'}`}></i>
-            </button>
-          </div>
-        </div>
-
-        {iceServersExpanded && (
-          <>
-          <div className="border border-top-0 rounded-bottom p-3 mb-3">
+        <CollapsibleSection title="ICE Servers">
             <div className="row">
               <div className="col-12">
                 <div className="form-group">
@@ -338,9 +321,9 @@ const PublishSettingsForm = () => {
                 </div>
               </div>
             </div>
-            </div>
-          </>
-        )}
+        </CollapsibleSection>
+
+        <PublishSimulcastSettings />
 
         <div className="row">
           <div className="col-lg-6 col-sm-12">

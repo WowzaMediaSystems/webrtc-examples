@@ -11,9 +11,10 @@ import {
 
 // Orchestration dispatcher: simulcast vs. single-track is a publish-flow
 // decision, so it lives here. The simulcast mechanics live in SimulcastUtils.
-const addVideoSender = (peerConnection, videoTrack, useSimulcast) => {
+const addVideoSender = (peerConnection, videoTrack, publishSettings) => {
   if (videoTrack == null) return undefined;
-  if (useSimulcast) return addSimulcastVideoSender(peerConnection, videoTrack);
+  if (publishSettings.useSimulcast)
+    return addSimulcastVideoSender(peerConnection, videoTrack, publishSettings.simulcastRenditions);
   return peerConnection.addTrack(videoTrack);
 };
 
@@ -64,7 +65,7 @@ const peerConnectionCreateOfferSuccess = (description, publishSettings, websocke
     .then(() => {
       const streamInfo = getStreamInfo(publishSettings, session);
       const offerSdp = publishSettings.useSimulcast
-        ? ensureSimulcastSDP(peerConnection.localDescription.sdp)
+        ? ensureSimulcastSDP(peerConnection.localDescription.sdp, publishSettings.simulcastRenditions)
         : peerConnection.localDescription.sdp;
       const payload = {
         messageType: "OFFER",
@@ -164,7 +165,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
     let videoSender = undefined;
     if (publishSettings.audioTrack != null)
       audioSender = peerConnection.addTrack(publishSettings.audioTrack);
-    videoSender = addVideoSender(peerConnection, publishSettings.videoTrack, publishSettings.useSimulcast);
+    videoSender = addVideoSender(peerConnection, publishSettings.videoTrack, publishSettings);
 
     if (callbacks.onSetSenders)
       callbacks.onSetSenders({ audioSender: audioSender, videoSender: videoSender });
@@ -334,7 +335,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     if (publishSettings.audioTrack != null)
       audioSender = peerConnection.addTrack(publishSettings.audioTrack);
 
-    videoSender = addVideoSender(peerConnection, publishSettings.videoTrack, publishSettings.useSimulcast);
+    videoSender = addVideoSender(peerConnection, publishSettings.videoTrack, publishSettings);
 
     if (callbacks.onSetSenders)
       callbacks.onSetSenders({ audioSender, videoSender });
@@ -343,7 +344,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     await peerConnection.setLocalDescription(offer);
 
     const offerSdp = publishSettings.useSimulcast
-      ? ensureSimulcastSDP(peerConnection.localDescription.sdp)
+      ? ensureSimulcastSDP(peerConnection.localDescription.sdp, publishSettings.simulcastRenditions)
       : peerConnection.localDescription.sdp;
 
     console.log("Sending WHIP Offer:");
