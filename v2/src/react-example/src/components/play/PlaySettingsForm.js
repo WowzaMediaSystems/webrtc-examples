@@ -47,7 +47,10 @@ const FormInput = ({ label, id, value, onChange, disabled, ...props }) => (
 );
 
 const FormCheckbox = ({ label, id, checked, onChange, disabled }) => (
-  <div className="form-group form-switch mt-2 ml-4">
+  <div className="form-group form-switch form-check-inline">
+    <label className="form-check-label mr-3" htmlFor={id}>
+      {label}
+    </label>
     <input
       id={id}
       name={id}
@@ -57,9 +60,6 @@ const FormCheckbox = ({ label, id, checked, onChange, disabled }) => (
       disabled={disabled}
       onChange={onChange}
     />
-    <label className="form-check-label" htmlFor={id}>
-      {label}
-    </label>
   </div>
 );
 
@@ -226,7 +226,7 @@ const PlaySettingsForm = () => {
           </div>
         </div>
 
-        <div className="row">
+        <div className="row align-items-center mb-2">
           <div className="col-5">
             <FormCheckbox
               label="Use WHEP"
@@ -238,7 +238,7 @@ const PlaySettingsForm = () => {
           </div>
           {playSettings.useWhep && (
             <div className="col-7">
-              <div className="form-group row">
+              <div className="form-group row mb-0 align-items-center">
                 <label className="col-auto col-form-label" htmlFor="playAuthToken">Auth Token</label>
                 <div className="col">
                   <input type="text"

@@ -228,9 +228,9 @@ const PublishSettingsForm = () => {
           </div>
         </div>
 
-        <div className="row">
+        <div className="row align-items-center mb-2">
           <div className="col-5">
-            <div className="form-check form-switch form-check-inline mb-3">
+            <div className="form-group form-switch form-check-inline">
               <label className='form-check-label mr-3' htmlFor="publishUseWhip">
                 Use WHIP
               </label>
@@ -247,7 +247,7 @@ const PublishSettingsForm = () => {
           </div>
           {publishSettings.useWhip && (
             <div className="col-7">
-              <div className="form-group row">
+              <div className="form-group row mb-0 align-items-center">
                 <label className="col-auto col-form-label" htmlFor="publishAuthToken">Auth Token</label>
                 <div className="col">
                   <input type="text"
