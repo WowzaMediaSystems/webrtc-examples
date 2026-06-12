@@ -24,7 +24,8 @@ const playUrlParametersMap = {
   prefix: "playPrefix",
   isIp: "playIsIp",
   ip: "playIp",
-  useWhep: "playUseWhep"
+  useWhep: "playUseWhep",
+  authToken: "playAuthToken"
 };
 
 const SIGNALING_URL_PLACEHOLDER = "wss://[ssl-certificate-domain-name]/webrtc-session.json";
@@ -93,7 +94,8 @@ const PlaySettingsForm = () => {
           prefix: PlaySettingsActions.SET_PLAY_PREFIX,
           isIp: PlaySettingsActions.SET_PLAY_IS_IP,
           ip: PlaySettingsActions.SET_PLAY_IP,
-          useWhep: PlaySettingsActions.SET_PLAY_USE_WHEP
+          useWhep: PlaySettingsActions.SET_PLAY_USE_WHEP,
+          authToken: PlaySettingsActions.SET_PLAY_AUTH_TOKEN
         };
 
         const booleanKeys = ['isIp', 'useWhep'];
@@ -225,7 +227,7 @@ const PlaySettingsForm = () => {
         </div>
 
         <div className="row">
-          <div className="col-6">
+          <div className="col-5">
             <FormCheckbox
               label="Use WHEP"
               id="playUseWhep"
@@ -234,6 +236,24 @@ const PlaySettingsForm = () => {
               onChange={handleCheckboxChange(PlaySettingsActions.SET_PLAY_USE_WHEP, 'useWhep')}
             />
           </div>
+          {playSettings.useWhep && (
+            <div className="col-7">
+              <div className="form-group row">
+                <label className="col-auto col-form-label" htmlFor="playAuthToken">Auth Token</label>
+                <div className="col">
+                  <input type="text"
+                    className="form-control"
+                    id="playAuthToken"
+                    name="playAuthToken"
+                    maxLength={1024}
+                    value={playSettings.authToken || ''}
+                    disabled={connected}
+                    onChange={handleInputChange(PlaySettingsActions.SET_PLAY_AUTH_TOKEN, 'authToken')}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="row mb-2">

@@ -3,6 +3,9 @@ import getSecureToken from './SecureToken';
 import { validateParams } from '../utils/ValidationUtils';
 import { addIceServers } from '../utils/IceServersUtils';
 
+const getAuthHeaders = (authToken) =>
+  authToken ? { "Authorization": `Bearer ${authToken}` } : {};
+
 
 // Utilities
 
@@ -311,7 +314,7 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
 
       await fetch(sessionUrl, {
         method: "PATCH",
-        headers: { "Content-Type": "application/trickle-ice-sdpfrag" },
+        headers: { "Content-Type": "application/trickle-ice-sdpfrag", ...getAuthHeaders(playSettings.authToken) },
         body: candidate
       });
     };
@@ -323,7 +326,7 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
 
     const response = await fetch(whepUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/sdp" },
+      headers: { "Content-Type": "application/sdp", ...getAuthHeaders(playSettings.authToken) },
       body: peerConnection.localDescription.sdp
     });
 
@@ -340,7 +343,7 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
       for (const candidate of pendingCandidates) {
         await fetch(sessionUrl, {
           method: "PATCH",
-          headers: { "Content-Type": "application/trickle-ice-sdpfrag" },
+          headers: { "Content-Type": "application/trickle-ice-sdpfrag", ...getAuthHeaders(playSettings.authToken) },
           body: candidate
         });
       }

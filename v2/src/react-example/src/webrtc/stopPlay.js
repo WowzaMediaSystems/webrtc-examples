@@ -25,7 +25,8 @@ const stopPlay = (playSettings, peerConnection, websocket, callbacks) =>
 const stopPlayWhep = async (playSettings) => {
   if (playSettings._whepSessionUrl) {
     await fetch(playSettings._whepSessionUrl, {
-      method: "DELETE"
+      method: "DELETE",
+      headers: playSettings.authToken ? { "Authorization": `Bearer ${playSettings.authToken}` } : {}
     });
   }
 };
