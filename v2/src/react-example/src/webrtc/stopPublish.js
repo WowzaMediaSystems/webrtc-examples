@@ -29,7 +29,8 @@ const stopPublishWhip = async (peerConnection) => {
   try {
     if (peerConnection?._whipSessionUrl) {
       await fetch(peerConnection._whipSessionUrl, {
-        method: "DELETE"
+        method: "DELETE",
+        headers: peerConnection._whipAuthToken ? { "Authorization": `Bearer ${peerConnection._whipAuthToken}` } : {}
       });
     }
 

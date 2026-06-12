@@ -25,7 +25,8 @@ const publishUrlParametersMap = {
   turnPassword: "publishTurnPassword",
   applicationName: "publishApplicationName",
   streamName: "publishStreamName",
-  useWhip: "publishUseWhip"
+  useWhip: "publishUseWhip",
+  authToken: "publishAuthToken"
 };
 
 const PublishSettingsForm = () => {
@@ -58,6 +59,7 @@ const PublishSettingsForm = () => {
       applicationName: PublishSettingsActions.SET_PUBLISH_APPLICATION_NAME,
       streamName: PublishSettingsActions.SET_PUBLISH_STREAM_NAME,
       useWhip: PublishSettingsActions.SET_PUBLISH_USE_WHIP,
+      authToken: PublishSettingsActions.SET_PUBLISH_AUTH_TOKEN,
     };
 
     Object.entries(publishUrlParametersMap).forEach(([stateKey, cookieKey]) => {
@@ -226,19 +228,41 @@ const PublishSettingsForm = () => {
           </div>
         </div>
 
-        <div className="form-check form-switch form-check-inline mb-3">
-          <label className='form-check-label mr-3' htmlFor="publishUseWhip">
-            Use WHIP
-          </label>
-          <input
-            className='form-check-input form-switch orange-checkbox'
-            type="checkbox"
-            id="publishUseWhip"
-            name="publishUseWhip"
-            checked={publishSettings.useWhip || false}
-            disabled={webrtcPublish.connected}
-            onChange={handleUseWhip(PublishSettingsActions.SET_PUBLISH_USE_WHIP, 'useWhip')}
-          />
+        <div className="row align-items-center mb-2">
+          <div className="col-5">
+            <div className="form-group form-switch form-check-inline">
+              <label className='form-check-label mr-3' htmlFor="publishUseWhip">
+                Use WHIP
+              </label>
+              <input
+                className='form-check-input form-switch orange-checkbox'
+                type="checkbox"
+                id="publishUseWhip"
+                name="publishUseWhip"
+                checked={publishSettings.useWhip || false}
+                disabled={webrtcPublish.connected}
+                onChange={handleUseWhip(PublishSettingsActions.SET_PUBLISH_USE_WHIP, 'useWhip')}
+              />
+            </div>
+          </div>
+          {publishSettings.useWhip && (
+            <div className="col-7">
+              <div className="form-group row mb-0 align-items-center">
+                <label className="col-auto col-form-label" htmlFor="publishAuthToken">Auth Token</label>
+                <div className="col">
+                  <input type="text"
+                    className="form-control"
+                    id="publishAuthToken"
+                    name="publishAuthToken"
+                    maxLength="1024"
+                    value={publishSettings.authToken}
+                    disabled={webrtcPublish.connected}
+                    onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_AUTH_TOKEN,authToken:e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="row mb-2">

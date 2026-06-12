@@ -3,6 +3,9 @@
 import { addIceServers } from "../utils/IceServersUtils";
 import { validateParams } from "../utils/ValidationUtils";
 
+const getAuthHeaders = (authToken) =>
+  authToken ? { "Authorization": `Bearer ${authToken}` } : {};
+
 const getStreamInfo = (publishSettings, session) => {
 
   return {
@@ -272,7 +275,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
 
       await fetch(sessionUrl, {
         method: "PATCH",
-        headers: { "Content-Type": "application/trickle-ice-sdpfrag" },
+        headers: { "Content-Type": "application/trickle-ice-sdpfrag", ...getAuthHeaders(publishSettings.authToken) },
         body: candidate
       });
     };
@@ -299,7 +302,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
 
     const response = await fetch(whipUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/sdp" },
+      headers: { "Content-Type": "application/sdp", ...getAuthHeaders(publishSettings.authToken) },
       body: peerConnection.localDescription.sdp
     });
 
@@ -313,7 +316,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     for (const candidate of pendingCandidates) {
       await fetch(sessionUrl, {
         method: "PATCH",
-        headers: { "Content-Type": "application/trickle-ice-sdpfrag" },
+        headers: { "Content-Type": "application/trickle-ice-sdpfrag", ...getAuthHeaders(publishSettings.authToken) },
         body: candidate
       });
     }
@@ -333,6 +336,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
       callbacks.onSetPeerConnection({ peerConnection });
 
     peerConnection._whipSessionUrl = sessionUrl;
+    peerConnection._whipAuthToken = publishSettings.authToken;
 
   } catch (e) {
     console.log(e.message);

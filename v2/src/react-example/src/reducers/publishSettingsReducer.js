@@ -18,6 +18,7 @@ const initialState = {
   videoFrameSize: 'default',
   userData: undefined,
   useWhip: false,
+  authToken: '',
   publishStart: false,
   publishStarting: false,
   publishStop: false,
@@ -61,6 +62,8 @@ const publishSettingsReducer = (state = initialState, action) => {
       return { ...state, userData:action.userData };
     case PublishSettingsActions.SET_PUBLISH_USE_WHIP:
       return { ...state, useWhip: action.useWhip };
+    case PublishSettingsActions.SET_PUBLISH_AUTH_TOKEN:
+      return { ...state, authToken: action.authToken };
     case PublishSettingsActions.SET_PUBLISH_FLAGS:
       let publishFlagsState = { ...state };
       if (action.publishStart != null) publishFlagsState.publishStart = action.publishStart;
