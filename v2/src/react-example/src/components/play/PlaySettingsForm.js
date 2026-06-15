@@ -203,6 +203,19 @@ const PlaySettingsForm = () => {
   } 
   const handleStop = () => dispatch(PlaySettingsActions.stopPlay());
 
+  // Test aid: trigger an ICE restart on the active play peer connection. restartIce() flags the next
+  // negotiation for fresh ICE credentials and fires onnegotiationneeded, which startPlay.js re-sends as
+  // an OFFER over the existing connectionId so the engine renegotiates ICE without recreating the session.
+  const handleRestartIce = () => {
+    const pc = webrtcPlay.peerConnection;
+    if (pc && typeof pc.restartIce === 'function') {
+      console.log('[ICE restart] Calling peerConnection.restartIce() on the play connection.');
+      pc.restartIce();
+    } else {
+      console.warn('[ICE restart] No active peer connection, or restartIce() is unsupported in this browser.');
+    }
+  };
+
   if (!initialized) return null;
 
   const { connected } = webrtcPlay;
@@ -443,6 +456,19 @@ const PlaySettingsForm = () => {
             </button>
           </div>
         </div>
+        { connected && !playSettings.useWhep &&
+          <div className="row mt-2">
+            <div className="col-12">
+              <button
+                id="play-ice-restart-toggle"
+                type="button"
+                className="btn w-100"
+                onClick={handleRestartIce}
+                title="Trigger an ICE restart: renegotiates ICE (new ufrag/pwd) without recreating the play session"
+              >Restart ICE</button>
+            </div>
+          </div>
+        }
         <div className="row mt-2">
           <div className="col-12 text-center">
             <small>{ExternalLinks.legacyLinkText} <a href={ExternalLinks.legacyPlay} target="_blank" rel="noopener noreferrer">{ExternalLinks.legacyLinkLabel}</a></small>

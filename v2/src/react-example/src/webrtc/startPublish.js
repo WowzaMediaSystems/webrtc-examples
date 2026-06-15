@@ -164,6 +164,58 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
       }
     }
 
+    // ICE restart recovery: when the network path changes (NAT rebinding, interface
+    // switch, Wi-Fi/cellular handoff) the ICE connection drops to "disconnected" or
+    // "failed". restartIce() flags the next negotiation for fresh ICE credentials and
+    // fires onnegotiationneeded, which re-sends an OFFER over the existing connection so
+    // the session recovers without being torn down and re-established.
+    let iceRestartGraceTimer = null;
+    let iceRestartInProgress = false;
+
+    const requestIceRestart = (reason) => {
+      if (iceRestartInProgress) return; // one restart at a time; the engine rejects concurrent restarts
+      if (typeof peerConnection.restartIce !== 'function') {
+        console.warn('ICE restart needed but restartIce() is not supported in this browser.');
+        return;
+      }
+      iceRestartInProgress = true;
+      console.log(`Requesting ICE restart (${reason}).`);
+      peerConnection.restartIce();
+    };
+
+    peerConnection.oniceconnectionstatechange = () => {
+      const iceState = peerConnection.iceConnectionState;
+      console.log(`ICE connection state: ${iceState}`);
+
+      switch (iceState) {
+        case 'failed':
+          // Hard failure - recover immediately.
+          if (iceRestartGraceTimer) { clearTimeout(iceRestartGraceTimer); iceRestartGraceTimer = null; }
+          requestIceRestart('iceConnectionState=failed');
+          break;
+        case 'disconnected':
+          // Often transient - give it a moment to self-heal before forcing a restart.
+          if (!iceRestartGraceTimer && !iceRestartInProgress) {
+            iceRestartGraceTimer = setTimeout(() => {
+              iceRestartGraceTimer = null;
+              const current = peerConnection.iceConnectionState;
+              if (current === 'disconnected' || current === 'failed') {
+                requestIceRestart(`iceConnectionState=${current} after grace period`);
+              }
+            }, 3000);
+          }
+          break;
+        case 'connected':
+        case 'completed':
+          // Recovered (or initial connect): clear pending work and re-arm for the next change.
+          if (iceRestartGraceTimer) { clearTimeout(iceRestartGraceTimer); iceRestartGraceTimer = null; }
+          iceRestartInProgress = false;
+          break;
+        default:
+          break;
+      }
+    }
+
     let audioSender = undefined;
     let videoSender = undefined;
     if (publishSettings.audioTrack != null)

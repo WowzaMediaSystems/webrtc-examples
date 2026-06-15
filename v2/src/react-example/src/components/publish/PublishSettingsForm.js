@@ -225,6 +225,22 @@ const PublishSettingsForm = () => {
 
     dispatch(PublishSettingsActions.startPublish());
   };
+
+  // Test aid: trigger an ICE restart on the active publish peer connection.
+  // restartIce() flags the next negotiation for fresh ICE credentials and fires
+  // onnegotiationneeded, which the WebSocket publish flow (startPublish.js) already handles
+  // by re-sending an OFFER with a new ufrag/pwd over the same connectionId. The engine detects
+  // the credential change and renegotiates ICE without recreating the publish session.
+  const handleRestartIce = () => {
+    const pc = webrtcPublish.peerConnection;
+    if (pc && typeof pc.restartIce === 'function') {
+      console.log('[ICE restart] Calling peerConnection.restartIce(); a new offer with fresh ICE credentials will be sent.');
+      pc.restartIce();
+    } else {
+      console.warn('[ICE restart] No active peer connection, or restartIce() is unsupported in this browser.');
+    }
+  };
+
   if (!initialized) return null;
 
   return (
@@ -481,6 +497,19 @@ const PublishSettingsForm = () => {
             </button>
           </div>
         </div>
+        { webrtcPublish.connected && !publishSettings.useWhip &&
+          <div className="row mt-2">
+            <div className="col-12">
+              <button
+                id="ice-restart-toggle"
+                type="button"
+                className="btn w-100"
+                onClick={handleRestartIce}
+                title="Trigger an ICE restart: renegotiates ICE (new ufrag/pwd) without recreating the publish session"
+              >Restart ICE</button>
+            </div>
+          </div>
+        }
         <div className="row mt-2">
           <div className="col-12 text-center">
             <small>{ExternalLinks.legacyLinkText} <a href={ExternalLinks.legacyPublish} target="_blank" rel="noopener noreferrer">{ExternalLinks.legacyLinkLabel}</a></small>
