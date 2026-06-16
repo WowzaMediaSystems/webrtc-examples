@@ -8,6 +8,7 @@ import * as ErrorsActions from '../../actions/errorsActions';
 import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
 import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
+import CollapsibleSection from '../shared/CollapsibleSection';
 import ExternalLinks from '../../constants/ExternalLinks';
 import fileCopyImage from '../../images/file_copy-24px.svg';
 
@@ -66,7 +67,6 @@ const FormCheckbox = ({ label, id, checked, onChange, disabled }) => (
 const PlaySettingsForm = () => {
   const dispatch = useDispatch();
   const [initialized, setInitialized] = useState(false);
-  const [iceServersExpanded, setIceServersExpanded] = useState(false);
   const playSettings = useSelector((state) => state.playSettings);
   const webrtcPlay = useSelector((state) => state.webrtcPlay);
 
@@ -256,22 +256,7 @@ const PlaySettingsForm = () => {
           )}
         </div>
 
-        <div className="row mb-2">
-          <div className="col-12">
-            <button
-              type="button"
-              className={`btn btn-sm w-100 d-flex align-items-center justify-content-between btn-ice-servers`}
-              onClick={() => setIceServersExpanded(!iceServersExpanded)}
-            >
-              <span>ICE Servers</span>
-              <i className={`bi bi-chevron-${iceServersExpanded ? 'up' : 'down'}`}></i>
-            </button>
-          </div>
-        </div>
-
-        {iceServersExpanded && (
-          <>
-          <div className="border border-top-0 rounded-bottom p-3 mb-3">
+        <CollapsibleSection title="ICE Servers">
             <div className="row">
               <div className="col-12">
                 <div className="form-group">
@@ -336,9 +321,7 @@ const PlaySettingsForm = () => {
                 </div>
               </div>
             </div>
-            </div>
-          </>
-        )}
+        </CollapsibleSection>
 
         <div className="row">
           <div className="col-6">

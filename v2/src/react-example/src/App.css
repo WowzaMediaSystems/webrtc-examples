@@ -193,19 +193,19 @@ ul.navbar-nav {
   border-color: #FF8400;
 }
 
-.btn-ice-servers {
+.btn-drawer-toggle {
   background-color: #FF8400;
   border-color: #EEEEEE;
   color: #EEEEEE;
 }
 
-.btn-ice-servers:hover {
+.btn-drawer-toggle:hover {
   background-color: #FF8400;
   border-color: #EEEEEE;
   color: #EEEEEE;
 }
 
-.btn-ice-servers:active:focus {
+.btn-drawer-toggle:active:focus {
   background-color: #FF8400 !important;
   border-color: #EEEEEE !important;
   color: #EEEEEE !important;
