@@ -2,6 +2,7 @@ import stopPlay from './stopPlay';
 import getSecureToken from './SecureToken';
 import { validateParams } from '../utils/ValidationUtils';
 import { addIceServers } from '../utils/IceServersUtils';
+import { attachIceRestartRecovery } from '../utils/IceRestartUtils';
 
 const getAuthHeaders = (authToken) =>
   authToken ? { "Authorization": `Bearer ${authToken}` } : {};
@@ -125,55 +126,9 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
       websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks, session);
     };
 
-    // ICE restart recovery: when the network path changes the ICE connection drops to "disconnected"
-    // or "failed". restartIce() flags the next negotiation for fresh ICE credentials and fires
-    // onnegotiationneeded (above), which re-sends the offer so the session recovers in place.
-    let iceRestartGraceTimer = null;
-    let iceRestartInProgress = false;
-
-    const requestIceRestart = (reason) => {
-      if (iceRestartInProgress) return; // one restart at a time; the engine rejects concurrent restarts
-      if (typeof peerConnection.restartIce !== 'function') {
-        console.warn('ICE restart needed but restartIce() is not supported in this browser.');
-        return;
-      }
-      iceRestartInProgress = true;
-      console.log(`Requesting ICE restart (${reason}).`);
-      peerConnection.restartIce();
-    };
-
-    peerConnection.oniceconnectionstatechange = () => {
-      const iceState = peerConnection.iceConnectionState;
-      console.log(`ICE connection state: ${iceState}`);
-
-      switch (iceState) {
-        case 'failed':
-          // Hard failure - recover immediately.
-          if (iceRestartGraceTimer) { clearTimeout(iceRestartGraceTimer); iceRestartGraceTimer = null; }
-          requestIceRestart('iceConnectionState=failed');
-          break;
-        case 'disconnected':
-          // Often transient - give it a moment to self-heal before forcing a restart.
-          if (!iceRestartGraceTimer && !iceRestartInProgress) {
-            iceRestartGraceTimer = setTimeout(() => {
-              iceRestartGraceTimer = null;
-              const current = peerConnection.iceConnectionState;
-              if (current === 'disconnected' || current === 'failed') {
-                requestIceRestart(`iceConnectionState=${current} after grace period`);
-              }
-            }, 3000);
-          }
-          break;
-        case 'connected':
-        case 'completed':
-          // Recovered (or initial connect): clear pending work and re-arm for the next change.
-          if (iceRestartGraceTimer) { clearTimeout(iceRestartGraceTimer); iceRestartGraceTimer = null; }
-          iceRestartInProgress = false;
-          break;
-        default:
-          break;
-      }
-    };
+    // ICE restart recovery: re-establishes the ICE connection in place when the network
+    // path changes, without tearing down the play session. See IceRestartUtils.
+    attachIceRestartRecovery(peerConnection);
 
     websocket.addEventListener("message", (event) => { websocketOnMessage(event, playSettings, peerConnection, websocket, callbacks, session, pendingCandidates); });
 

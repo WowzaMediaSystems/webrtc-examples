@@ -13,6 +13,7 @@ import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PL
 import { parseSimulcastRenditions, getSimulcastRenditionsError } from '../../utils/SimulcastUtils';
 import PublishSimulcastSettings from './PublishSimulcastSettings';
 import CollapsibleSection from '../shared/CollapsibleSection';
+import { triggerIceRestart } from '../../utils/IceRestartUtils';
 import ExternalLinks from '../../constants/ExternalLinks';
 import videoOnImage from '../../images/videocam-32px.svg';
 import videoOffImage from '../../images/videocam-off-32px.svg';
@@ -226,20 +227,8 @@ const PublishSettingsForm = () => {
     dispatch(PublishSettingsActions.startPublish());
   };
 
-  // Test aid: trigger an ICE restart on the active publish peer connection.
-  // restartIce() flags the next negotiation for fresh ICE credentials and fires
-  // onnegotiationneeded, which the WebSocket publish flow (startPublish.js) already handles
-  // by re-sending an OFFER with a new ufrag/pwd over the same connectionId. The engine detects
-  // the credential change and renegotiates ICE without recreating the publish session.
-  const handleRestartIce = () => {
-    const pc = webrtcPublish.peerConnection;
-    if (pc && typeof pc.restartIce === 'function') {
-      console.log('[ICE restart] Calling peerConnection.restartIce(); a new offer with fresh ICE credentials will be sent.');
-      pc.restartIce();
-    } else {
-      console.warn('[ICE restart] No active peer connection, or restartIce() is unsupported in this browser.');
-    }
-  };
+  // Test aid: trigger an ICE restart on the active publish peer connection. See IceRestartUtils.
+  const handleRestartIce = () => triggerIceRestart(webrtcPublish.peerConnection);
 
   if (!initialized) return null;
 
