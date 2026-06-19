@@ -9,6 +9,7 @@ import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
 import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
 import CollapsibleSection from '../shared/CollapsibleSection';
+import { triggerIceRestart } from '../../utils/IceRestartUtils';
 import ExternalLinks from '../../constants/ExternalLinks';
 import fileCopyImage from '../../images/file_copy-24px.svg';
 
@@ -203,18 +204,8 @@ const PlaySettingsForm = () => {
   } 
   const handleStop = () => dispatch(PlaySettingsActions.stopPlay());
 
-  // Test aid: trigger an ICE restart on the active play peer connection. restartIce() flags the next
-  // negotiation for fresh ICE credentials and fires onnegotiationneeded, which startPlay.js re-sends as
-  // an OFFER over the existing connectionId so the engine renegotiates ICE without recreating the session.
-  const handleRestartIce = () => {
-    const pc = webrtcPlay.peerConnection;
-    if (pc && typeof pc.restartIce === 'function') {
-      console.log('[ICE restart] Calling peerConnection.restartIce() on the play connection.');
-      pc.restartIce();
-    } else {
-      console.warn('[ICE restart] No active peer connection, or restartIce() is unsupported in this browser.');
-    }
-  };
+  // Test aid: trigger an ICE restart on the active play peer connection. See IceRestartUtils.
+  const handleRestartIce = () => triggerIceRestart(webrtcPlay.peerConnection);
 
   if (!initialized) return null;
 
