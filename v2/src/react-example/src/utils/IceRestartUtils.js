@@ -60,6 +60,14 @@ export const attachIceRestartRecovery = (peerConnection) => {
         break;
     }
   };
+
+  // For transports that drive the restart from outside this module (WHIP/WHEP renegotiate via
+  // onnegotiationneeded): if that restart attempt fails, ICE stays failed/disconnected and no
+  // further state-change event fires, so the "one restart at a time" guard would block every
+  // retry forever. notifyRestartFailed() clears the guard so a later transition can try again.
+  return {
+    notifyRestartFailed: () => { iceRestartInProgress = false; },
+  };
 };
 
 // Test aid: manually trigger an ICE restart on an active peer connection. restartIce()

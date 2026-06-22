@@ -3,6 +3,7 @@ import getSecureToken from './SecureToken';
 import { validateParams } from '../utils/ValidationUtils';
 import { addIceServers } from '../utils/IceServersUtils';
 import { attachIceRestartRecovery } from '../utils/IceRestartUtils';
+import { sendWhipWhepIceRestart } from '../utils/SdpFragUtils';
 
 const getAuthHeaders = (authToken) =>
   authToken ? { "Authorization": `Bearer ${authToken}` } : {};
@@ -296,6 +297,7 @@ const startPlay = (playSettings, callbacks) =>
 const startPlayWhep = async (playSettings, session, callbacks) => {
   let peerConnection;
   let sessionUrl;
+  let negotiationEstablished = false; // gate onnegotiationneeded so only ICE restarts (not the initial offer) re-offer
   const pendingCandidates = [];
 
   try {
@@ -317,6 +319,26 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
           connected: event.currentTarget.connectionState === "connected"
         });
       }
+    };
+
+    // Auto-recovery: when ICE drops, restartIce() flags fresh credentials and fires
+    // onnegotiationneeded (handled below). Reuses the same recovery state machine as the
+    // WebSocket path so the heuristics stay in one place.
+    const iceRestartRecovery = attachIceRestartRecovery(peerConnection);
+
+    // ICE restart over WHEP (RFC 9725): on onnegotiationneeded we PATCH only the new credentials
+    // to the resource URL as an application/trickle-ice-sdpfrag; the engine renegotiates ICE on
+    // the existing session and returns its new ICE parameters as an sdpfrag, which we splice into
+    // the current answer so playback recovers in place.
+    peerConnection.onnegotiationneeded = () => {
+      if (!negotiationEstablished || !sessionUrl) return; // the initial WHEP offer is sent manually below
+      sendWhipWhepIceRestart(peerConnection, sessionUrl, {
+        authHeaders: getAuthHeaders(playSettings.authToken),
+        label: "WHEP",
+      }).catch((e) => {
+        iceRestartRecovery.notifyRestartFailed(); // a failed restart leaves ICE down; let a later transition retry
+        peerConnectionOnError(e, callbacks);
+      });
     };
 
     peerConnection.onicecandidate = async (event) => {
@@ -371,6 +393,8 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
       type: "answer",
       sdp: answerSdp
     });
+
+    negotiationEstablished = true; // from here, onnegotiationneeded means an ICE restart
 
     if (callbacks.onSetPeerConnection)
       callbacks.onSetPeerConnection({ peerConnection });
