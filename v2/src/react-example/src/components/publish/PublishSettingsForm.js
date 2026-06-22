@@ -486,7 +486,7 @@ const PublishSettingsForm = () => {
             </button>
           </div>
         </div>
-        { webrtcPublish.connected && !publishSettings.useWhip &&
+        { webrtcPublish.connected &&
           <div className="row mt-2">
             <div className="col-12">
               <button

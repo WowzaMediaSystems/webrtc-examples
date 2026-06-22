@@ -9,6 +9,7 @@ import {
   simulcastAcceptedInAnswer
 } from "../utils/SimulcastUtils";
 import { attachIceRestartRecovery } from "../utils/IceRestartUtils";
+import { sendWhipWhepIceRestart } from "../utils/SdpFragUtils";
 
 // Orchestration dispatcher: simulcast vs. single-track is a publish-flow
 // decision, so it lives here. The simulcast mechanics live in SimulcastUtils.
@@ -71,15 +72,19 @@ const peerConnectionCreateOfferSuccess = (description, publishSettings, websocke
       const offerSdp = publishSettings.useSimulcast
         ? ensureSimulcastSDP(peerConnection.localDescription.sdp, publishSettings.simulcastRenditions)
         : peerConnection.localDescription.sdp;
+      // After the initial negotiation, a re-offer is an ICE restart and must be signaled as ICE_RESTART.
+      // The engine no longer auto-detects a restart from a plain OFFER (it would reject one); instead the
+      // full offer SDP is sent under ICE_RESTART and the engine normalizes it to a trickle-ice-sdpfrag,
+      // the same representation the WHIP/WHEP PATCH path delivers.
       const payload = {
-        messageType: "OFFER",
+        messageType: session.negotiationEstablished ? "ICE_RESTART" : "OFFER",
         action: "PUBLISH",
         sdp: offerSdp,
         applicationName: streamInfo.applicationName,
         streamName: streamInfo.streamName,
         connectionId: streamInfo.sessionId,
       };
-      console.log("Sending offer:", JSON.stringify(payload));
+      console.log(`Sending ${payload.messageType}:`, JSON.stringify(payload));
       websocket.send(JSON.stringify(payload));
     })
     .catch((error) => {
@@ -228,6 +233,8 @@ const websocketOnMessage = (event, publishSettings, websocket, peerConnection, c
       peerConnection
         .setRemoteDescription(new RTCSessionDescription(sdpData))
         .then(() => {
+          // Initial offer/answer is complete; from here any re-offer is an ICE restart.
+          session.negotiationEstablished = true;
           if (publishSettings.useSimulcast && !simulcastAcceptedInAnswer(sdpData.sdp)) {
             reportSimulcastRejection({
               callbacks, peerConnection, websocket
@@ -260,6 +267,8 @@ const startPublish = (publishSettings, websocket, callbacks) =>
     
     const session = {
         sessionId: '[empty]',
+        // false until the initial offer/answer completes; afterwards every re-offer is an ICE restart.
+        negotiationEstablished: false,
         peerConnectionConfig: {iceServers: []}
       };
 
@@ -309,6 +318,7 @@ const startPublish = (publishSettings, websocket, callbacks) =>
 const startPublishWhip = async (publishSettings, session, callbacks) => {
   let peerConnection;
   let sessionUrl;
+  let negotiationEstablished = false; // gate onnegotiationneeded so only ICE restarts (not the initial offer) re-offer
   const pendingCandidates = [];
 
   try {
@@ -320,6 +330,26 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
       const connected = event.currentTarget.connectionState === "connected";
       if (callbacks.onConnectionStateChange)
         callbacks.onConnectionStateChange({ connected });
+    };
+
+    // Auto-recovery: when ICE drops, restartIce() flags fresh credentials and fires
+    // onnegotiationneeded (handled below). Reuses the same recovery state machine as the
+    // WebSocket path so the heuristics stay in one place.
+    const iceRestartRecovery = attachIceRestartRecovery(peerConnection);
+
+    // ICE restart over WHIP (RFC 9725): on onnegotiationneeded we PATCH only the new credentials
+    // to the resource URL as an application/trickle-ice-sdpfrag; the engine renegotiates ICE on
+    // the existing session and returns its new ICE parameters as an sdpfrag, which we splice into
+    // the current answer so media recovers without a teardown.
+    peerConnection.onnegotiationneeded = () => {
+      if (!negotiationEstablished || !sessionUrl) return; // the initial WHIP offer is sent manually below
+      sendWhipWhepIceRestart(peerConnection, sessionUrl, {
+        authHeaders: getAuthHeaders(publishSettings.authToken),
+        label: "WHIP",
+      }).catch((e) => {
+        iceRestartRecovery.notifyRestartFailed(); // a failed restart leaves ICE down; let a later transition retry
+        peerConnectionOnError(e, callbacks);
+      });
     };
 
     peerConnection.onicecandidate = async (event) => {
@@ -391,6 +421,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
       type: "answer",
       sdp: answerSDP
     });
+    negotiationEstablished = true; // from here, onnegotiationneeded means an ICE restart
 
     if (publishSettings.useSimulcast && !simulcastAcceptedInAnswer(answerSDP)) {
       reportSimulcastRejection({

@@ -447,7 +447,7 @@ const PlaySettingsForm = () => {
             </button>
           </div>
         </div>
-        { connected && !playSettings.useWhep &&
+        { connected &&
           <div className="row mt-2">
             <div className="col-12">
               <button

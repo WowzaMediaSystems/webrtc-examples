@@ -3,6 +3,7 @@ import getSecureToken from './SecureToken';
 import { validateParams } from '../utils/ValidationUtils';
 import { addIceServers } from '../utils/IceServersUtils';
 import { attachIceRestartRecovery } from '../utils/IceRestartUtils';
+import { sendWhipWhepIceRestart } from '../utils/SdpFragUtils';
 
 const getAuthHeaders = (authToken) =>
   authToken ? { "Authorization": `Bearer ${authToken}` } : {};
@@ -120,9 +121,10 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
       // The initial play offer is sent explicitly below. The negotiationneeded that addTransceiver()
       // fires runs before the server assigns a connectionId, so skip it. Once connected (a real
       // connectionId is assigned), a negotiationneeded means restartIce() was called - re-send the offer
-      // (carrying the fresh ICE credentials restartIce() flagged) over the existing connection.
+      // (carrying the fresh ICE credentials restartIce() flagged) over the existing connection as an
+      // ICE_RESTART (createOfferPayload picks the message type from session.negotiationEstablished).
       if (session.sessionId === '[empty]') return;
-      console.log('onnegotiationneeded: re-sending play offer for ICE restart.');
+      console.log('onnegotiationneeded: sending ICE_RESTART offer over the existing connection.');
       websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks, session);
     };
 
@@ -159,7 +161,7 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
     session.repeaterRetryCount++;
 
     if (session.repeaterRetryCount < 10) {
-      setTimeout(() => { websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks) }, 1000);
+      setTimeout(() => { websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks, session) }, 1000);
     } else {
       websocketOnError({message:'Live stream repeater timeout: ' + playSettings.streamName}, callbacks);
       stopPlay(playSettings, peerConnection, websocket, callbacks);
@@ -192,6 +194,8 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
         peerConnection
           .setRemoteDescription(new RTCSessionDescription(sdpData))
           .then(() => {
+            // Initial offer/answer is complete; from here a re-offer is an ICE restart.
+            session.negotiationEstablished = true;
             console.log("Remote Description Set Successfully.");
           })
           .catch((err) => peerConnectionOnError(err, callbacks));
@@ -209,8 +213,10 @@ const websocketOnError = (error, callbacks) => {
 
 const createOfferPayload = (playSettings, session, secureToken = null) => {
   const streamInfo = getStreamInfo(playSettings, session);
+  // After the initial negotiation a re-offer is an ICE restart: signal ICE_RESTART carrying the full offer
+  // SDP (the engine normalizes it to a trickle-ice-sdpfrag). A plain OFFER restart is no longer auto-detected.
   const offerPayload = {
-      messageType: "OFFER",
+      messageType: session.negotiationEstablished ? "ICE_RESTART" : "OFFER",
       action: "VIEW",
       applicationName: streamInfo.applicationName,
       streamName: streamInfo.streamName,
@@ -262,6 +268,8 @@ const startPlay = (playSettings, callbacks) =>
     const session = {
       sessionId: '[empty]',
       repeaterRetryCount: 0,
+      // false until the initial offer/answer completes; afterwards a re-offer is an ICE restart.
+      negotiationEstablished: false,
       peerConnectionConfig: {iceServers: []}
     };
 
@@ -296,6 +304,7 @@ const startPlay = (playSettings, callbacks) =>
 const startPlayWhep = async (playSettings, session, callbacks) => {
   let peerConnection;
   let sessionUrl;
+  let negotiationEstablished = false; // gate onnegotiationneeded so only ICE restarts (not the initial offer) re-offer
   const pendingCandidates = [];
 
   try {
@@ -317,6 +326,26 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
           connected: event.currentTarget.connectionState === "connected"
         });
       }
+    };
+
+    // Auto-recovery: when ICE drops, restartIce() flags fresh credentials and fires
+    // onnegotiationneeded (handled below). Reuses the same recovery state machine as the
+    // WebSocket path so the heuristics stay in one place.
+    const iceRestartRecovery = attachIceRestartRecovery(peerConnection);
+
+    // ICE restart over WHEP (RFC 9725): on onnegotiationneeded we PATCH only the new credentials
+    // to the resource URL as an application/trickle-ice-sdpfrag; the engine renegotiates ICE on
+    // the existing session and returns its new ICE parameters as an sdpfrag, which we splice into
+    // the current answer so playback recovers in place.
+    peerConnection.onnegotiationneeded = () => {
+      if (!negotiationEstablished || !sessionUrl) return; // the initial WHEP offer is sent manually below
+      sendWhipWhepIceRestart(peerConnection, sessionUrl, {
+        authHeaders: getAuthHeaders(playSettings.authToken),
+        label: "WHEP",
+      }).catch((e) => {
+        iceRestartRecovery.notifyRestartFailed(); // a failed restart leaves ICE down; let a later transition retry
+        peerConnectionOnError(e, callbacks);
+      });
     };
 
     peerConnection.onicecandidate = async (event) => {
@@ -371,6 +400,8 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
       type: "answer",
       sdp: answerSdp
     });
+
+    negotiationEstablished = true; // from here, onnegotiationneeded means an ICE restart
 
     if (callbacks.onSetPeerConnection)
       callbacks.onSetPeerConnection({ peerConnection });
