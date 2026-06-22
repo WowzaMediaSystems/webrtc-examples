@@ -9,7 +9,7 @@ import {
   simulcastAcceptedInAnswer
 } from "../utils/SimulcastUtils";
 import { attachIceRestartRecovery } from "../utils/IceRestartUtils";
-import { extractIceCredentials, buildIceRestartFragment, parseIceFragment, applyServerIceToAnswer } from "../utils/SdpFragUtils";
+import { sendWhipWhepIceRestart } from "../utils/SdpFragUtils";
 
 // Orchestration dispatcher: simulcast vs. single-track is a publish-flow
 // decision, so it lives here. The simulcast mechanics live in SimulcastUtils.
@@ -324,97 +324,24 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
         callbacks.onConnectionStateChange({ connected });
     };
 
-    // ICE restart over WHIP (RFC 9725): restartIce() flags fresh ICE credentials and fires
-    // onnegotiationneeded. We PATCH only the new credentials to the resource URL as an
-    // application/trickle-ice-sdpfrag; the engine renegotiates ICE on the existing session and returns its new
-    // ICE parameters as an sdpfrag, which we splice into the current answer so media recovers without a teardown.
-    const sendIceRestart = async () => {
-      if (!sessionUrl) return;
-      try {
-        const offer = await peerConnection.createOffer(); // restartIce() already flagged new ICE creds
-        await peerConnection.setLocalDescription(offer);
+    // Auto-recovery: when ICE drops, restartIce() flags fresh credentials and fires
+    // onnegotiationneeded (handled below). Reuses the same recovery state machine as the
+    // WebSocket path so the heuristics stay in one place.
+    const iceRestartRecovery = attachIceRestartRecovery(peerConnection);
 
-        const { ufrag, pwd } = extractIceCredentials(peerConnection.localDescription.sdp);
-        const fragment = buildIceRestartFragment(ufrag, pwd);
-        console.log("Sending WHIP ICE-restart sdpfrag:\n" + fragment);
-
-        const restartResponse = await fetch(sessionUrl, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/trickle-ice-sdpfrag", ...getAuthHeaders(publishSettings.authToken) },
-          body: fragment
-        });
-
-        if (!restartResponse.ok) {
-          throw new Error(`WHIP ICE restart failed: ${restartResponse.status}`);
-        }
-
-        const answerFragment = await restartResponse.text();
-        console.log("Received WHIP ICE-restart sdpfrag:\n" + answerFragment);
-
-        const server = parseIceFragment(answerFragment);
-        const currentAnswer = (peerConnection.currentRemoteDescription || peerConnection.remoteDescription).sdp;
-        const patchedAnswer = applyServerIceToAnswer(currentAnswer, server.ufrag, server.pwd);
-
-        await peerConnection.setRemoteDescription({ type: "answer", sdp: patchedAnswer });
-        for (const candidate of server.candidates) {
-          try {
-            await peerConnection.addIceCandidate({ candidate, sdpMLineIndex: 0 });
-          } catch (err) {
-            console.warn("Failed to add server ICE candidate:", err);
-          }
-        }
-      } catch (e) {
-        peerConnectionOnError(e, callbacks);
-      }
-    };
-
+    // ICE restart over WHIP (RFC 9725): on onnegotiationneeded we PATCH only the new credentials
+    // to the resource URL as an application/trickle-ice-sdpfrag; the engine renegotiates ICE on
+    // the existing session and returns its new ICE parameters as an sdpfrag, which we splice into
+    // the current answer so media recovers without a teardown.
     peerConnection.onnegotiationneeded = () => {
-      if (!negotiationEstablished) return; // the initial WHIP offer is sent manually below
-      sendIceRestart();
-    };
-
-    let iceRestartGraceTimer = null;
-    let iceRestartInProgress = false;
-
-    const requestIceRestart = (reason) => {
-      if (iceRestartInProgress) return; // one restart at a time; the engine rejects concurrent restarts
-      if (typeof peerConnection.restartIce !== "function") {
-        console.warn("ICE restart needed but restartIce() is not supported in this browser.");
-        return;
-      }
-      iceRestartInProgress = true;
-      console.log(`Requesting ICE restart (${reason}).`);
-      peerConnection.restartIce();
-    };
-
-    peerConnection.oniceconnectionstatechange = () => {
-      const iceState = peerConnection.iceConnectionState;
-      console.log(`ICE connection state: ${iceState}`);
-
-      switch (iceState) {
-        case "failed":
-          if (iceRestartGraceTimer) { clearTimeout(iceRestartGraceTimer); iceRestartGraceTimer = null; }
-          requestIceRestart("iceConnectionState=failed");
-          break;
-        case "disconnected":
-          if (!iceRestartGraceTimer && !iceRestartInProgress) {
-            iceRestartGraceTimer = setTimeout(() => {
-              iceRestartGraceTimer = null;
-              const current = peerConnection.iceConnectionState;
-              if (current === "disconnected" || current === "failed") {
-                requestIceRestart(`iceConnectionState=${current} after grace period`);
-              }
-            }, 3000);
-          }
-          break;
-        case "connected":
-        case "completed":
-          if (iceRestartGraceTimer) { clearTimeout(iceRestartGraceTimer); iceRestartGraceTimer = null; }
-          iceRestartInProgress = false;
-          break;
-        default:
-          break;
-      }
+      if (!negotiationEstablished || !sessionUrl) return; // the initial WHIP offer is sent manually below
+      sendWhipWhepIceRestart(peerConnection, sessionUrl, {
+        authHeaders: getAuthHeaders(publishSettings.authToken),
+        label: "WHIP",
+      }).catch((e) => {
+        iceRestartRecovery.notifyRestartFailed(); // a failed restart leaves ICE down; let a later transition retry
+        peerConnectionOnError(e, callbacks);
+      });
     };
 
     peerConnection.onicecandidate = async (event) => {
