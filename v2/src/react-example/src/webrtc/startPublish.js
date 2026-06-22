@@ -72,15 +72,19 @@ const peerConnectionCreateOfferSuccess = (description, publishSettings, websocke
       const offerSdp = publishSettings.useSimulcast
         ? ensureSimulcastSDP(peerConnection.localDescription.sdp, publishSettings.simulcastRenditions)
         : peerConnection.localDescription.sdp;
+      // After the initial negotiation, a re-offer is an ICE restart and must be signaled as ICE_RESTART.
+      // The engine no longer auto-detects a restart from a plain OFFER (it would reject one); instead the
+      // full offer SDP is sent under ICE_RESTART and the engine normalizes it to a trickle-ice-sdpfrag,
+      // the same representation the WHIP/WHEP PATCH path delivers.
       const payload = {
-        messageType: "OFFER",
+        messageType: session.negotiationEstablished ? "ICE_RESTART" : "OFFER",
         action: "PUBLISH",
         sdp: offerSdp,
         applicationName: streamInfo.applicationName,
         streamName: streamInfo.streamName,
         connectionId: streamInfo.sessionId,
       };
-      console.log("Sending offer:", JSON.stringify(payload));
+      console.log(`Sending ${payload.messageType}:`, JSON.stringify(payload));
       websocket.send(JSON.stringify(payload));
     })
     .catch((error) => {
@@ -229,6 +233,8 @@ const websocketOnMessage = (event, publishSettings, websocket, peerConnection, c
       peerConnection
         .setRemoteDescription(new RTCSessionDescription(sdpData))
         .then(() => {
+          // Initial offer/answer is complete; from here any re-offer is an ICE restart.
+          session.negotiationEstablished = true;
           if (publishSettings.useSimulcast && !simulcastAcceptedInAnswer(sdpData.sdp)) {
             reportSimulcastRejection({
               callbacks, peerConnection, websocket
@@ -261,6 +267,8 @@ const startPublish = (publishSettings, websocket, callbacks) =>
     
     const session = {
         sessionId: '[empty]',
+        // false until the initial offer/answer completes; afterwards every re-offer is an ICE restart.
+        negotiationEstablished: false,
         peerConnectionConfig: {iceServers: []}
       };
 

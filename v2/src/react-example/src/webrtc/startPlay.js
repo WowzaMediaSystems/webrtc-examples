@@ -121,9 +121,10 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
       // The initial play offer is sent explicitly below. The negotiationneeded that addTransceiver()
       // fires runs before the server assigns a connectionId, so skip it. Once connected (a real
       // connectionId is assigned), a negotiationneeded means restartIce() was called - re-send the offer
-      // (carrying the fresh ICE credentials restartIce() flagged) over the existing connection.
+      // (carrying the fresh ICE credentials restartIce() flagged) over the existing connection as an
+      // ICE_RESTART (createOfferPayload picks the message type from session.negotiationEstablished).
       if (session.sessionId === '[empty]') return;
-      console.log('onnegotiationneeded: re-sending play offer for ICE restart.');
+      console.log('onnegotiationneeded: sending ICE_RESTART offer over the existing connection.');
       websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks, session);
     };
 
@@ -160,7 +161,7 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
     session.repeaterRetryCount++;
 
     if (session.repeaterRetryCount < 10) {
-      setTimeout(() => { websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks) }, 1000);
+      setTimeout(() => { websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks, session) }, 1000);
     } else {
       websocketOnError({message:'Live stream repeater timeout: ' + playSettings.streamName}, callbacks);
       stopPlay(playSettings, peerConnection, websocket, callbacks);
@@ -193,6 +194,8 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
         peerConnection
           .setRemoteDescription(new RTCSessionDescription(sdpData))
           .then(() => {
+            // Initial offer/answer is complete; from here a re-offer is an ICE restart.
+            session.negotiationEstablished = true;
             console.log("Remote Description Set Successfully.");
           })
           .catch((err) => peerConnectionOnError(err, callbacks));
@@ -210,8 +213,10 @@ const websocketOnError = (error, callbacks) => {
 
 const createOfferPayload = (playSettings, session, secureToken = null) => {
   const streamInfo = getStreamInfo(playSettings, session);
+  // After the initial negotiation a re-offer is an ICE restart: signal ICE_RESTART carrying the full offer
+  // SDP (the engine normalizes it to a trickle-ice-sdpfrag). A plain OFFER restart is no longer auto-detected.
   const offerPayload = {
-      messageType: "OFFER",
+      messageType: session.negotiationEstablished ? "ICE_RESTART" : "OFFER",
       action: "VIEW",
       applicationName: streamInfo.applicationName,
       streamName: streamInfo.streamName,
@@ -263,6 +268,8 @@ const startPlay = (playSettings, callbacks) =>
     const session = {
       sessionId: '[empty]',
       repeaterRetryCount: 0,
+      // false until the initial offer/answer completes; afterwards a re-offer is an ICE restart.
+      negotiationEstablished: false,
       peerConnectionConfig: {iceServers: []}
     };
 
