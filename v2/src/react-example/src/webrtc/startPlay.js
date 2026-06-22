@@ -2,6 +2,7 @@ import stopPlay from './stopPlay';
 import getSecureToken from './SecureToken';
 import { validateParams } from '../utils/ValidationUtils';
 import { addIceServers } from '../utils/IceServersUtils';
+import { attachIceRestartRecovery } from '../utils/IceRestartUtils';
 
 const getAuthHeaders = (authToken) =>
   authToken ? { "Authorization": `Bearer ${authToken}` } : {};
@@ -114,6 +115,20 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
           callbacks.onConnectionStateChange({connected:false});
       }
     }
+
+    peerConnection.onnegotiationneeded = () => {
+      // The initial play offer is sent explicitly below. The negotiationneeded that addTransceiver()
+      // fires runs before the server assigns a connectionId, so skip it. Once connected (a real
+      // connectionId is assigned), a negotiationneeded means restartIce() was called - re-send the offer
+      // (carrying the fresh ICE credentials restartIce() flagged) over the existing connection.
+      if (session.sessionId === '[empty]') return;
+      console.log('onnegotiationneeded: re-sending play offer for ICE restart.');
+      websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks, session);
+    };
+
+    // ICE restart recovery: re-establishes the ICE connection in place when the network
+    // path changes, without tearing down the play session. See IceRestartUtils.
+    attachIceRestartRecovery(peerConnection);
 
     websocket.addEventListener("message", (event) => { websocketOnMessage(event, playSettings, peerConnection, websocket, callbacks, session, pendingCandidates); });
 

@@ -8,6 +8,7 @@ import {
   ensureSimulcastSDP,
   simulcastAcceptedInAnswer
 } from "../utils/SimulcastUtils";
+import { attachIceRestartRecovery } from "../utils/IceRestartUtils";
 
 // Orchestration dispatcher: simulcast vs. single-track is a publish-flow
 // decision, so it lives here. The simulcast mechanics live in SimulcastUtils.
@@ -163,6 +164,10 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
           callbacks.onConnectionStateChange({ connected: false });
       }
     }
+
+    // ICE restart recovery: re-establishes the ICE connection in place when the network
+    // path changes, without tearing down the publish session. See IceRestartUtils.
+    attachIceRestartRecovery(peerConnection);
 
     let audioSender = undefined;
     let videoSender = undefined;

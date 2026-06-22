@@ -13,6 +13,7 @@ import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PL
 import { parseSimulcastRenditions, getSimulcastRenditionsError } from '../../utils/SimulcastUtils';
 import PublishSimulcastSettings from './PublishSimulcastSettings';
 import CollapsibleSection from '../shared/CollapsibleSection';
+import { triggerIceRestart } from '../../utils/IceRestartUtils';
 import ExternalLinks from '../../constants/ExternalLinks';
 import videoOnImage from '../../images/videocam-32px.svg';
 import videoOffImage from '../../images/videocam-off-32px.svg';
@@ -225,6 +226,10 @@ const PublishSettingsForm = () => {
 
     dispatch(PublishSettingsActions.startPublish());
   };
+
+  // Test aid: trigger an ICE restart on the active publish peer connection. See IceRestartUtils.
+  const handleRestartIce = () => triggerIceRestart(webrtcPublish.peerConnection);
+
   if (!initialized) return null;
 
   return (
@@ -481,6 +486,19 @@ const PublishSettingsForm = () => {
             </button>
           </div>
         </div>
+        { webrtcPublish.connected && !publishSettings.useWhip &&
+          <div className="row mt-2">
+            <div className="col-12">
+              <button
+                id="ice-restart-toggle"
+                type="button"
+                className="btn w-100"
+                onClick={handleRestartIce}
+                title="Trigger an ICE restart: renegotiates ICE (new ufrag/pwd) without recreating the publish session"
+              >Restart ICE</button>
+            </div>
+          </div>
+        }
         <div className="row mt-2">
           <div className="col-12 text-center">
             <small>{ExternalLinks.legacyLinkText} <a href={ExternalLinks.legacyPublish} target="_blank" rel="noopener noreferrer">{ExternalLinks.legacyLinkLabel}</a></small>

@@ -9,6 +9,7 @@ import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
 import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
 import CollapsibleSection from '../shared/CollapsibleSection';
+import { triggerIceRestart } from '../../utils/IceRestartUtils';
 import ExternalLinks from '../../constants/ExternalLinks';
 import fileCopyImage from '../../images/file_copy-24px.svg';
 
@@ -202,6 +203,9 @@ const PlaySettingsForm = () => {
     dispatch(PlaySettingsActions.startPlay());
   } 
   const handleStop = () => dispatch(PlaySettingsActions.stopPlay());
+
+  // Test aid: trigger an ICE restart on the active play peer connection. See IceRestartUtils.
+  const handleRestartIce = () => triggerIceRestart(webrtcPlay.peerConnection);
 
   if (!initialized) return null;
 
@@ -443,6 +447,19 @@ const PlaySettingsForm = () => {
             </button>
           </div>
         </div>
+        { connected && !playSettings.useWhep &&
+          <div className="row mt-2">
+            <div className="col-12">
+              <button
+                id="play-ice-restart-toggle"
+                type="button"
+                className="btn w-100"
+                onClick={handleRestartIce}
+                title="Trigger an ICE restart: renegotiates ICE (new ufrag/pwd) without recreating the play session"
+              >Restart ICE</button>
+            </div>
+          </div>
+        }
         <div className="row mt-2">
           <div className="col-12 text-center">
             <small>{ExternalLinks.legacyLinkText} <a href={ExternalLinks.legacyPlay} target="_blank" rel="noopener noreferrer">{ExternalLinks.legacyLinkLabel}</a></small>
