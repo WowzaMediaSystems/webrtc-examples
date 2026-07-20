@@ -10,6 +10,7 @@ import {
 } from "../utils/SimulcastUtils";
 import { attachIceRestartRecovery } from "../utils/IceRestartUtils";
 import { sendWhipWhepIceRestart } from "../utils/SdpFragUtils";
+import attachDataChannel from "./attachDataChannel";
 
 // Orchestration dispatcher: simulcast vs. single-track is a publish-flow
 // decision, so it lives here. The simulcast mechanics live in SimulcastUtils.
@@ -173,6 +174,11 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
     // ICE restart recovery: re-establishes the ICE connection in place when the network
     // path changes, without tearing down the publish session. See IceRestartUtils.
     attachIceRestartRecovery(peerConnection);
+
+    // The data channel must be created before the first offer (we never renegotiate). The publisher
+    // opens the channel; it broadcasts on it and receives what players send back over the same channel.
+    if (publishSettings.dataChannelsEnabled)
+      attachDataChannel(peerConnection, callbacks, { label: publishSettings.dataChannelLabel });
 
     let audioSender = undefined;
     let videoSender = undefined;

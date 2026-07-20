@@ -4,6 +4,7 @@ import { validateParams } from '../utils/ValidationUtils';
 import { addIceServers } from '../utils/IceServersUtils';
 import { attachIceRestartRecovery } from '../utils/IceRestartUtils';
 import { sendWhipWhepIceRestart } from '../utils/SdpFragUtils';
+import attachDataChannel from './attachDataChannel';
 
 const getAuthHeaders = (authToken) =>
   authToken ? { "Authorization": `Bearer ${authToken}` } : {};
@@ -131,6 +132,11 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
     // ICE restart recovery: re-establishes the ICE connection in place when the network
     // path changes, without tearing down the play session. See IceRestartUtils.
     attachIceRestartRecovery(peerConnection);
+
+    // The data channel must be listened for before the first offer (we never renegotiate). WSE opens
+    // the mirrored channel toward the player (no label passed); the player writes back over it.
+    if (playSettings.dataChannelsEnabled)
+      attachDataChannel(peerConnection, callbacks, {});
 
     websocket.addEventListener("message", (event) => { websocketOnMessage(event, playSettings, peerConnection, websocket, callbacks, session, pendingCandidates); });
 
