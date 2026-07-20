@@ -4,6 +4,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import * as PlaySettingsActions from '../../actions/playSettingsActions';
 import * as WebRTCPlayActions from '../../actions/webrtcPlayActions';
 import * as ErrorsActions from '../../actions/errorsActions';
+import * as DataChannelActions from '../../actions/dataChannelActions';
+import { describeReceivedMessage } from '../../utils/DataChannelUtils';
 
 import startPlay from '../../webrtc/startPlay';
 import stopPlay from '../../webrtc/stopPlay';
@@ -32,6 +34,7 @@ const Player = () => {
           dispatch({type:ErrorsActions.SET_ERROR_MESSAGE,message:error.message});
           dispatch({ type: PlaySettingsActions.SET_PLAY_FLAGS, playStart: false, playStarting: false, playStop: false, playStopping: false });
           dispatch({ type: WebRTCPlayActions.SET_WEBRTC_PLAY_CONNECTED, connected: false });
+          dispatch({ type: DataChannelActions.RESET_DATA_CHANNEL, context: 'play' });
         },
         onConnectionStateChange: (result) => {
           dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_CONNECTED,connected:result.connected});
@@ -49,6 +52,18 @@ const Player = () => {
             videoElement.current.srcObject = streamRef.current;
             console.log('srcObject set, tracks:', streamRef.current.getTracks().map(t => t.kind));
           }
+        },
+        onSetDataChannel: (result) => {
+          dispatch({type:DataChannelActions.SET_DATA_CHANNEL_HANDLE, context:'play', handle:result.dataChannel});
+        },
+        onDataChannelStateChange: (result) => {
+          dispatch({type:DataChannelActions.SET_DATA_CHANNEL_STATE, context:'play', label:result.label, id:result.id, state:result.state, local:result.local});
+        },
+        onDataChannelMessage: (result) => {
+          dispatch({type:DataChannelActions.ADD_DATA_CHANNEL_MESSAGE, context:'play', message:describeReceivedMessage(result)});
+        },
+        onDataChannelError: (result) => {
+          dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:'Data channel error: ' + result.message});
         }
       });
     }
@@ -73,6 +88,7 @@ const Player = () => {
             videoElement.current.srcObject = null;
           }
           dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_CONNECTED,connected:false});
+          dispatch({type:DataChannelActions.RESET_DATA_CHANNEL, context:'play'});
         }
       });
     }
