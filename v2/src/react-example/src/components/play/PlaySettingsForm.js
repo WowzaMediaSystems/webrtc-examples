@@ -265,7 +265,7 @@ const PlaySettingsForm = () => {
         <div className="row align-items-center mb-2">
           <div className="col-5">
             <FormCheckbox
-              label="Enable Chat (data channel)"
+              label="Enable Chat"
               id="playDataChannelsEnabled"
               checked={playSettings.dataChannelsEnabled}
               disabled={connected}

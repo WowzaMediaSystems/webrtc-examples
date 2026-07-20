@@ -296,7 +296,7 @@ const PublishSettingsForm = () => {
           <div className="col-5">
             <div className="form-group form-switch form-check-inline">
               <label className='form-check-label mr-3' htmlFor="publishDataChannelsEnabled">
-                Enable Chat (data channel)
+                Enable Chat
               </label>
               <input
                 className='form-check-input form-switch orange-checkbox'

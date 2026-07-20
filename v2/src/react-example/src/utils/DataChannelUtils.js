@@ -14,3 +14,14 @@ export const describeReceivedMessage = ({ label, data, binary }) => {
   }
   return { direction: 'received', label, binary: false, text: data };
 };
+
+// Build the payload to send plus its matching log entry. `data` goes to dataChannel.send();
+// `entry` (minus its label, which the panel fills in from the live channel) is appended to the log.
+//
+// Data channels also carry binary payloads (send an ArrayBuffer/ArrayBufferView and it arrives as
+// an ArrayBuffer on the other side; describeReceivedMessage already renders inbound binary). This
+// example only sends text to keep the chat simple, so there is no binary send path here.
+export const buildTextMessage = (text) => ({
+  data: text,
+  entry: { direction: 'sent', binary: false, text },
+});

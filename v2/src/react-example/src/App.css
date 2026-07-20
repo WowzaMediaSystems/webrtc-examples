@@ -211,3 +211,13 @@ ul.navbar-nav {
   color: #EEEEEE !important;
 }
 
+.data-channel-panel .btn,
+.data-channel-panel .btn:hover,
+.data-channel-panel .btn:focus,
+.data-channel-panel .btn:active {
+  background-color: #FF8400;
+  border-color: #FF8400;
+  color: #FFFFFF;
+  box-shadow: none;
+}
+

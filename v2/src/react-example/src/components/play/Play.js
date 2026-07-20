@@ -2,6 +2,7 @@ import React from 'react';
 
 import Player from './Player';
 import PlaySettingsForm from './PlaySettingsForm';
+import DataChannelPanel from '../shared/DataChannelPanel';
 
 const Play = () => {
 
@@ -12,6 +13,7 @@ const Play = () => {
           <div id="play-video-container">
             <Player />
           </div>
+          <DataChannelPanel context="play" />
         </div>
         <PlaySettingsForm />
       </div>
