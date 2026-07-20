@@ -10,7 +10,7 @@ import {
 } from "../utils/SimulcastUtils";
 import { attachIceRestartRecovery } from "../utils/IceRestartUtils";
 import { sendWhipWhepIceRestart } from "../utils/SdpFragUtils";
-import attachDataChannel from "./attachDataChannel";
+import attachDataChannel, { CHAT_CHANNEL_LABEL } from "./attachDataChannel";
 
 // Orchestration dispatcher: simulcast vs. single-track is a publish-flow
 // decision, so it lives here. The simulcast mechanics live in SimulcastUtils.
@@ -178,7 +178,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
     // The data channel must be created before the first offer (we never renegotiate). The publisher
     // opens the channel; it broadcasts on it and receives what players send back over the same channel.
     if (publishSettings.dataChannelsEnabled)
-      attachDataChannel(peerConnection, callbacks, { label: publishSettings.dataChannelLabel });
+      attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL });
 
     let audioSender = undefined;
     let videoSender = undefined;

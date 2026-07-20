@@ -27,7 +27,8 @@ const playUrlParametersMap = {
   isIp: "playIsIp",
   ip: "playIp",
   useWhep: "playUseWhep",
-  authToken: "playAuthToken"
+  authToken: "playAuthToken",
+  dataChannelsEnabled: "playDataChannelsEnabled"
 };
 
 const SIGNALING_URL_PLACEHOLDER = "wss://[ssl-certificate-domain-name]/webrtc-session.json";
@@ -96,10 +97,11 @@ const PlaySettingsForm = () => {
           isIp: PlaySettingsActions.SET_PLAY_IS_IP,
           ip: PlaySettingsActions.SET_PLAY_IP,
           useWhep: PlaySettingsActions.SET_PLAY_USE_WHEP,
-          authToken: PlaySettingsActions.SET_PLAY_AUTH_TOKEN
+          authToken: PlaySettingsActions.SET_PLAY_AUTH_TOKEN,
+          dataChannelsEnabled: PlaySettingsActions.SET_PLAY_DATA_CHANNELS_ENABLED
         };
 
-        const booleanKeys = ['isIp', 'useWhep'];
+        const booleanKeys = ['isIp', 'useWhep', 'dataChannelsEnabled'];
 
         const actionType = actionMap[stateKey];
         if (actionType) {
@@ -258,6 +260,18 @@ const PlaySettingsForm = () => {
               </div>
             </div>
           )}
+        </div>
+
+        <div className="row align-items-center mb-2">
+          <div className="col-5">
+            <FormCheckbox
+              label="Enable Chat (data channel)"
+              id="playDataChannelsEnabled"
+              checked={playSettings.dataChannelsEnabled}
+              disabled={connected}
+              onChange={handleCheckboxChange(PlaySettingsActions.SET_PLAY_DATA_CHANNELS_ENABLED, 'dataChannelsEnabled')}
+            />
+          </div>
         </div>
 
         <CollapsibleSection title="ICE Servers">

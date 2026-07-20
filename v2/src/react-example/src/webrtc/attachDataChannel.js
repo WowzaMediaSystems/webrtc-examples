@@ -20,6 +20,18 @@
 //   - onDataChannelMessage({ label, id, data, binary })       data: string, or ArrayBuffer when binary
 //   - onDataChannelError({ label, id, message })
 
+// The single chat channel's label. The publisher opens the channel under this label and WSE
+// mirrors it to players under the same label. Hardcoded because the example uses exactly one
+// channel; it is not a user-facing choice.
+//
+// A peer connection can carry many data channels at once, multiplexed by label: you would call
+// createDataChannel("chat"), createDataChannel("metadata"), createDataChannel("control"), etc.,
+// each surfacing on the other side as its own channel (pc.ondatachannel) keyed by that label,
+// and route/display messages per channel. This example intentionally uses just one ("chat") to
+// keep the demo focused; supporting several would mean tracking channels by label (e.g. a Map)
+// and letting the UI pick which one to send on.
+export const CHAT_CHANNEL_LABEL = "chat";
+
 const readyStateToState = (readyState) => {
   switch (readyState) {
     case "connecting": return "connecting";

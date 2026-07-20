@@ -33,6 +33,7 @@ const publishUrlParametersMap = {
   authToken: "publishAuthToken",
   useSimulcast: "publishUseSimulcast",
   simulcastRenditions: "publishSimulcastRenditions",
+  dataChannelsEnabled: "publishDataChannelsEnabled",
 };
 
 const PublishSettingsForm = () => {
@@ -67,9 +68,10 @@ const PublishSettingsForm = () => {
       authToken: PublishSettingsActions.SET_PUBLISH_AUTH_TOKEN,
       useSimulcast: PublishSettingsActions.SET_PUBLISH_USE_SIMULCAST,
       simulcastRenditions: PublishSettingsActions.SET_PUBLISH_SIMULCAST_RENDITIONS,
+      dataChannelsEnabled: PublishSettingsActions.SET_PUBLISH_DATA_CHANNELS_ENABLED,
     };
 
-    const booleanKeys = new Set(['useWhip', 'useSimulcast']);
+    const booleanKeys = new Set(['useWhip', 'useSimulcast', 'dataChannelsEnabled']);
 
     Object.entries(publishUrlParametersMap).forEach(([stateKey, cookieKey]) => {
       let value = savedValues[cookieKey];
@@ -288,6 +290,25 @@ const PublishSettingsForm = () => {
               </div>
             </div>
           )}
+        </div>
+
+        <div className="row align-items-center mb-2">
+          <div className="col-5">
+            <div className="form-group form-switch form-check-inline">
+              <label className='form-check-label mr-3' htmlFor="publishDataChannelsEnabled">
+                Enable Chat (data channel)
+              </label>
+              <input
+                className='form-check-input form-switch orange-checkbox'
+                type="checkbox"
+                id="publishDataChannelsEnabled"
+                name="publishDataChannelsEnabled"
+                checked={publishSettings.dataChannelsEnabled || false}
+                disabled={webrtcPublish.connected}
+                onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_DATA_CHANNELS_ENABLED,dataChannelsEnabled:e.target.checked})}
+              />
+            </div>
+          </div>
         </div>
 
         <CollapsibleSection title="ICE Servers">
