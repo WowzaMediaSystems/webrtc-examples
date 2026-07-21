@@ -34,7 +34,7 @@ const Player = () => {
           dispatch({type:ErrorsActions.SET_ERROR_MESSAGE,message:error.message});
           dispatch({ type: PlaySettingsActions.SET_PLAY_FLAGS, playStart: false, playStarting: false, playStop: false, playStopping: false });
           dispatch({ type: WebRTCPlayActions.SET_WEBRTC_PLAY_CONNECTED, connected: false });
-          dispatch({ type: DataChannelActions.RESET_DATA_CHANNEL, context: 'play' });
+          dispatch(DataChannelActions.resetDataChannel('play'));
         },
         onConnectionStateChange: (result) => {
           dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_CONNECTED,connected:result.connected});
@@ -54,13 +54,13 @@ const Player = () => {
           }
         },
         onSetDataChannel: (result) => {
-          dispatch({type:DataChannelActions.SET_DATA_CHANNEL_HANDLE, context:'play', handle:result.dataChannel});
+          dispatch(DataChannelActions.setDataChannelHandle('play', result.dataChannel));
         },
         onDataChannelStateChange: (result) => {
-          dispatch({type:DataChannelActions.SET_DATA_CHANNEL_STATE, context:'play', label:result.label, id:result.id, state:result.state, local:result.local});
+          dispatch(DataChannelActions.setDataChannelState('play', result));
         },
         onDataChannelMessage: (result) => {
-          dispatch({type:DataChannelActions.ADD_DATA_CHANNEL_MESSAGE, context:'play', message:describeReceivedMessage(result)});
+          dispatch(DataChannelActions.addDataChannelMessage('play', describeReceivedMessage(result)));
         },
         onDataChannelError: (result) => {
           dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:'Data channel error: ' + result.message});
@@ -88,7 +88,7 @@ const Player = () => {
             videoElement.current.srcObject = null;
           }
           dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_CONNECTED,connected:false});
-          dispatch({type:DataChannelActions.RESET_DATA_CHANNEL, context:'play'});
+          dispatch(DataChannelActions.resetDataChannel('play'));
         }
       });
     }

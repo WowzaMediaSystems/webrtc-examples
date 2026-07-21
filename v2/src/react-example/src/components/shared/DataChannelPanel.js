@@ -48,11 +48,10 @@ const DataChannelPanel = ({ context }) => {
     try {
       const { data, entry } = buildTextMessage(value);
       handle.send(data);
-      dispatch({
-        type: DataChannelActions.ADD_DATA_CHANNEL_MESSAGE,
-        context,
-        message: { ...entry, label: channel?.label ?? CHAT_CHANNEL_LABEL },
-      });
+      dispatch(DataChannelActions.addDataChannelMessage(context, {
+        ...entry,
+        label: channel?.label ?? CHAT_CHANNEL_LABEL,
+      }));
       setText('');
     } catch (e) {
       dispatch({ type: ErrorsActions.SET_ERROR_MESSAGE, message: 'Data channel send failed: ' + e.message });

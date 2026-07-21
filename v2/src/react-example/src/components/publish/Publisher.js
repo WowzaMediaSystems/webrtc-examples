@@ -33,7 +33,7 @@ const Publisher = () => {
           dispatch({type:PublishSettingsActions.SET_PUBLISH_FLAGS, publishStarting:false, publishStart:false});
           dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_WEBSOCKET, websocket:null});
           dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_PEERCONNECTION, peerConnection:null});
-          dispatch({type:DataChannelActions.RESET_DATA_CHANNEL, context:'publish'});
+          dispatch(DataChannelActions.resetDataChannel('publish'));
         },
         onConnectionStateChange: (result) => {
           dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_CONNECTED,connected:result.connected});
@@ -49,13 +49,13 @@ const Publisher = () => {
           dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_PEERCONNECTION_VIDEO_SENDER,peerConnectionVideoSender:senders.videoSender});
         },
         onSetDataChannel: (result) => {
-          dispatch({type:DataChannelActions.SET_DATA_CHANNEL_HANDLE, context:'publish', handle:result.dataChannel});
+          dispatch(DataChannelActions.setDataChannelHandle('publish', result.dataChannel));
         },
         onDataChannelStateChange: (result) => {
-          dispatch({type:DataChannelActions.SET_DATA_CHANNEL_STATE, context:'publish', label:result.label, id:result.id, state:result.state, local:result.local});
+          dispatch(DataChannelActions.setDataChannelState('publish', result));
         },
         onDataChannelMessage: (result) => {
-          dispatch({type:DataChannelActions.ADD_DATA_CHANNEL_MESSAGE, context:'publish', message:describeReceivedMessage(result)});
+          dispatch(DataChannelActions.addDataChannelMessage('publish', describeReceivedMessage(result)));
         },
         onDataChannelError: (result) => {
           dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:'Data channel error: ' + result.message});
@@ -79,7 +79,7 @@ const Publisher = () => {
         },
         onPublishStopped: () => {
           dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_CONNECTED,connected:false});
-          dispatch({type:DataChannelActions.RESET_DATA_CHANNEL, context:'publish'});
+          dispatch(DataChannelActions.resetDataChannel('publish'));
         }
       });
     }
