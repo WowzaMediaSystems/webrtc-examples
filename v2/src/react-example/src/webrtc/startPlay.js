@@ -369,6 +369,11 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
       });
     };
 
+    // Same as the WebSocket path: listen for the channel before the offer (we never renegotiate).
+    // WSE opens the mirrored channel toward the player, so no label is passed here.
+    if (playSettings.dataChannelsEnabled)
+      attachDataChannel(peerConnection, callbacks, {});
+
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 

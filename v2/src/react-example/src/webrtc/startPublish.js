@@ -384,6 +384,12 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     if (callbacks.onSetSenders)
       callbacks.onSetSenders({ audioSender, videoSender });
 
+    // Same as the WebSocket path: create the channel before the offer so its m-line is negotiated
+    // up front (we never renegotiate). onnegotiationneeded is gated until negotiationEstablished,
+    // so creating it here does not trigger a spurious WHIP re-offer.
+    if (publishSettings.dataChannelsEnabled)
+      attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL });
+
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 
