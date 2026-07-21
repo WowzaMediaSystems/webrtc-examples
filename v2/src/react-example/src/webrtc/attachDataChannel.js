@@ -94,7 +94,19 @@ const attachDataChannel = (peerConnection, callbacks = {}, options = {}) => {
     // Publisher: open the channel here (before the offer) so its m-line is negotiated up front.
     setChannel(peerConnection.createDataChannel(label), true);
   } else {
-    // Player: WSE opens the mirrored channel toward the browser.
+    // Player: WSE opens the mirrored channel toward the browser, so we only listen (below).
+    //
+    // But the player is the offerer here and creates no channel of its own, so its offer would
+    // carry no m=application (SCTP) section - and the answer can't add an m-line the offer didn't
+    // propose. Without SCTP negotiated, WSE can't open the mirrored channel and "datachannel"
+    // never fires. Creating any channel before createOffer() forces the m=application in.
+    //
+    // We use a negotiated (out-of-band) channel purely to bootstrap the SCTP transport: negotiated
+    // channels don't raise "datachannel" on either side, so this stays invisible and doesn't
+    // interfere with the real in-band channel(s) WSE mirrors to us. One bootstrap is enough to
+    // receive any number of in-band channels.
+    peerConnection.createDataChannel("__sctp_bootstrap__", { negotiated: true, id: 0 });
+
     peerConnection.addEventListener("datachannel", (event) => {
       setChannel(event.channel, false);
     });
