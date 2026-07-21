@@ -78,15 +78,12 @@ const DataChannelPanel = ({ context }) => {
         {messages.length === 0 && (
           <div className="text-muted text-center small py-3">No messages yet</div>
         )}
-        {messages.map((message, index) => (
+        {messages.map((message) => (
           <div
-            key={index}
+            key={message.id}
             className={`d-flex mb-1 ${message.direction === 'sent' ? 'justify-content-end' : 'justify-content-start'}`}
           >
             <div className={`px-2 py-1 rounded ${message.direction === 'sent' ? 'bg-light border' : 'bg-light'}`}>
-              {message.direction === 'received' && message.from && (
-                <div className="small font-weight-bold">{message.from}</div>
-              )}
               <div className="text-break">{renderContent(message)}</div>
             </div>
           </div>
