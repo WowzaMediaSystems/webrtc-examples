@@ -30,7 +30,9 @@ const DataChannelPanel = ({ context }) => {
 
   if (!enabled) return null;
 
-  const state = channel?.state ?? 'connecting';
+  // channel is null until one exists (publisher creates it before the offer; a player receives it
+  // via ondatachannel). Before that there is nothing connecting yet, so show "not connected".
+  const state = channel?.state ?? 'not connected';
   const isOpen = state === 'open' && handle != null;
 
   const stateBadgeClass = {
