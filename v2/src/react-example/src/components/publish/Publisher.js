@@ -59,6 +59,9 @@ const Publisher = () => {
         },
         onDataChannelError: (result) => {
           dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:'Data channel error: ' + result.message});
+        },
+        onCaption: (result) => {
+          dispatch(DataChannelActions.setCaption('publish', result.text));
         }
       });
     }

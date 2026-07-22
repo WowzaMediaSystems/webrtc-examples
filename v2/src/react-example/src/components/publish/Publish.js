@@ -7,6 +7,7 @@ import CompositorUserMedia from '../media/CompositorUserMedia';
 import Devices from '../../components/media/Devices';
 import Publisher from './Publisher';
 import DataChannelPanel from '../shared/DataChannelPanel';
+import PublishCaptionBox from './PublishCaptionBox';
 
 const Publish = () => {
 
@@ -21,6 +22,7 @@ const Publish = () => {
             <PublishLiveIndicator />
           </div>
           <DataChannelPanel context="publish" />
+          <PublishCaptionBox />
         </div>
         <PublishSettingsForm />
       </div>

@@ -5,7 +5,7 @@
 // channel and, while it is open, cycles a fixed pool of placeholder lines on a timer; players
 // receive them and render them as subtitles over the video. Nothing is ever sent back on this one.
 
-export const CAPTIONS_CHANNEL_LABEL = "captions";
+import { CAPTIONS_CHANNEL_LABEL } from "./attachDataChannel";
 
 const CAPTION_INTERVAL_MS = 3000;
 

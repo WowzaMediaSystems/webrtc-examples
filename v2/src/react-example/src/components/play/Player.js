@@ -6,6 +6,7 @@ import * as WebRTCPlayActions from '../../actions/webrtcPlayActions';
 import * as ErrorsActions from '../../actions/errorsActions';
 import * as DataChannelActions from '../../actions/dataChannelActions';
 import { describeReceivedMessage } from '../../utils/DataChannelUtils';
+import { CHAT_CHANNEL_LABEL, CAPTIONS_CHANNEL_LABEL } from '../../webrtc/attachDataChannel';
 
 import startPlay from '../../webrtc/startPlay';
 import stopPlay from '../../webrtc/stopPlay';
@@ -54,13 +55,20 @@ const Player = () => {
           }
         },
         onSetDataChannel: (result) => {
-          dispatch(DataChannelActions.setDataChannelHandle('play', result.dataChannel));
+          // Only the chat channel is sent on from the UI; the captions handle is receive-only.
+          if (result.label === CHAT_CHANNEL_LABEL)
+            dispatch(DataChannelActions.setDataChannelHandle('play', result.dataChannel));
         },
         onDataChannelStateChange: (result) => {
-          dispatch(DataChannelActions.setDataChannelState('play', result));
+          // The panel tracks the chat channel's lifecycle; captions state isn't shown.
+          if (result.label === CHAT_CHANNEL_LABEL)
+            dispatch(DataChannelActions.setDataChannelState('play', result));
         },
         onDataChannelMessage: (result) => {
-          dispatch(DataChannelActions.addDataChannelMessage('play', describeReceivedMessage(result)));
+          if (result.label === CAPTIONS_CHANNEL_LABEL)
+            dispatch(DataChannelActions.setCaption('play', result.data));
+          else
+            dispatch(DataChannelActions.addDataChannelMessage('play', describeReceivedMessage(result)));
         },
         onDataChannelError: (result) => {
           dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:'Data channel error: ' + result.message});
