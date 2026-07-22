@@ -33,7 +33,8 @@ const publishUrlParametersMap = {
   authToken: "publishAuthToken",
   useSimulcast: "publishUseSimulcast",
   simulcastRenditions: "publishSimulcastRenditions",
-  dataChannelsEnabled: "publishDataChannelsEnabled",
+  chatEnabled: "publishChatEnabled",
+  captionsEnabled: "publishCaptionsEnabled",
 };
 
 const PublishSettingsForm = () => {
@@ -68,10 +69,11 @@ const PublishSettingsForm = () => {
       authToken: PublishSettingsActions.SET_PUBLISH_AUTH_TOKEN,
       useSimulcast: PublishSettingsActions.SET_PUBLISH_USE_SIMULCAST,
       simulcastRenditions: PublishSettingsActions.SET_PUBLISH_SIMULCAST_RENDITIONS,
-      dataChannelsEnabled: PublishSettingsActions.SET_PUBLISH_DATA_CHANNELS_ENABLED,
+      chatEnabled: PublishSettingsActions.SET_PUBLISH_CHAT_ENABLED,
+      captionsEnabled: PublishSettingsActions.SET_PUBLISH_CAPTIONS_ENABLED,
     };
 
-    const booleanKeys = new Set(['useWhip', 'useSimulcast', 'dataChannelsEnabled']);
+    const booleanKeys = new Set(['useWhip', 'useSimulcast', 'chatEnabled', 'captionsEnabled']);
 
     Object.entries(publishUrlParametersMap).forEach(([stateKey, cookieKey]) => {
       let value = savedValues[cookieKey];
@@ -293,19 +295,35 @@ const PublishSettingsForm = () => {
         </div>
 
         <div className="row align-items-center mb-2">
-          <div className="col-5">
+          <div className="col-6">
             <div className="form-group form-switch form-check-inline">
-              <label className='form-check-label mr-3' htmlFor="publishDataChannelsEnabled">
+              <label className='form-check-label mr-3' htmlFor="publishChatEnabled">
                 Enable Chat
               </label>
               <input
                 className='form-check-input form-switch orange-checkbox'
                 type="checkbox"
-                id="publishDataChannelsEnabled"
-                name="publishDataChannelsEnabled"
-                checked={publishSettings.dataChannelsEnabled || false}
+                id="publishChatEnabled"
+                name="publishChatEnabled"
+                checked={publishSettings.chatEnabled || false}
                 disabled={webrtcPublish.connected}
-                onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_DATA_CHANNELS_ENABLED,dataChannelsEnabled:e.target.checked})}
+                onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_CHAT_ENABLED,chatEnabled:e.target.checked})}
+              />
+            </div>
+          </div>
+          <div className="col-6">
+            <div className="form-group form-switch form-check-inline">
+              <label className='form-check-label mr-3' htmlFor="publishCaptionsEnabled">
+                Enable Captions
+              </label>
+              <input
+                className='form-check-input form-switch orange-checkbox'
+                type="checkbox"
+                id="publishCaptionsEnabled"
+                name="publishCaptionsEnabled"
+                checked={publishSettings.captionsEnabled || false}
+                disabled={webrtcPublish.connected}
+                onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_CAPTIONS_ENABLED,captionsEnabled:e.target.checked})}
               />
             </div>
           </div>

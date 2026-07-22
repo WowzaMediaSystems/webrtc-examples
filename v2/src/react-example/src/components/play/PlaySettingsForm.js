@@ -28,7 +28,8 @@ const playUrlParametersMap = {
   ip: "playIp",
   useWhep: "playUseWhep",
   authToken: "playAuthToken",
-  dataChannelsEnabled: "playDataChannelsEnabled"
+  chatEnabled: "playChatEnabled",
+  captionsEnabled: "playCaptionsEnabled"
 };
 
 const SIGNALING_URL_PLACEHOLDER = "wss://[ssl-certificate-domain-name]/webrtc-session.json";
@@ -98,10 +99,11 @@ const PlaySettingsForm = () => {
           ip: PlaySettingsActions.SET_PLAY_IP,
           useWhep: PlaySettingsActions.SET_PLAY_USE_WHEP,
           authToken: PlaySettingsActions.SET_PLAY_AUTH_TOKEN,
-          dataChannelsEnabled: PlaySettingsActions.SET_PLAY_DATA_CHANNELS_ENABLED
+          chatEnabled: PlaySettingsActions.SET_PLAY_CHAT_ENABLED,
+          captionsEnabled: PlaySettingsActions.SET_PLAY_CAPTIONS_ENABLED
         };
 
-        const booleanKeys = ['isIp', 'useWhep', 'dataChannelsEnabled'];
+        const booleanKeys = ['isIp', 'useWhep', 'chatEnabled', 'captionsEnabled'];
 
         const actionType = actionMap[stateKey];
         if (actionType) {
@@ -263,13 +265,22 @@ const PlaySettingsForm = () => {
         </div>
 
         <div className="row align-items-center mb-2">
-          <div className="col-5">
+          <div className="col-6">
             <FormCheckbox
               label="Enable Chat"
-              id="playDataChannelsEnabled"
-              checked={playSettings.dataChannelsEnabled}
+              id="playChatEnabled"
+              checked={playSettings.chatEnabled}
               disabled={connected}
-              onChange={handleCheckboxChange(PlaySettingsActions.SET_PLAY_DATA_CHANNELS_ENABLED, 'dataChannelsEnabled')}
+              onChange={handleCheckboxChange(PlaySettingsActions.SET_PLAY_CHAT_ENABLED, 'chatEnabled')}
+            />
+          </div>
+          <div className="col-6">
+            <FormCheckbox
+              label="Enable Captions"
+              id="playCaptionsEnabled"
+              checked={playSettings.captionsEnabled}
+              disabled={connected}
+              onChange={handleCheckboxChange(PlaySettingsActions.SET_PLAY_CAPTIONS_ENABLED, 'captionsEnabled')}
             />
           </div>
         </div>

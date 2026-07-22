@@ -13,13 +13,16 @@ import { sendWhipWhepIceRestart } from "../utils/SdpFragUtils";
 import attachDataChannel, { CHAT_CHANNEL_LABEL } from "./attachDataChannel";
 import { startCaptionBroadcast } from "./captions";
 
-// Bring up both data channels for a publisher peer connection: the full-duplex chat channel and
-// the one-way captions broadcast. `onCaption` (if provided) mirrors each sent line to the UI.
-const attachPublishDataChannels = (peerConnection, callbacks) => {
-  attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL, create: true });
-  startCaptionBroadcast(peerConnection, (text) => {
-    if (callbacks.onCaption) callbacks.onCaption({ text });
-  });
+// Bring up the enabled publisher data channels: the full-duplex chat channel and/or the one-way
+// captions broadcast, each gated by its own setting. `onCaption` (if provided) mirrors each sent
+// caption line to the UI.
+const attachPublishDataChannels = (peerConnection, callbacks, publishSettings) => {
+  if (publishSettings.chatEnabled)
+    attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL, create: true });
+  if (publishSettings.captionsEnabled)
+    startCaptionBroadcast(peerConnection, (text) => {
+      if (callbacks.onCaption) callbacks.onCaption({ text });
+    });
 };
 
 // Orchestration dispatcher: simulcast vs. single-track is a publish-flow
@@ -186,9 +189,8 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
     attachIceRestartRecovery(peerConnection);
 
     // The data channels must be created before the first offer (we never renegotiate). The
-    // publisher opens both the chat channel and the captions broadcast up front.
-    if (publishSettings.dataChannelsEnabled)
-      attachPublishDataChannels(peerConnection, callbacks);
+    // publisher opens whichever of chat / captions are enabled up front.
+    attachPublishDataChannels(peerConnection, callbacks, publishSettings);
 
     let audioSender = undefined;
     let videoSender = undefined;
@@ -397,8 +399,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     // Same as the WebSocket path: create the channels before the offer so their m-lines are
     // negotiated up front (we never renegotiate). onnegotiationneeded is gated until
     // negotiationEstablished, so creating them here does not trigger a spurious WHIP re-offer.
-    if (publishSettings.dataChannelsEnabled)
-      attachPublishDataChannels(peerConnection, callbacks);
+    attachPublishDataChannels(peerConnection, callbacks, publishSettings);
 
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);

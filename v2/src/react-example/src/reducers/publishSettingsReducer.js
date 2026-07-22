@@ -22,7 +22,8 @@ const initialState = {
   authToken: '',
   useSimulcast: false,
   simulcastRenditions: DEFAULT_SIMULCAST_RENDITIONS,
-  dataChannelsEnabled: false,
+  chatEnabled: false,
+  captionsEnabled: false,
   publishStart: false,
   publishStarting: false,
   publishStop: false,
@@ -72,8 +73,10 @@ const publishSettingsReducer = (state = initialState, action) => {
       return { ...state, useSimulcast: action.useSimulcast };
     case PublishSettingsActions.SET_PUBLISH_SIMULCAST_RENDITIONS:
       return { ...state, simulcastRenditions: action.simulcastRenditions };
-    case PublishSettingsActions.SET_PUBLISH_DATA_CHANNELS_ENABLED:
-      return { ...state, dataChannelsEnabled: action.dataChannelsEnabled };
+    case PublishSettingsActions.SET_PUBLISH_CHAT_ENABLED:
+      return { ...state, chatEnabled: action.chatEnabled };
+    case PublishSettingsActions.SET_PUBLISH_CAPTIONS_ENABLED:
+      return { ...state, captionsEnabled: action.captionsEnabled };
     case PublishSettingsActions.SET_PUBLISH_FLAGS:
       let publishFlagsState = { ...state };
       if (action.publishStart != null) publishFlagsState.publishStart = action.publishStart;

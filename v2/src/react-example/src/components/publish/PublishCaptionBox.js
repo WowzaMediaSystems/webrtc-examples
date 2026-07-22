@@ -6,7 +6,7 @@ import { useSelector } from 'react-redux';
 // own data channel, not baked into the media, and a box makes that obvious. The player, which
 // consumes them, renders them as a subtitle overlay instead (see CaptionOverlay).
 const PublishCaptionBox = () => {
-  const enabled = useSelector((state) => state.publishSettings.dataChannelsEnabled);
+  const enabled = useSelector((state) => state.publishSettings.captionsEnabled);
   const caption = useSelector((state) => state.dataChannel.publish.caption);
 
   if (!enabled) return null;

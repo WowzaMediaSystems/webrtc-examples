@@ -15,8 +15,8 @@ const DataChannelPanel = ({ context }) => {
 
   const enabled = useSelector((state) =>
     context === 'publish'
-      ? state.publishSettings.dataChannelsEnabled
-      : state.playSettings.dataChannelsEnabled
+      ? state.publishSettings.chatEnabled
+      : state.playSettings.chatEnabled
   );
   const { handle, channel, messages } = useSelector((state) => state.dataChannel[context]);
 

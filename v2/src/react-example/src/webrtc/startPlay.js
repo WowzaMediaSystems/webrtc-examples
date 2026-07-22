@@ -6,12 +6,16 @@ import { attachIceRestartRecovery } from '../utils/IceRestartUtils';
 import { sendWhipWhepIceRestart } from '../utils/SdpFragUtils';
 import attachDataChannel, { CHAT_CHANNEL_LABEL, CAPTIONS_CHANNEL_LABEL, createSctpBootstrap } from './attachDataChannel';
 
-// Listen for both data channels WSE mirrors to a player: chat (full-duplex) and captions (one-way,
-// receive here). The bootstrap must come first so the SCTP transport is negotiated in the offer.
-const attachPlayDataChannels = (peerConnection, callbacks) => {
+// Listen for whichever data channels are enabled on the player: chat (full-duplex) and/or captions
+// (one-way, receive here). The bootstrap must come first, whenever any channel is enabled, so the
+// SCTP transport is negotiated in the offer and WSE can open the mirrored channels.
+const attachPlayDataChannels = (peerConnection, callbacks, playSettings) => {
+  if (!playSettings.chatEnabled && !playSettings.captionsEnabled) return;
   createSctpBootstrap(peerConnection);
-  attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL, create: false });
-  attachDataChannel(peerConnection, callbacks, { label: CAPTIONS_CHANNEL_LABEL, create: false });
+  if (playSettings.chatEnabled)
+    attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL, create: false });
+  if (playSettings.captionsEnabled)
+    attachDataChannel(peerConnection, callbacks, { label: CAPTIONS_CHANNEL_LABEL, create: false });
 };
 
 const getAuthHeaders = (authToken) =>
@@ -143,8 +147,7 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
 
     // The data channels must be listened for before the first offer (we never renegotiate). WSE
     // opens the mirrored channels toward the player; the player writes back on chat.
-    if (playSettings.dataChannelsEnabled)
-      attachPlayDataChannels(peerConnection, callbacks);
+    attachPlayDataChannels(peerConnection, callbacks, playSettings);
 
     websocket.addEventListener("message", (event) => { websocketOnMessage(event, playSettings, peerConnection, websocket, callbacks, session, pendingCandidates); });
 
@@ -378,8 +381,7 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
     };
 
     // Same as the WebSocket path: listen for the channels before the offer (we never renegotiate).
-    if (playSettings.dataChannelsEnabled)
-      attachPlayDataChannels(peerConnection, callbacks);
+    attachPlayDataChannels(peerConnection, callbacks, playSettings);
 
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
