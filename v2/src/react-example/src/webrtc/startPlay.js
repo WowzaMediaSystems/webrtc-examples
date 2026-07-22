@@ -4,7 +4,15 @@ import { validateParams } from '../utils/ValidationUtils';
 import { addIceServers } from '../utils/IceServersUtils';
 import { attachIceRestartRecovery } from '../utils/IceRestartUtils';
 import { sendWhipWhepIceRestart } from '../utils/SdpFragUtils';
-import attachDataChannel from './attachDataChannel';
+import attachDataChannel, { CHAT_CHANNEL_LABEL, CAPTIONS_CHANNEL_LABEL, createSctpBootstrap } from './attachDataChannel';
+
+// Listen for both data channels WSE mirrors to a player: chat (full-duplex) and captions (one-way,
+// receive here). The bootstrap must come first so the SCTP transport is negotiated in the offer.
+const attachPlayDataChannels = (peerConnection, callbacks) => {
+  createSctpBootstrap(peerConnection);
+  attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL, create: false });
+  attachDataChannel(peerConnection, callbacks, { label: CAPTIONS_CHANNEL_LABEL, create: false });
+};
 
 const getAuthHeaders = (authToken) =>
   authToken ? { "Authorization": `Bearer ${authToken}` } : {};
@@ -133,10 +141,10 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
     // path changes, without tearing down the play session. See IceRestartUtils.
     attachIceRestartRecovery(peerConnection);
 
-    // The data channel must be listened for before the first offer (we never renegotiate). WSE opens
-    // the mirrored channel toward the player (no label passed); the player writes back over it.
+    // The data channels must be listened for before the first offer (we never renegotiate). WSE
+    // opens the mirrored channels toward the player; the player writes back on chat.
     if (playSettings.dataChannelsEnabled)
-      attachDataChannel(peerConnection, callbacks, {});
+      attachPlayDataChannels(peerConnection, callbacks);
 
     websocket.addEventListener("message", (event) => { websocketOnMessage(event, playSettings, peerConnection, websocket, callbacks, session, pendingCandidates); });
 
@@ -369,10 +377,9 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
       });
     };
 
-    // Same as the WebSocket path: listen for the channel before the offer (we never renegotiate).
-    // WSE opens the mirrored channel toward the player, so no label is passed here.
+    // Same as the WebSocket path: listen for the channels before the offer (we never renegotiate).
     if (playSettings.dataChannelsEnabled)
-      attachDataChannel(peerConnection, callbacks, {});
+      attachPlayDataChannels(peerConnection, callbacks);
 
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);

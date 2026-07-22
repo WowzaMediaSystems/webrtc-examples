@@ -11,6 +11,16 @@ import {
 import { attachIceRestartRecovery } from "../utils/IceRestartUtils";
 import { sendWhipWhepIceRestart } from "../utils/SdpFragUtils";
 import attachDataChannel, { CHAT_CHANNEL_LABEL } from "./attachDataChannel";
+import { startCaptionBroadcast } from "./captions";
+
+// Bring up both data channels for a publisher peer connection: the full-duplex chat channel and
+// the one-way captions broadcast. `onCaption` (if provided) mirrors each sent line to the UI.
+const attachPublishDataChannels = (peerConnection, callbacks) => {
+  attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL, create: true });
+  startCaptionBroadcast(peerConnection, (text) => {
+    if (callbacks.onCaption) callbacks.onCaption({ text });
+  });
+};
 
 // Orchestration dispatcher: simulcast vs. single-track is a publish-flow
 // decision, so it lives here. The simulcast mechanics live in SimulcastUtils.
@@ -175,10 +185,10 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
     // path changes, without tearing down the publish session. See IceRestartUtils.
     attachIceRestartRecovery(peerConnection);
 
-    // The data channel must be created before the first offer (we never renegotiate). The publisher
-    // opens the channel; it broadcasts on it and receives what players send back over the same channel.
+    // The data channels must be created before the first offer (we never renegotiate). The
+    // publisher opens both the chat channel and the captions broadcast up front.
     if (publishSettings.dataChannelsEnabled)
-      attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL });
+      attachPublishDataChannels(peerConnection, callbacks);
 
     let audioSender = undefined;
     let videoSender = undefined;
@@ -384,11 +394,11 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     if (callbacks.onSetSenders)
       callbacks.onSetSenders({ audioSender, videoSender });
 
-    // Same as the WebSocket path: create the channel before the offer so its m-line is negotiated
-    // up front (we never renegotiate). onnegotiationneeded is gated until negotiationEstablished,
-    // so creating it here does not trigger a spurious WHIP re-offer.
+    // Same as the WebSocket path: create the channels before the offer so their m-lines are
+    // negotiated up front (we never renegotiate). onnegotiationneeded is gated until
+    // negotiationEstablished, so creating them here does not trigger a spurious WHIP re-offer.
     if (publishSettings.dataChannelsEnabled)
-      attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL });
+      attachPublishDataChannels(peerConnection, callbacks);
 
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);

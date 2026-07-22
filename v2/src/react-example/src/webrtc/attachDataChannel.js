@@ -1,36 +1,46 @@
-// attachDataChannel wires a single RTCDataChannel onto an existing RTCPeerConnection.
+// attachDataChannel wires ONE RTCDataChannel (identified by label) onto an existing
+// RTCPeerConnection. Call it once per channel; this example uses two - "chat" and "captions".
 //
-// It MUST be called before the initial createOffer(): this example never renegotiates, so
-// the SCTP m-line has to be present in the first offer. A consequence the UI relies on is
-// that the data channel cannot be turned on or off mid-session - toggling the setting requires
-// a full disconnect/reconnect.
+// It MUST be called before the initial createOffer(): this example never renegotiates, so every
+// channel's m-line has to be present in the first offer. A consequence the UI relies on is that
+// data channels cannot be turned on or off mid-session - toggling the setting requires a full
+// disconnect/reconnect.
 //
-// A data channel is full-duplex, so a single channel carries both directions of the chat:
-//   - the publisher opens the channel (pass options.label) and both broadcasts on it and
-//     receives what players send back over it (WSE muxes every viewer's backchannel onto this
-//     one channel; per-viewer identity, if needed, comes from the message envelope, not from
-//     separate channels - the publisher has a single peer connection to WSE regardless of
-//     audience size).
-//   - a player does not open anything (omit options.label); it waits for WSE to open the
-//     mirrored channel (pc.ondatachannel), then receives the broadcast and writes back on it.
+// options:
+//   - label:  the channel label ("chat", "captions", ...). Both sides agree on it.
+//   - create: true  -> publisher: open the channel here (before the offer) so its m-line is
+//                      negotiated up front, and both send and receive on it.
+//             false -> player: don't open anything; wait for WSE to open the mirrored channel
+//                      (pc.ondatachannel) and wire ONLY the one whose label matches. Requires the
+//                      SCTP transport to already be negotiated - see createSctpBootstrap.
+//
+// A peer connection multiplexes channels by label: each surfaces on the other side as its own
+// channel keyed by that label, so the receive side filters by label and a sibling attach handles
+// the rest. Full-duplex chat needs create on the publisher and receive on the player; one-way
+// captions are published from one side only (see captions.js).
 //
 // callbacks (all optional, matching the existing startPublish/startPlay callback style):
-//   - onSetDataChannel({ dataChannel })              handle to send/close from the UI
-//   - onDataChannelStateChange({ label, id, state, local })   state: connecting|open|closing|closed
-//   - onDataChannelMessage({ label, id, data, binary })       data: string, or ArrayBuffer when binary
+//   - onSetDataChannel({ label, dataChannel })              handle to send/close from the UI
+//   - onDataChannelStateChange({ label, id, state, local }) state: connecting|open|closing|closed
+//   - onDataChannelMessage({ label, id, data, binary })     data: string, or ArrayBuffer when binary
 //   - onDataChannelError({ label, id, message })
 
-// The single chat channel's label. The publisher opens the channel under this label and WSE
-// mirrors it to players under the same label. Hardcoded because the example uses exactly one
-// channel; it is not a user-facing choice.
-//
-// A peer connection can carry many data channels at once, multiplexed by label: you would call
-// createDataChannel("chat"), createDataChannel("metadata"), createDataChannel("control"), etc.,
-// each surfacing on the other side as its own channel (pc.ondatachannel) keyed by that label,
-// and route/display messages per channel. This example intentionally uses just one ("chat") to
-// keep the demo focused; supporting several would mean tracking channels by label (e.g. a Map)
-// and letting the UI pick which one to send on.
+// Channel labels used by this example, colocated so both live in one place. "chat" is the
+// full-duplex text channel backing DataChannelPanel; "captions" is the one-way text channel
+// driven by captions.js.
 export const CHAT_CHANNEL_LABEL = "chat";
+export const CAPTIONS_CHANNEL_LABEL = "captions";
+
+// Player-only: create a negotiated (out-of-band) channel purely to force the SCTP m=application
+// section into the offer. The player is the offerer and opens no channel of its own, so without
+// this its offer would carry no SCTP section - and the answer can't add an m-line the offer didn't
+// propose, so WSE could never open the in-band channels it mirrors to us and "datachannel" would
+// never fire. Negotiated channels don't raise "datachannel" on either side, so this stays invisible
+// and doesn't interfere with the real channels. Call once, before createOffer(); one bootstrap
+// covers any number of received channels.
+export const createSctpBootstrap = (peerConnection) => {
+  peerConnection.createDataChannel("__sctp_bootstrap__", { negotiated: true, id: 0 });
+};
 
 const readyStateToState = (readyState) => {
   switch (readyState) {
@@ -82,7 +92,7 @@ const wireChannel = (channel, local, callbacks) => {
 };
 
 const attachDataChannel = (peerConnection, callbacks = {}, options = {}) => {
-  const { label } = options;
+  const { label, create = false } = options;
   let channel = null;
 
   const setChannel = (dc, local) => {
@@ -90,24 +100,14 @@ const attachDataChannel = (peerConnection, callbacks = {}, options = {}) => {
     wireChannel(dc, local, callbacks);
   };
 
-  if (label) {
+  if (create) {
     // Publisher: open the channel here (before the offer) so its m-line is negotiated up front.
     setChannel(peerConnection.createDataChannel(label), true);
   } else {
-    // Player: WSE opens the mirrored channel toward the browser, so we only listen (below).
-    //
-    // But the player is the offerer here and creates no channel of its own, so its offer would
-    // carry no m=application (SCTP) section - and the answer can't add an m-line the offer didn't
-    // propose. Without SCTP negotiated, WSE can't open the mirrored channel and "datachannel"
-    // never fires. Creating any channel before createOffer() forces the m=application in.
-    //
-    // We use a negotiated (out-of-band) channel purely to bootstrap the SCTP transport: negotiated
-    // channels don't raise "datachannel" on either side, so this stays invisible and doesn't
-    // interfere with the real in-band channel(s) WSE mirrors to us. One bootstrap is enough to
-    // receive any number of in-band channels.
-    peerConnection.createDataChannel("__sctp_bootstrap__", { negotiated: true, id: 0 });
-
+    // Player: WSE opens the mirrored channel toward the browser. Wire only the channel whose label
+    // matches; another attachDataChannel call handles the rest. (Requires createSctpBootstrap.)
     peerConnection.addEventListener("datachannel", (event) => {
+      if (event.channel.label !== label) return;
       setChannel(event.channel, false);
     });
   }
@@ -125,7 +125,7 @@ const attachDataChannel = (peerConnection, callbacks = {}, options = {}) => {
   };
 
   if (callbacks.onSetDataChannel)
-    callbacks.onSetDataChannel({ dataChannel });
+    callbacks.onSetDataChannel({ label, dataChannel });
 
   return dataChannel;
 };
