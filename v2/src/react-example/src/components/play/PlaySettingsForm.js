@@ -9,6 +9,7 @@ import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
 import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
 import CollapsibleSection from '../shared/CollapsibleSection';
+import FormCheckbox from '../shared/FormCheckbox';
 import { triggerIceRestart } from '../../utils/IceRestartUtils';
 import ExternalLinks from '../../constants/ExternalLinks';
 import fileCopyImage from '../../images/file_copy-24px.svg';
@@ -46,23 +47,6 @@ const FormInput = ({ label, id, value, onChange, disabled, ...props }) => (
       onChange={onChange}
       disabled={disabled}
       {...props}
-    />
-  </div>
-);
-
-const FormCheckbox = ({ label, id, checked, onChange, disabled }) => (
-  <div className="form-group form-switch form-check-inline">
-    <label className="form-check-label mr-3" htmlFor={id}>
-      {label}
-    </label>
-    <input
-      id={id}
-      name={id}
-      className="form-check-input orange-checkbox"
-      type="checkbox"
-      checked={checked || false}
-      disabled={disabled}
-      onChange={onChange}
     />
   </div>
 );
@@ -234,8 +218,8 @@ const PlaySettingsForm = () => {
           </div>
         </div>
 
-        <div className="row align-items-center mb-2">
-          <div className="col-5">
+        <div className="row">
+          <div className="col-5 pt-2">
             <FormCheckbox
               label="Use WHEP"
               id="playUseWhep"
@@ -264,7 +248,7 @@ const PlaySettingsForm = () => {
           )}
         </div>
 
-        <div className="row align-items-center mb-2">
+        <div className="row align-items-center mt-2 mb-2">
           <div className="col-6">
             <FormCheckbox
               label="Enable Chat"

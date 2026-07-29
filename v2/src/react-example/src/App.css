@@ -238,3 +238,17 @@ ul.navbar-nav {
   box-shadow: none;
 }
 
+.data-channel-panel .chat-message {
+  max-width: 75%;
+}
+
+.data-channel-panel .chat-message-sent {
+  background-color: #FFE7CC;
+  border: 1px solid #FF8400;
+}
+
+.data-channel-panel .chat-message-received {
+  background-color: #EEEEEE;
+  border: 1px solid #D9D9D9;
+}
+

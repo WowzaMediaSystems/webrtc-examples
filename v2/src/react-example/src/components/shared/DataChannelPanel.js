@@ -83,7 +83,7 @@ const DataChannelPanel = ({ context }) => {
             key={message.id}
             className={`d-flex mb-1 ${message.direction === 'sent' ? 'justify-content-end' : 'justify-content-start'}`}
           >
-            <div className={`px-2 py-1 rounded ${message.direction === 'sent' ? 'bg-light border' : 'bg-light'}`}>
+            <div className={`chat-message px-2 py-1 rounded ${message.direction === 'sent' ? 'chat-message-sent' : 'chat-message-received'}`}>
               <div className="text-break">{renderContent(message)}</div>
             </div>
           </div>
