@@ -4,6 +4,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import * as PlaySettingsActions from '../../actions/playSettingsActions';
 import * as WebRTCPlayActions from '../../actions/webrtcPlayActions';
 import * as ErrorsActions from '../../actions/errorsActions';
+import * as DataChannelActions from '../../actions/dataChannelActions';
+import { describeReceivedMessage } from '../../utils/DataChannelUtils';
+import { CHAT_CHANNEL_LABEL, CAPTIONS_CHANNEL_LABEL } from '../../webrtc/attachDataChannel';
 
 import startPlay from '../../webrtc/startPlay';
 import stopPlay from '../../webrtc/stopPlay';
@@ -32,6 +35,7 @@ const Player = () => {
           dispatch({type:ErrorsActions.SET_ERROR_MESSAGE,message:error.message});
           dispatch({ type: PlaySettingsActions.SET_PLAY_FLAGS, playStart: false, playStarting: false, playStop: false, playStopping: false });
           dispatch({ type: WebRTCPlayActions.SET_WEBRTC_PLAY_CONNECTED, connected: false });
+          dispatch(DataChannelActions.resetDataChannel('play'));
         },
         onConnectionStateChange: (result) => {
           dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_CONNECTED,connected:result.connected});
@@ -49,6 +53,25 @@ const Player = () => {
             videoElement.current.srcObject = streamRef.current;
             console.log('srcObject set, tracks:', streamRef.current.getTracks().map(t => t.kind));
           }
+        },
+        onSetDataChannel: (result) => {
+          // Only the chat channel is sent on from the UI; the captions handle is receive-only.
+          if (result.label === CHAT_CHANNEL_LABEL)
+            dispatch(DataChannelActions.setDataChannelHandle('play', result.dataChannel));
+        },
+        onDataChannelStateChange: (result) => {
+          // The panel tracks the chat channel's lifecycle; captions state isn't shown.
+          if (result.label === CHAT_CHANNEL_LABEL)
+            dispatch(DataChannelActions.setDataChannelState('play', result));
+        },
+        onDataChannelMessage: (result) => {
+          if (result.label === CAPTIONS_CHANNEL_LABEL)
+            dispatch(DataChannelActions.setCaption('play', result.data));
+          else
+            dispatch(DataChannelActions.addDataChannelMessage('play', describeReceivedMessage(result)));
+        },
+        onDataChannelError: (result) => {
+          dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:'Data channel error: ' + result.message});
         }
       });
     }
@@ -73,6 +96,7 @@ const Player = () => {
             videoElement.current.srcObject = null;
           }
           dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_CONNECTED,connected:false});
+          dispatch(DataChannelActions.resetDataChannel('play'));
         }
       });
     }

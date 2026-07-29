@@ -10,6 +10,20 @@ import {
 } from "../utils/SimulcastUtils";
 import { attachIceRestartRecovery } from "../utils/IceRestartUtils";
 import { sendWhipWhepIceRestart } from "../utils/SdpFragUtils";
+import attachDataChannel, { CHAT_CHANNEL_LABEL } from "./attachDataChannel";
+import { startCaptionBroadcast } from "./captions";
+
+// Bring up the enabled publisher data channels: the full-duplex chat channel and/or the one-way
+// captions broadcast, each gated by its own setting. `onCaption` (if provided) mirrors each sent
+// caption line to the UI.
+const attachPublishDataChannels = (peerConnection, callbacks, publishSettings) => {
+  if (publishSettings.chatEnabled)
+    attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL, create: true });
+  if (publishSettings.captionsEnabled)
+    startCaptionBroadcast(peerConnection, (text) => {
+      if (callbacks.onCaption) callbacks.onCaption({ text });
+    });
+};
 
 // Orchestration dispatcher: simulcast vs. single-track is a publish-flow
 // decision, so it lives here. The simulcast mechanics live in SimulcastUtils.
@@ -173,6 +187,10 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
     // ICE restart recovery: re-establishes the ICE connection in place when the network
     // path changes, without tearing down the publish session. See IceRestartUtils.
     attachIceRestartRecovery(peerConnection);
+
+    // The data channels must be created before the first offer (we never renegotiate). The
+    // publisher opens whichever of chat / captions are enabled up front.
+    attachPublishDataChannels(peerConnection, callbacks, publishSettings);
 
     let audioSender = undefined;
     let videoSender = undefined;
@@ -377,6 +395,11 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
 
     if (callbacks.onSetSenders)
       callbacks.onSetSenders({ audioSender, videoSender });
+
+    // Same as the WebSocket path: create the channels before the offer so their m-lines are
+    // negotiated up front (we never renegotiate). onnegotiationneeded is gated until
+    // negotiationEstablished, so creating them here does not trigger a spurious WHIP re-offer.
+    attachPublishDataChannels(peerConnection, callbacks, publishSettings);
 
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);

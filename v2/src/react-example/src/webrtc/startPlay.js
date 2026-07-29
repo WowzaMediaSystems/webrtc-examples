@@ -4,6 +4,19 @@ import { validateParams } from '../utils/ValidationUtils';
 import { addIceServers } from '../utils/IceServersUtils';
 import { attachIceRestartRecovery } from '../utils/IceRestartUtils';
 import { sendWhipWhepIceRestart } from '../utils/SdpFragUtils';
+import attachDataChannel, { CHAT_CHANNEL_LABEL, CAPTIONS_CHANNEL_LABEL, createSctpBootstrap } from './attachDataChannel';
+
+// Listen for whichever data channels are enabled on the player: chat (full-duplex) and/or captions
+// (one-way, receive here). The bootstrap must come first, whenever any channel is enabled, so the
+// SCTP transport is negotiated in the offer and WSE can open the mirrored channels.
+const attachPlayDataChannels = (peerConnection, callbacks, playSettings) => {
+  if (!playSettings.chatEnabled && !playSettings.captionsEnabled) return;
+  createSctpBootstrap(peerConnection);
+  if (playSettings.chatEnabled)
+    attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL, create: false });
+  if (playSettings.captionsEnabled)
+    attachDataChannel(peerConnection, callbacks, { label: CAPTIONS_CHANNEL_LABEL, create: false });
+};
 
 const getAuthHeaders = (authToken) =>
   authToken ? { "Authorization": `Bearer ${authToken}` } : {};
@@ -131,6 +144,10 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
     // ICE restart recovery: re-establishes the ICE connection in place when the network
     // path changes, without tearing down the play session. See IceRestartUtils.
     attachIceRestartRecovery(peerConnection);
+
+    // The data channels must be listened for before the first offer (we never renegotiate). WSE
+    // opens the mirrored channels toward the player; the player writes back on chat.
+    attachPlayDataChannels(peerConnection, callbacks, playSettings);
 
     websocket.addEventListener("message", (event) => { websocketOnMessage(event, playSettings, peerConnection, websocket, callbacks, session, pendingCandidates); });
 
@@ -362,6 +379,9 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
         body: candidate
       });
     };
+
+    // Same as the WebSocket path: listen for the channels before the offer (we never renegotiate).
+    attachPlayDataChannels(peerConnection, callbacks, playSettings);
 
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
