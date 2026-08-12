@@ -13,6 +13,8 @@ export const SET_PLAY_IP = 'SET_PLAY_IP';
 export const SET_PLAY_FLAGS='SET_PLAY_FLAGS';
 export const SET_PLAY_USE_WHEP = 'SET_PLAY_USE_WHEP';
 export const SET_PLAY_AUTH_TOKEN = 'SET_PLAY_AUTH_TOKEN';
+export const SET_PLAY_CHAT_ENABLED = 'SET_PLAY_CHAT_ENABLED';
+export const SET_PLAY_CAPTIONS_ENABLED = 'SET_PLAY_CAPTIONS_ENABLED';
 
 export const startPlay = () => {
   return {

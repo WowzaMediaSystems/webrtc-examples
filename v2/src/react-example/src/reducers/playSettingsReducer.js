@@ -19,6 +19,8 @@ const initialState = {
   playStopping: false,
   useWhep: false,
   authToken: '',
+  chatEnabled: false,
+  captionsEnabled: false,
 }
 
 const playSettingsReducer = (state = initialState, action) => {
@@ -41,6 +43,10 @@ const playSettingsReducer = (state = initialState, action) => {
       return { ...state, useWhep: action.useWhep };
     case PlaySettingsActions.SET_PLAY_AUTH_TOKEN:
       return { ...state, authToken: action.authToken };
+    case PlaySettingsActions.SET_PLAY_CHAT_ENABLED:
+      return { ...state, chatEnabled: action.chatEnabled };
+    case PlaySettingsActions.SET_PLAY_CAPTIONS_ENABLED:
+      return { ...state, captionsEnabled: action.captionsEnabled };
     case PlaySettingsActions.SET_PLAY_SECRET:
       console.log(`Secret: ${action.secret}`)
       return { ...state, secret: action.secret };

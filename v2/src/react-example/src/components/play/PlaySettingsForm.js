@@ -9,6 +9,7 @@ import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
 import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
 import CollapsibleSection from '../shared/CollapsibleSection';
+import FormCheckbox from '../shared/FormCheckbox';
 import { triggerIceRestart } from '../../utils/IceRestartUtils';
 import ExternalLinks from '../../constants/ExternalLinks';
 import fileCopyImage from '../../images/file_copy-24px.svg';
@@ -27,7 +28,9 @@ const playUrlParametersMap = {
   isIp: "playIsIp",
   ip: "playIp",
   useWhep: "playUseWhep",
-  authToken: "playAuthToken"
+  authToken: "playAuthToken",
+  chatEnabled: "playChatEnabled",
+  captionsEnabled: "playCaptionsEnabled"
 };
 
 const SIGNALING_URL_PLACEHOLDER = "wss://[ssl-certificate-domain-name]/webrtc-session.json";
@@ -44,23 +47,6 @@ const FormInput = ({ label, id, value, onChange, disabled, ...props }) => (
       onChange={onChange}
       disabled={disabled}
       {...props}
-    />
-  </div>
-);
-
-const FormCheckbox = ({ label, id, checked, onChange, disabled }) => (
-  <div className="form-group form-switch form-check-inline">
-    <label className="form-check-label mr-3" htmlFor={id}>
-      {label}
-    </label>
-    <input
-      id={id}
-      name={id}
-      className="form-check-input orange-checkbox"
-      type="checkbox"
-      checked={checked || false}
-      disabled={disabled}
-      onChange={onChange}
     />
   </div>
 );
@@ -96,10 +82,12 @@ const PlaySettingsForm = () => {
           isIp: PlaySettingsActions.SET_PLAY_IS_IP,
           ip: PlaySettingsActions.SET_PLAY_IP,
           useWhep: PlaySettingsActions.SET_PLAY_USE_WHEP,
-          authToken: PlaySettingsActions.SET_PLAY_AUTH_TOKEN
+          authToken: PlaySettingsActions.SET_PLAY_AUTH_TOKEN,
+          chatEnabled: PlaySettingsActions.SET_PLAY_CHAT_ENABLED,
+          captionsEnabled: PlaySettingsActions.SET_PLAY_CAPTIONS_ENABLED
         };
 
-        const booleanKeys = ['isIp', 'useWhep'];
+        const booleanKeys = ['isIp', 'useWhep', 'chatEnabled', 'captionsEnabled'];
 
         const actionType = actionMap[stateKey];
         if (actionType) {
@@ -230,8 +218,8 @@ const PlaySettingsForm = () => {
           </div>
         </div>
 
-        <div className="row align-items-center mb-2">
-          <div className="col-5">
+        <div className="row">
+          <div className="col-5 pt-2">
             <FormCheckbox
               label="Use WHEP"
               id="playUseWhep"
@@ -258,6 +246,27 @@ const PlaySettingsForm = () => {
               </div>
             </div>
           )}
+        </div>
+
+        <div className="row align-items-center mt-2 mb-2">
+          <div className="col-6">
+            <FormCheckbox
+              label="Enable Chat"
+              id="playChatEnabled"
+              checked={playSettings.chatEnabled}
+              disabled={connected}
+              onChange={handleCheckboxChange(PlaySettingsActions.SET_PLAY_CHAT_ENABLED, 'chatEnabled')}
+            />
+          </div>
+          <div className="col-6">
+            <FormCheckbox
+              label="Enable Captions"
+              id="playCaptionsEnabled"
+              checked={playSettings.captionsEnabled}
+              disabled={connected}
+              onChange={handleCheckboxChange(PlaySettingsActions.SET_PLAY_CAPTIONS_ENABLED, 'captionsEnabled')}
+            />
+          </div>
         </div>
 
         <CollapsibleSection title="ICE Servers">

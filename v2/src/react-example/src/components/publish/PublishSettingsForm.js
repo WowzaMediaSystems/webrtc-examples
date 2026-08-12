@@ -13,6 +13,7 @@ import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PL
 import { parseSimulcastRenditions, getSimulcastRenditionsError } from '../../utils/SimulcastUtils';
 import PublishSimulcastSettings from './PublishSimulcastSettings';
 import CollapsibleSection from '../shared/CollapsibleSection';
+import FormCheckbox from '../shared/FormCheckbox';
 import { triggerIceRestart } from '../../utils/IceRestartUtils';
 import ExternalLinks from '../../constants/ExternalLinks';
 import videoOnImage from '../../images/videocam-32px.svg';
@@ -33,6 +34,8 @@ const publishUrlParametersMap = {
   authToken: "publishAuthToken",
   useSimulcast: "publishUseSimulcast",
   simulcastRenditions: "publishSimulcastRenditions",
+  chatEnabled: "publishChatEnabled",
+  captionsEnabled: "publishCaptionsEnabled",
 };
 
 const PublishSettingsForm = () => {
@@ -67,9 +70,11 @@ const PublishSettingsForm = () => {
       authToken: PublishSettingsActions.SET_PUBLISH_AUTH_TOKEN,
       useSimulcast: PublishSettingsActions.SET_PUBLISH_USE_SIMULCAST,
       simulcastRenditions: PublishSettingsActions.SET_PUBLISH_SIMULCAST_RENDITIONS,
+      chatEnabled: PublishSettingsActions.SET_PUBLISH_CHAT_ENABLED,
+      captionsEnabled: PublishSettingsActions.SET_PUBLISH_CAPTIONS_ENABLED,
     };
 
-    const booleanKeys = new Set(['useWhip', 'useSimulcast']);
+    const booleanKeys = new Set(['useWhip', 'useSimulcast', 'chatEnabled', 'captionsEnabled']);
 
     Object.entries(publishUrlParametersMap).forEach(([stateKey, cookieKey]) => {
       let value = savedValues[cookieKey];
@@ -253,22 +258,15 @@ const PublishSettingsForm = () => {
           </div>
         </div>
 
-        <div className="row align-items-center mb-2">
-          <div className="col-5">
-            <div className="form-group form-switch form-check-inline">
-              <label className='form-check-label mr-3' htmlFor="publishUseWhip">
-                Use WHIP
-              </label>
-              <input
-                className='form-check-input form-switch orange-checkbox'
-                type="checkbox"
-                id="publishUseWhip"
-                name="publishUseWhip"
-                checked={publishSettings.useWhip || false}
-                disabled={webrtcPublish.connected}
-                onChange={handleUseWhip(PublishSettingsActions.SET_PUBLISH_USE_WHIP, 'useWhip')}
-              />
-            </div>
+        <div className="row">
+          <div className="col-5 pt-2">
+            <FormCheckbox
+              label="Use WHIP"
+              id="publishUseWhip"
+              checked={publishSettings.useWhip}
+              disabled={webrtcPublish.connected}
+              onChange={handleUseWhip(PublishSettingsActions.SET_PUBLISH_USE_WHIP, 'useWhip')}
+            />
           </div>
           {publishSettings.useWhip && (
             <div className="col-7">
@@ -288,6 +286,27 @@ const PublishSettingsForm = () => {
               </div>
             </div>
           )}
+        </div>
+
+        <div className="row align-items-center mt-3 mb-2">
+          <div className="col-6">
+            <FormCheckbox
+              label="Enable Chat"
+              id="publishChatEnabled"
+              checked={publishSettings.chatEnabled}
+              disabled={webrtcPublish.connected}
+              onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_CHAT_ENABLED,chatEnabled:e.target.checked})}
+            />
+          </div>
+          <div className="col-6">
+            <FormCheckbox
+              label="Enable Captions"
+              id="publishCaptionsEnabled"
+              checked={publishSettings.captionsEnabled}
+              disabled={webrtcPublish.connected}
+              onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_CAPTIONS_ENABLED,captionsEnabled:e.target.checked})}
+            />
+          </div>
         </div>
 
         <CollapsibleSection title="ICE Servers">

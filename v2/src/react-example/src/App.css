@@ -96,6 +96,23 @@
   z-index: 2;
 }
 
+/* Subtitle overlay for the received captions data channel, shown over the player video. */
+.caption-overlay {
+  position: absolute;
+  left: 50%;
+  bottom: 1em;
+  transform: translateX(-50%);
+  max-width: 90%;
+  padding: 0.3em 0.8em;
+  background: rgba(0, 0, 0, 0.7);
+  color: #FFFFFF;
+  font-size: 1em;
+  text-align: center;
+  border-radius: 0.4em;
+  pointer-events: none;
+  z-index: 2;
+}
+
 #publish-content,
 #play-content,
 #meeting-content,
@@ -209,5 +226,29 @@ ul.navbar-nav {
   background-color: #FF8400 !important;
   border-color: #EEEEEE !important;
   color: #EEEEEE !important;
+}
+
+.data-channel-panel .btn,
+.data-channel-panel .btn:hover,
+.data-channel-panel .btn:focus,
+.data-channel-panel .btn:active {
+  background-color: #FF8400;
+  border-color: #FF8400;
+  color: #FFFFFF;
+  box-shadow: none;
+}
+
+.data-channel-panel .chat-message {
+  max-width: 75%;
+}
+
+.data-channel-panel .chat-message-sent {
+  background-color: #FFE7CC;
+  border: 1px solid #FF8400;
+}
+
+.data-channel-panel .chat-message-received {
+  background-color: #EEEEEE;
+  border: 1px solid #D9D9D9;
 }
 
