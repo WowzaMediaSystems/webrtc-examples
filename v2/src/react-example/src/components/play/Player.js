@@ -6,7 +6,7 @@ import * as WebRTCPlayActions from '../../actions/webrtcPlayActions';
 import * as ErrorsActions from '../../actions/errorsActions';
 import * as DataChannelActions from '../../actions/dataChannelActions';
 import { describeReceivedMessage } from '../../utils/DataChannelUtils';
-import { CHAT_CHANNEL_LABEL, CAPTIONS_CHANNEL_LABEL } from '../../webrtc/attachDataChannel';
+import { CHAT_CHANNEL_LABEL, CAPTIONS_CHANNEL_LABEL, DATA_CHANNELS_UNAVAILABLE_MESSAGE } from '../../webrtc/attachDataChannel';
 
 import startPlay from '../../webrtc/startPlay';
 import stopPlay from '../../webrtc/stopPlay';
@@ -16,6 +16,8 @@ const Player = () => {
   const videoElement = useRef(null);
   const streamRef = useRef(new MediaStream());
   const maxWidthRef = useRef(0);
+  const peerConnectionRef = useRef(undefined);
+  const websocketRef = useRef(undefined);
   const [videoSize, setVideoSize] = useState({ width: 0, height: 0 });
 
   const dispatch = useDispatch();
@@ -27,25 +29,39 @@ const Player = () => {
 
   useEffect(() => {
 
+    const stopCallbacks = {
+      onSetPeerConnection: (result) => {
+        peerConnectionRef.current = result.peerConnection;
+        dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_PEERCONNECTION,peerConnection:result.peerConnection});
+      },
+      onSetWebsocket: (result) => {
+        websocketRef.current = result.websocket;
+        dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_WEBSOCKET,websocket:result.websocket});
+      },
+      onPlayStopped: () => {
+        streamRef.current = new MediaStream();
+        if (videoElement.current) {
+          videoElement.current.srcObject = null;
+        }
+        dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_CONNECTED,connected:false});
+        dispatch(DataChannelActions.resetDataChannel('play'));
+      }
+    };
+
     if (playSettings.playStart && !playSettings.playStarting && !connected)
     {
       dispatch({type:PlaySettingsActions.SET_PLAY_FLAGS, playStart:false, playStarting:true});
       startPlay(playSettings, {
         onError: (error) => {
           dispatch({type:ErrorsActions.SET_ERROR_MESSAGE,message:error.message});
+          stopPlay(playSettings, peerConnectionRef.current, websocketRef.current, stopCallbacks);
           dispatch({ type: PlaySettingsActions.SET_PLAY_FLAGS, playStart: false, playStarting: false, playStop: false, playStopping: false });
-          dispatch({ type: WebRTCPlayActions.SET_WEBRTC_PLAY_CONNECTED, connected: false });
-          dispatch(DataChannelActions.resetDataChannel('play'));
         },
         onConnectionStateChange: (result) => {
           dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_CONNECTED,connected:result.connected});
         },
-        onSetPeerConnection: (result) => {
-          dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_PEERCONNECTION,peerConnection:result.peerConnection});
-        },
-        onSetWebsocket: (result) => {
-          dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_WEBSOCKET,websocket:result.websocket});
-        },
+        onSetPeerConnection: stopCallbacks.onSetPeerConnection,
+        onSetWebsocket: stopCallbacks.onSetWebsocket,
         onPeerConnectionOnTrack: (event) => {
           console.log('ontrack:', event.track.kind, 'muted:', event.track.muted, 'readyState:', event.track.readyState);
           streamRef.current.addTrack(event.track);
@@ -72,6 +88,10 @@ const Player = () => {
         },
         onDataChannelError: (result) => {
           dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:'Data channel error: ' + result.message});
+        },
+        onDataChannelsUnavailable: () => {
+          // Playback is unaffected, so this only reports - no media state is touched.
+          dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:DATA_CHANNELS_UNAVAILABLE_MESSAGE});
         }
       });
     }
@@ -80,25 +100,12 @@ const Player = () => {
       dispatch({type:PlaySettingsActions.SET_PLAY_FLAGS, playStarting:false});
     }
 
-    if (playSettings.playStop && !playSettings.playStopping && connected)
+    // A session that never reached "connected" still has to be stoppable - otherwise a start that
+    // stalls mid-negotiation leaves the page with no way out.
+    if (playSettings.playStop && !playSettings.playStopping && (connected || peerConnection))
     {
       dispatch({type:PlaySettingsActions.SET_PLAY_FLAGS, playStop:false, playStopping:true});
-      stopPlay(playSettings, peerConnection, websocket,{
-        onSetPeerConnection: (result) => {
-          dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_PEERCONNECTION,peerConnection:result.peerConnection});
-        },
-        onSetWebsocket: (result) => {
-          dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_WEBSOCKET,websocket:result.websocket});
-        },
-        onPlayStopped: () => {
-          streamRef.current = new MediaStream();
-          if (videoElement.current) {
-            videoElement.current.srcObject = null;
-          }
-          dispatch({type:WebRTCPlayActions.SET_WEBRTC_PLAY_CONNECTED,connected:false});
-          dispatch(DataChannelActions.resetDataChannel('play'));
-        }
-      });
+      stopPlay(playSettings, peerConnection, websocket, stopCallbacks);
     }
     if (playSettings.playStopping && !connected)
     {

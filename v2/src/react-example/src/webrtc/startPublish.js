@@ -8,21 +8,44 @@ import {
   ensureSimulcastSDP,
   simulcastAcceptedInAnswer
 } from "../utils/SimulcastUtils";
-import { attachIceRestartRecovery } from "../utils/IceRestartUtils";
+import { attachIceRestartRecovery, consumeIceRestartOffer } from "../utils/IceRestartUtils";
 import { sendWhipWhepIceRestart } from "../utils/SdpFragUtils";
-import attachDataChannel, { CHAT_CHANNEL_LABEL } from "./attachDataChannel";
+import attachDataChannel, {
+  CHAT_CHANNEL_LABEL,
+  dataChannelsAcceptedInAnswer,
+  ensureApplicationSectionInAnswer
+} from "./attachDataChannel";
 import { startCaptionBroadcast } from "./captions";
 
 // Bring up the enabled publisher data channels: the full-duplex chat channel and/or the one-way
 // captions broadcast, each gated by its own setting. `onCaption` (if provided) mirrors each sent
-// caption line to the UI.
+// caption line to the UI. Returns null when neither is enabled, otherwise a handle to shut them
+// down if the server refuses the SCTP section.
 const attachPublishDataChannels = (peerConnection, callbacks, publishSettings) => {
-  if (publishSettings.chatEnabled)
-    attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL, create: true });
+  if (!publishSettings.chatEnabled && !publishSettings.captionsEnabled) return null;
+  const stops = [];
+  if (publishSettings.chatEnabled) {
+    const chat = attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL, create: true });
+    stops.push(() => chat.close());
+  }
   if (publishSettings.captionsEnabled)
-    startCaptionBroadcast(peerConnection, (text) => {
+    stops.push(startCaptionBroadcast(peerConnection, (text) => {
       if (callbacks.onCaption) callbacks.onCaption({ text });
-    });
+    }));
+  return { close: () => stops.forEach((stop) => stop()) };
+};
+
+// The SCTP section is negotiated in the same offer/answer as the media, but it is optional: when the
+// application has data channels turned off the answer refuses it and publishing must carry on. Give
+// up on the channels, tell the UI, and leave the session alone. Returns the handle to keep - null
+// once refused, so a later ICE-restart answer doesn't report it twice.
+const handleRefusedDataChannels = (answerSdp, dataChannels, callbacks) => {
+  if (!dataChannels || dataChannelsAcceptedInAnswer(answerSdp)) return dataChannels;
+  console.log("Data channels were refused by the server; continuing with media only.");
+  dataChannels.close();
+  if (callbacks.onDataChannelsUnavailable)
+    callbacks.onDataChannelsUnavailable();
+  return null;
 };
 
 // Orchestration dispatcher: simulcast vs. single-track is a publish-flow
@@ -165,6 +188,11 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
     };
 
     peerConnection.onnegotiationneeded = (event) => {
+      // Before the first answer this is what sends the initial offer. Afterwards, re-offer only for
+      // a restart we actually asked for - the browser also raises negotiationneeded on every return
+      // to "stable" once a data channel exists whose m-line the server refused, and answering that
+      // renegotiates forever.
+      if (session.negotiationEstablished && !consumeIceRestartOffer(peerConnection)) return;
       peerConnection.createOffer()
         .then((description) => {
           peerConnectionCreateOfferSuccess(description, publishSettings, websocket, peerConnection, callbacks, session);
@@ -190,7 +218,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
 
     // The data channels must be created before the first offer (we never renegotiate). The
     // publisher opens whichever of chat / captions are enabled up front.
-    attachPublishDataChannels(peerConnection, callbacks, publishSettings);
+    session.dataChannels = attachPublishDataChannels(peerConnection, callbacks, publishSettings);
 
     let audioSender = undefined;
     let videoSender = undefined;
@@ -241,7 +269,9 @@ const websocketOnMessage = (event, publishSettings, websocket, peerConnection, c
 
     if (msgJSON.message?.sdp) {
       let sdpData = {
-        "sdp": msgJSON.message.sdp,
+        // An answer that drops the refused SCTP section instead of rejecting it in place would fail
+        // setRemoteDescription on an m-line mismatch and take media down with it.
+        "sdp": ensureApplicationSectionInAnswer(peerConnection.localDescription.sdp, msgJSON.message.sdp),
         "type": "answer"
       }
 
@@ -257,7 +287,9 @@ const websocketOnMessage = (event, publishSettings, websocket, peerConnection, c
             reportSimulcastRejection({
               callbacks, peerConnection, websocket
             });
+            return;
           }
+          session.dataChannels = handleRefusedDataChannels(sdpData.sdp, session.dataChannels, callbacks);
         })
         .catch((error) => { peerConnectionOnError(error, callbacks); });
     }
@@ -287,6 +319,8 @@ const startPublish = (publishSettings, websocket, callbacks) =>
         sessionId: '[empty]',
         // false until the initial offer/answer completes; afterwards every re-offer is an ICE restart.
         negotiationEstablished: false,
+        // handle to the enabled data channels, cleared once the server refuses them.
+        dataChannels: null,
         peerConnectionConfig: {iceServers: []}
       };
 
@@ -360,7 +394,10 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     // the existing session and returns its new ICE parameters as an sdpfrag, which we splice into
     // the current answer so media recovers without a teardown.
     peerConnection.onnegotiationneeded = () => {
-      if (!negotiationEstablished || !sessionUrl) return; // the initial WHIP offer is sent manually below
+      // The initial WHIP offer is sent manually below, and only a restart we asked for warrants a
+      // re-offer - see the WebSocket handler above for why a refused data m-line would otherwise
+      // renegotiate forever.
+      if (!negotiationEstablished || !sessionUrl || !consumeIceRestartOffer(peerConnection)) return;
       sendWhipWhepIceRestart(peerConnection, sessionUrl, {
         authHeaders: getAuthHeaders(publishSettings.authToken),
         label: "WHIP",
@@ -399,7 +436,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     // Same as the WebSocket path: create the channels before the offer so their m-lines are
     // negotiated up front (we never renegotiate). onnegotiationneeded is gated until
     // negotiationEstablished, so creating them here does not trigger a spurious WHIP re-offer.
-    attachPublishDataChannels(peerConnection, callbacks, publishSettings);
+    const dataChannels = attachPublishDataChannels(peerConnection, callbacks, publishSettings);
 
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
@@ -435,7 +472,12 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     }
     pendingCandidates.length = 0;
 
-    const answerSDP = await response.text();
+    // An answer that drops the refused SCTP section instead of rejecting it in place would fail
+    // setRemoteDescription on an m-line mismatch and take media down with it.
+    const answerSDP = ensureApplicationSectionInAnswer(
+      peerConnection.localDescription.sdp,
+      await response.text()
+    );
 
     console.log("Received WHIP Answer:");
     console.log(answerSDP);
@@ -452,6 +494,8 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
       });
       return;
     }
+
+    handleRefusedDataChannels(answerSDP, dataChannels, callbacks);
 
     if (callbacks.onSetPeerConnection)
       callbacks.onSetPeerConnection({ peerConnection });

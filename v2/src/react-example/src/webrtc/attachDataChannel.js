@@ -38,8 +38,45 @@ export const CAPTIONS_CHANNEL_LABEL = "captions";
 // never fire. Negotiated channels don't raise "datachannel" on either side, so this stays invisible
 // and doesn't interfere with the real channels. Call once, before createOffer(); one bootstrap
 // covers any number of received channels.
-export const createSctpBootstrap = (peerConnection) => {
+export const createSctpBootstrap = (peerConnection) =>
   peerConnection.createDataChannel("__sctp_bootstrap__", { negotiated: true, id: 0 });
+
+// User-facing copy. Lives here because it pairs with dataChannelsAcceptedInAnswer - keep the
+// wire-level detection and the message it triggers co-located.
+export const DATA_CHANNELS_UNAVAILABLE_MESSAGE =
+  "Data channels are disabled for this application. Chat and captions are unavailable.";
+
+// An SCTP m-section is only usable when the answerer echoes it back with a non-zero port. A port of
+// 0 is a rejection (RFC 3264), and a missing section means the same thing. Media lives in its own
+// m-sections, so a refusal here must never be treated as a session failure.
+export const dataChannelsAcceptedInAnswer = (sdp) => {
+  if (!sdp) return false;
+  const dataSection = sdp.match(/^m=application +(\d+)/m);
+  return dataSection != null && dataSection[1] !== "0";
+};
+
+// Some servers drop the SCTP section from the answer instead of rejecting it in place, which makes
+// setRemoteDescription fail on an m-line count/order mismatch and takes audio and video down with
+// it. Append a rejected stand-in so the answer lines up with the offer and the media sections still
+// apply; dataChannelsAcceptedInAnswer then reports it as refused, as it should.
+export const ensureApplicationSectionInAnswer = (offerSdp, answerSdp) => {
+  if (!offerSdp || !answerSdp) return answerSdp;
+  if (/^m=application /m.test(answerSdp)) return answerSdp;
+
+  // Everything from the offer's m=application line up to the next m-section is the data section.
+  const offerSection = offerSdp.split(/^m=/m).find((section) => section.startsWith("application "));
+  if (!offerSection) return answerSdp;
+
+  const proto = offerSection.split(/\r?\n/)[0].split(" ").slice(2).join(" ");
+  const mid = offerSection.match(/^a=mid:(.*)$/m);
+  const eol = answerSdp.includes("\r\n") ? "\r\n" : "\n";
+
+  const lines = [`m=application 0 ${proto}`, "c=IN IP4 0.0.0.0"];
+  if (mid) lines.push(`a=mid:${mid[1].trim()}`);
+
+  return answerSdp.endsWith(eol)
+    ? answerSdp + lines.join(eol) + eol
+    : answerSdp + eol + lines.join(eol) + eol;
 };
 
 const readyStateToState = (readyState) => {

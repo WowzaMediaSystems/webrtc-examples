@@ -25,14 +25,15 @@ const CAPTION_PHRASES = [
 
 // Publisher side: create the captions channel and, once it is open, cycle the phrase pool on a
 // timer, sending one line per tick. `onCaption(text)` (optional) fires for every line sent so the
-// publish UI can mirror what viewers see. Returns a stop() that clears the timer; the channel also
-// self-stops on close (which the peer connection triggers on teardown).
+// publish UI can mirror what viewers see. Returns a stop() that clears the timer and releases the
+// channel; the timer also self-stops when the channel closes (which the peer connection triggers on
+// teardown, and startPublish does when the server refuses data channels).
 export const startCaptionBroadcast = (peerConnection, onCaption) => {
   const channel = peerConnection.createDataChannel(CAPTIONS_CHANNEL_LABEL);
   let timer = null;
   let index = 0;
 
-  const stop = () => {
+  const stopTimer = () => {
     if (timer) { clearInterval(timer); timer = null; }
   };
 
@@ -43,14 +44,14 @@ export const startCaptionBroadcast = (peerConnection, onCaption) => {
       try {
         channel.send(text);
       } catch (_) {
-        stop(); // channel went away between ticks; nothing more to send
+        stopTimer(); // channel went away between ticks; nothing more to send
         return;
       }
       if (onCaption) onCaption(text);
     }, CAPTION_INTERVAL_MS);
   };
 
-  channel.onclose = stop;
+  channel.onclose = stopTimer;
 
-  return stop;
+  return () => { stopTimer(); channel.close(); };
 };
