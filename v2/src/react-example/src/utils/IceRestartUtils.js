@@ -9,21 +9,14 @@
 
 const ICE_RESTART_GRACE_PERIOD_MS = 3000;
 
-// Peer connections we have asked for an ICE restart on and still owe a re-offer for. Kept at module
-// level rather than inside attachIceRestartRecovery's closure so that everything which requests a
-// restart can arm it and every onnegotiationneeded handler can consume it, without either side
-// having to hold the recovery handle: the WebSocket flows discard it, and the "Restart ICE" buttons
-// only have the peer connection from the store.
+// Peer connections owing a re-offer. Module-level so requesters and onnegotiationneeded handlers
+// reach it without the recovery handle.
 const pendingRestartOffers = new WeakSet();
 
 const markRestartRequested = (peerConnection) => pendingRestartOffers.add(peerConnection);
 
-// True once per restart we asked for, and false otherwise. Every onnegotiationneeded handler must
-// gate its re-offer on this: the browser also raises negotiationneeded on every return to "stable"
-// when a data channel exists but the server refused the SCTP m-line, and answering those
-// renegotiates forever without ICE ever settling. It has to be one-shot rather than a plain "is a
-// restart in flight" flag, because a restart stays in flight until ICE recovers - and a restart
-// that never recovers would otherwise hold the gate open for exactly those spurious events.
+// Every onnegotiationneeded handler must gate its re-offer on this: the browser re-raises
+// negotiationneeded on every return to "stable" and answering those renegotiates forever.
 export const consumeIceRestartOffer = (peerConnection) => {
   if (!peerConnection || !pendingRestartOffers.has(peerConnection)) {
     console.log('negotiationneeded raised without a pending ICE restart: no re-offer sent.');
@@ -103,9 +96,7 @@ export const attachIceRestartRecovery = (peerConnection) => {
 export const triggerIceRestart = (peerConnection) => {
   if (peerConnection && typeof peerConnection.restartIce === 'function') {
     console.log('[ICE restart] Calling peerConnection.restartIce(); a new offer with fresh ICE credentials will be sent.');
-    // Arm the gate here too, otherwise consumeIceRestartOffer() returns false and the signaling
-    // flow drops the negotiationneeded this restart raises - the restart would never leave the
-    // browser.
+    // Arm the gate, else the negotiationneeded this raises is dropped and nothing reaches the engine.
     markRestartRequested(peerConnection);
     peerConnection.restartIce();
   } else {

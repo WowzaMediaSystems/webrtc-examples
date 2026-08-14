@@ -14,8 +14,8 @@ import attachDataChannel, {
 
 // Listen for whichever data channels are enabled on the player: chat (full-duplex) and/or captions
 // (one-way, receive here). The bootstrap must come first, whenever any channel is enabled, so the
-// SCTP transport is negotiated in the offer and WSE can open the mirrored channels. Returns null
-// when neither is enabled, otherwise a handle to close them if the server refuses the SCTP section.
+// SCTP transport is negotiated in the offer and WSE can open the mirrored channels. Returns a handle
+// to close them if the server refuses the SCTP section.
 const attachPlayDataChannels = (peerConnection, callbacks, playSettings) => {
   if (!playSettings.chatEnabled && !playSettings.captionsEnabled) return null;
   const channels = [createSctpBootstrap(peerConnection)];
@@ -26,10 +26,9 @@ const attachPlayDataChannels = (peerConnection, callbacks, playSettings) => {
   return { close: () => channels.forEach((channel) => channel.close()) };
 };
 
-// The SCTP section is negotiated in the same offer/answer as audio and video, but it is optional:
-// when the application has data channels turned off the answer refuses it and media must still play.
-// Give up on the channels, tell the UI, and leave the session alone. Returns the handle to keep -
-// null once refused, so a later ICE-restart answer doesn't report it twice.
+// The SCTP section shares the offer/answer with media but is optional: give up on the channels, tell
+// the UI, leave the session alone. Returns the handle to keep - null once refused, so a later
+// ICE-restart answer doesn't report it twice.
 const handleRefusedDataChannels = (answerSdp, dataChannels, callbacks) => {
   if (!dataChannels || dataChannelsAcceptedInAnswer(answerSdp)) return dataChannels;
   console.log('Data channels were refused by the server; continuing with media only.');
@@ -152,13 +151,8 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
     }
 
     peerConnection.onnegotiationneeded = () => {
-      // The initial play offer is sent explicitly below. The negotiationneeded that addTransceiver()
-      // fires runs before the server assigns a connectionId, so skip it. Re-offer only for a restart
-      // we actually asked for - the browser also raises negotiationneeded on every return to "stable"
-      // once a data channel exists whose m-line the server refused, and answering that renegotiates
-      // forever. The offer carries the fresh ICE credentials restartIce() flagged and goes over the
-      // existing connection as an ICE_RESTART (createOfferPayload picks the message type from
-      // session.negotiationEstablished).
+      // Initial play offer is sent explicitly below, before a connectionId exists; otherwise only
+      // for a restart we asked for.
       if (session.sessionId === '[empty]' || !consumeIceRestartOffer(peerConnection)) return;
       console.log('onnegotiationneeded: sending ICE_RESTART offer over the existing connection.');
       websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks, session);
@@ -228,8 +222,6 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
       if (message.sdp) {
         console.log("SDP Data: " + message.sdp);
         let sdpData = {
-          // An answer that drops the refused SCTP section instead of rejecting it in place would
-          // fail setRemoteDescription on an m-line mismatch and take media down with it.
           "sdp" : ensureApplicationSectionInAnswer(peerConnection.localDescription.sdp, message.sdp),
           "type": "answer"
         }
@@ -356,8 +348,7 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
     addIceServers(playSettings, session);
     peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
 
-    // Hand it over immediately, as the WebSocket path does: an attempt that fails partway through
-    // still leaves a live connection, and stopPlay can only close what it was given.
+    // Hand it over immediately, as the WebSocket path does: stopPlay can only close what it was given.
     if (callbacks.onSetPeerConnection)
       callbacks.onSetPeerConnection({ peerConnection });
 
@@ -388,9 +379,7 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
     // the existing session and returns its new ICE parameters as an sdpfrag, which we splice into
     // the current answer so playback recovers in place.
     peerConnection.onnegotiationneeded = () => {
-      // The initial WHEP offer is sent manually below, and only a restart we asked for warrants a
-      // re-offer - see the WebSocket handler above for why a refused data m-line would otherwise
-      // renegotiate forever.
+      // Initial WHEP offer is sent manually below; otherwise only for a restart we asked for.
       if (!negotiationEstablished || !sessionUrl || !consumeIceRestartOffer(peerConnection)) return;
       sendWhipWhepIceRestart(peerConnection, sessionUrl, {
         authHeaders: getAuthHeaders(playSettings.authToken),
@@ -450,8 +439,6 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
       pendingCandidates.length = 0;
     }
 
-    // An answer that drops the refused SCTP section instead of rejecting it in place would fail
-    // setRemoteDescription on an m-line mismatch and take media down with it.
     const answerSdp = ensureApplicationSectionInAnswer(
       peerConnection.localDescription.sdp,
       await response.text()

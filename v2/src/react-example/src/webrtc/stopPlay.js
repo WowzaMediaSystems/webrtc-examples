@@ -6,8 +6,6 @@
 const stopPlay = (playSettings, peerConnection, websocket, callbacks) =>
 {
   if (peerConnection != null) {
-    // Detach handlers before closing so a stale connection doesn't fire "closed" / error events
-    // into the next attempt's callbacks.
     peerConnection.onicecandidate = null;
     peerConnection.onnegotiationneeded = null;
     peerConnection.onconnectionstatechange = null;

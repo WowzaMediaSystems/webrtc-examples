@@ -19,8 +19,7 @@ import { startCaptionBroadcast } from "./captions";
 
 // Bring up the enabled publisher data channels: the full-duplex chat channel and/or the one-way
 // captions broadcast, each gated by its own setting. `onCaption` (if provided) mirrors each sent
-// caption line to the UI. Returns null when neither is enabled, otherwise a handle to shut them
-// down if the server refuses the SCTP section.
+// caption line to the UI. Returns a handle to shut them down if the server refuses the SCTP section.
 const attachPublishDataChannels = (peerConnection, callbacks, publishSettings) => {
   if (!publishSettings.chatEnabled && !publishSettings.captionsEnabled) return null;
   const stops = [];
@@ -35,10 +34,9 @@ const attachPublishDataChannels = (peerConnection, callbacks, publishSettings) =
   return { close: () => stops.forEach((stop) => stop()) };
 };
 
-// The SCTP section is negotiated in the same offer/answer as the media, but it is optional: when the
-// application has data channels turned off the answer refuses it and publishing must carry on. Give
-// up on the channels, tell the UI, and leave the session alone. Returns the handle to keep - null
-// once refused, so a later ICE-restart answer doesn't report it twice.
+// The SCTP section shares the offer/answer with media but is optional: give up on the channels, tell
+// the UI, leave the session alone. Returns the handle to keep - null once refused, so a later
+// ICE-restart answer doesn't report it twice.
 const handleRefusedDataChannels = (answerSdp, dataChannels, callbacks) => {
   if (!dataChannels || dataChannelsAcceptedInAnswer(answerSdp)) return dataChannels;
   console.log("Data channels were refused by the server; continuing with media only.");
@@ -188,10 +186,8 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
     };
 
     peerConnection.onnegotiationneeded = (event) => {
-      // Before the first answer this is what sends the initial offer. Afterwards, re-offer only for
-      // a restart we actually asked for - the browser also raises negotiationneeded on every return
-      // to "stable" once a data channel exists whose m-line the server refused, and answering that
-      // renegotiates forever.
+      // This sends the initial offer; afterwards only for a restart we asked for - see
+      // consumeIceRestartOffer.
       if (session.negotiationEstablished && !consumeIceRestartOffer(peerConnection)) return;
       peerConnection.createOffer()
         .then((description) => {
@@ -269,8 +265,6 @@ const websocketOnMessage = (event, publishSettings, websocket, peerConnection, c
 
     if (msgJSON.message?.sdp) {
       let sdpData = {
-        // An answer that drops the refused SCTP section instead of rejecting it in place would fail
-        // setRemoteDescription on an m-line mismatch and take media down with it.
         "sdp": ensureApplicationSectionInAnswer(peerConnection.localDescription.sdp, msgJSON.message.sdp),
         "type": "answer"
       }
@@ -394,9 +388,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     // the existing session and returns its new ICE parameters as an sdpfrag, which we splice into
     // the current answer so media recovers without a teardown.
     peerConnection.onnegotiationneeded = () => {
-      // The initial WHIP offer is sent manually below, and only a restart we asked for warrants a
-      // re-offer - see the WebSocket handler above for why a refused data m-line would otherwise
-      // renegotiate forever.
+      // Initial WHIP offer is sent manually below; otherwise only for a restart we asked for.
       if (!negotiationEstablished || !sessionUrl || !consumeIceRestartOffer(peerConnection)) return;
       sendWhipWhepIceRestart(peerConnection, sessionUrl, {
         authHeaders: getAuthHeaders(publishSettings.authToken),
@@ -472,8 +464,6 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     }
     pendingCandidates.length = 0;
 
-    // An answer that drops the refused SCTP section instead of rejecting it in place would fail
-    // setRemoteDescription on an m-line mismatch and take media down with it.
     const answerSDP = ensureApplicationSectionInAnswer(
       peerConnection.localDescription.sdp,
       await response.text()
