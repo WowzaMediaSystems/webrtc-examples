@@ -1,7 +1,7 @@
 import stopPlay from './stopPlay';
 import getSecureToken from './SecureToken';
 import { validateParams } from '../utils/ValidationUtils';
-import { addIceServers } from '../utils/IceServersUtils';
+import { addIceServers, isAllowedRemoteCandidate, stripNonRelayCandidates, waitForIceGathering } from '../utils/IceServersUtils';
 
 const getAuthHeaders = (authToken) =>
   authToken ? { "Authorization": `Bearer ${authToken}` } : {};
@@ -133,7 +133,8 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
   console.log(`Websocket Response: ${JSON.stringify(msgJSON)}`);
 
   if (msgJSON.messageType?.toLowerCase() === "candidate") {
-    peerConnection.addIceCandidate(new RTCIceCandidate({ candidate: msgJSON.candidate, sdpMLineIndex: 0 }));
+    if (isAllowedRemoteCandidate(msgJSON.candidate))
+      peerConnection.addIceCandidate(new RTCIceCandidate({ candidate: msgJSON.candidate, sdpMLineIndex: 0 }));
     return;
   }
 
@@ -171,7 +172,7 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
       if (message.sdp) {
         console.log("SDP Data: " + message.sdp);
         let sdpData = {
-          "sdp" : message.sdp,
+          "sdp" : stripNonRelayCandidates(message.sdp),
           "type": "answer"
         }
         peerConnection
@@ -281,7 +282,6 @@ const startPlay = (playSettings, callbacks) =>
 const startPlayWhep = async (playSettings, session, callbacks) => {
   let peerConnection;
   let sessionUrl;
-  const pendingCandidates = [];
 
   try {
     addIceServers(playSettings, session);
@@ -304,23 +304,12 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
       }
     };
 
-    peerConnection.onicecandidate = async (event) => {
-      const candidate = event.candidate ? event.candidate.candidate : "";
-
-      if (!sessionUrl) {
-        pendingCandidates.push(candidate);
-        return;
-      }
-
-      await fetch(sessionUrl, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/trickle-ice-sdpfrag", ...getAuthHeaders(playSettings.authToken) },
-        body: candidate
-      });
-    };
-
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
+
+    // Non-trickle: the offer carries the full candidate set, so there is no
+    // PATCH follow-up and nothing can slip in after setRemoteDescription.
+    await waitForIceGathering(peerConnection);
 
     const whepUrl = `${playSettings.signalingURL}/${playSettings.applicationName}/${playSettings.streamName}/whep`;
 
@@ -339,22 +328,13 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
       const baseUrl = new URL(whepUrl);
       sessionUrl = new URL(locationHeader, baseUrl).toString();
       playSettings._whepSessionUrl = sessionUrl;
-
-      for (const candidate of pendingCandidates) {
-        await fetch(sessionUrl, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/trickle-ice-sdpfrag", ...getAuthHeaders(playSettings.authToken) },
-          body: candidate
-        });
-      }
-      pendingCandidates.length = 0;
     }
 
     const answerSdp = await response.text();
 
     await peerConnection.setRemoteDescription({
       type: "answer",
-      sdp: answerSdp
+      sdp: stripNonRelayCandidates(answerSdp)
     });
 
     if (callbacks.onSetPeerConnection)

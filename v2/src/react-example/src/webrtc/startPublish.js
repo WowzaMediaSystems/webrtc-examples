@@ -1,6 +1,6 @@
 // Utilities
 
-import { addIceServers } from "../utils/IceServersUtils";
+import { addIceServers, isAllowedRemoteCandidate, stripNonRelayCandidates, waitForIceGathering } from "../utils/IceServersUtils";
 import { validateParams } from "../utils/ValidationUtils";
 
 const getAuthHeaders = (authToken) =>
@@ -143,7 +143,8 @@ const websocketOnMessage = (event, websocket, peerConnection, callbacks, session
   let msgJSON = JSON.parse(event.data);
 
   if (msgJSON.messageType === "CANDIDATE") {
-    peerConnection.addIceCandidate(new RTCIceCandidate({ candidate: msgJSON.candidate, sdpMLineIndex: 0 }));
+    if (isAllowedRemoteCandidate(msgJSON.candidate))
+      peerConnection.addIceCandidate(new RTCIceCandidate({ candidate: msgJSON.candidate, sdpMLineIndex: 0 }));
     return;
   }
 
@@ -168,7 +169,7 @@ const websocketOnMessage = (event, websocket, peerConnection, callbacks, session
 
     if (msgJSON.message?.sdp) {
       let sdpData = {
-        "sdp": msgJSON.message.sdp,
+        "sdp": stripNonRelayCandidates(msgJSON.message.sdp),
         "type": "answer"
       }
 
@@ -252,7 +253,6 @@ const startPublish = (publishSettings, websocket, callbacks) =>
 const startPublishWhip = async (publishSettings, session, callbacks) => {
   let peerConnection;
   let sessionUrl;
-  const pendingCandidates = [];
 
   try {
 
@@ -263,21 +263,6 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
       const connected = event.currentTarget.connectionState === "connected";
       if (callbacks.onConnectionStateChange)
         callbacks.onConnectionStateChange({ connected });
-    };
-
-    peerConnection.onicecandidate = async (event) => {
-      const candidate = event.candidate ? event.candidate.candidate : "";
-
-      if (!sessionUrl) {
-        pendingCandidates.push(candidate);
-        return;
-      }
-
-      await fetch(sessionUrl, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/trickle-ice-sdpfrag", ...getAuthHeaders(publishSettings.authToken) },
-        body: candidate
-      });
     };
 
     let audioSender;
@@ -294,6 +279,10 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
 
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
+
+    // Non-trickle: the offer carries the full candidate set, so there is no
+    // PATCH follow-up and nothing can slip in after setRemoteDescription.
+    await waitForIceGathering(peerConnection);
 
     console.log("Sending WHIP Offer:");
     console.log(peerConnection.localDescription.sdp);
@@ -313,15 +302,6 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     const locationHeader = response.headers.get("Location");
     sessionUrl = new URL(locationHeader, publishSettings.signalingURL).toString();
 
-    for (const candidate of pendingCandidates) {
-      await fetch(sessionUrl, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/trickle-ice-sdpfrag", ...getAuthHeaders(publishSettings.authToken) },
-        body: candidate
-      });
-    }
-    pendingCandidates.length = 0;
-
     const answerSDP = await response.text();
 
     console.log("Received WHIP Answer:");
@@ -329,7 +309,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
 
     await peerConnection.setRemoteDescription({
       type: "answer",
-      sdp: answerSDP
+      sdp: stripNonRelayCandidates(answerSDP)
     });
 
     if (callbacks.onSetPeerConnection)
