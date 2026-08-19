@@ -38,8 +38,39 @@ export const CAPTIONS_CHANNEL_LABEL = "captions";
 // never fire. Negotiated channels don't raise "datachannel" on either side, so this stays invisible
 // and doesn't interfere with the real channels. Call once, before createOffer(); one bootstrap
 // covers any number of received channels.
-export const createSctpBootstrap = (peerConnection) => {
+export const createSctpBootstrap = (peerConnection) =>
   peerConnection.createDataChannel("__sctp_bootstrap__", { negotiated: true, id: 0 });
+
+export const DATA_CHANNELS_UNAVAILABLE_MESSAGE =
+  "Data channels are disabled for this application. Chat and captions are unavailable.";
+
+// Port 0 is a rejection (RFC 3264); a missing section means the same. Media has its own m-sections,
+// so a refusal here is never a session failure.
+export const dataChannelsAcceptedInAnswer = (sdp) => {
+  if (!sdp) return false;
+  const dataSection = sdp.match(/^m=application +(\d+)/m);
+  return dataSection != null && dataSection[1] !== "0";
+};
+
+// Some servers drop the SCTP section instead of rejecting it in place, Append a rejected
+// stand-in so the answer lines up with the offer.
+export const ensureApplicationSectionInAnswer = (offerSdp, answerSdp) => {
+  if (!offerSdp || !answerSdp) return answerSdp;
+  if (/^m=application /m.test(answerSdp)) return answerSdp;
+
+  const offerSection = offerSdp.split(/^m=/m).find((section) => section.startsWith("application "));
+  if (!offerSection) return answerSdp;
+
+  const proto = offerSection.split(/\r?\n/)[0].split(" ").slice(2).join(" ");
+  const mid = offerSection.match(/^a=mid:(.*)$/m);
+  const eol = answerSdp.includes("\r\n") ? "\r\n" : "\n";
+
+  const lines = [`m=application 0 ${proto}`, "c=IN IP4 0.0.0.0"];
+  if (mid) lines.push(`a=mid:${mid[1].trim()}`);
+
+  return answerSdp.endsWith(eol)
+    ? answerSdp + lines.join(eol) + eol
+    : answerSdp + eol + lines.join(eol) + eol;
 };
 
 const readyStateToState = (readyState) => {

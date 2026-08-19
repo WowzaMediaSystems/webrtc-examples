@@ -6,6 +6,7 @@ import * as WebRTCPublishActions from '../../actions/webrtcPublishActions';
 import * as ErrorsActions from '../../actions/errorsActions';
 import * as DataChannelActions from '../../actions/dataChannelActions';
 import { describeReceivedMessage } from '../../utils/DataChannelUtils';
+import { DATA_CHANNELS_UNAVAILABLE_MESSAGE } from '../../webrtc/attachDataChannel';
 
 import startPublish from '../../webrtc/startPublish';
 import stopPublish from '../../webrtc/stopPublish';
@@ -59,6 +60,10 @@ const Publisher = () => {
         },
         onDataChannelError: (result) => {
           dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:'Data channel error: ' + result.message});
+        },
+        onDataChannelsUnavailable: () => {
+          // Publishing is unaffected, so this only reports - no media state is touched.
+          dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:DATA_CHANNELS_UNAVAILABLE_MESSAGE});
         },
         onCaption: (result) => {
           dispatch(DataChannelActions.setCaption('publish', result.text));

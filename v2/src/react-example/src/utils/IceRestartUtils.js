@@ -9,6 +9,23 @@
 
 const ICE_RESTART_GRACE_PERIOD_MS = 3000;
 
+// Peer connections owing a re-offer. Module-level so requesters and onnegotiationneeded handlers
+// reach it without the recovery handle.
+const pendingRestartOffers = new WeakSet();
+
+const markRestartRequested = (peerConnection) => pendingRestartOffers.add(peerConnection);
+
+// Every onnegotiationneeded handler must gate its re-offer on this: the browser re-raises
+// negotiationneeded on every return to "stable" and answering those renegotiates forever.
+export const consumeIceRestartOffer = (peerConnection) => {
+  if (!peerConnection || !pendingRestartOffers.has(peerConnection)) {
+    console.log('negotiationneeded raised without a pending ICE restart: no re-offer sent.');
+    return false;
+  }
+  pendingRestartOffers.delete(peerConnection);
+  return true;
+};
+
 // Attaches an oniceconnectionstatechange handler that requests an ICE restart when the
 // connection drops, automatically recovering the session in place.
 export const attachIceRestartRecovery = (peerConnection) => {
@@ -22,6 +39,7 @@ export const attachIceRestartRecovery = (peerConnection) => {
       return;
     }
     iceRestartInProgress = true;
+    markRestartRequested(peerConnection);
     console.log(`Requesting ICE restart (${reason}).`);
     peerConnection.restartIce();
   };
@@ -78,6 +96,8 @@ export const attachIceRestartRecovery = (peerConnection) => {
 export const triggerIceRestart = (peerConnection) => {
   if (peerConnection && typeof peerConnection.restartIce === 'function') {
     console.log('[ICE restart] Calling peerConnection.restartIce(); a new offer with fresh ICE credentials will be sent.');
+    // Arm the gate, else the negotiationneeded this raises is dropped and nothing reaches the engine.
+    markRestartRequested(peerConnection);
     peerConnection.restartIce();
   } else {
     console.warn('[ICE restart] No active peer connection, or restartIce() is unsupported in this browser.');

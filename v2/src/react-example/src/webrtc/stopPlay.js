@@ -3,9 +3,12 @@
 // - onSetWebsocket
 // - onPlayStopped
 
-const stopPlay = (playSettings, peerConnection, websocket, callbacks) => 
+const stopPlay = (playSettings, peerConnection, websocket, callbacks) =>
 {
   if (peerConnection != null) {
+    peerConnection.onicecandidate = null;
+    peerConnection.onnegotiationneeded = null;
+    peerConnection.onconnectionstatechange = null;
     peerConnection.close();
     if (callbacks.onSetPeerConnection)
       callbacks.onSetPeerConnection({peerConnection:undefined});
