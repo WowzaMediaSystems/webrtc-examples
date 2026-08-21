@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import * as PublishSettingsActions from '../../actions/publishSettingsActions';
-import { MAX_SIMULCAST_RENDITIONS, MAX_RID_LENGTH, createSimulcastRendition, sortSimulcastRenditions } from '../../utils/SimulcastUtils';
+import { MAX_SIMULCAST_RENDITIONS, MAX_RID_LENGTH, SCALABILITY_MODE_OPTIONS, createSimulcastRendition, sortSimulcastRenditions } from '../../utils/SimulcastUtils';
 import CollapsibleSection from '../shared/CollapsibleSection';
 
 // Collapsible Simulcast drawer: the on/off toggle plus a table to configure
 // each rendition. Rows are kept in SDP preference order, derived from scale
 // down (highest last); they re-sort when a scale down edit is finished.
-// RID, max bitrate and the number of renditions are negotiated in the offer,
-// so they lock while connected; scale down can change mid-stream.
+// RID, max bitrate, scalability mode and the number of renditions are
+// negotiated in the offer, so they lock while connected; scale down can change
+// mid-stream.
 
 // Scale down edits are kept in a local draft and only dispatched on blur, so
 // a row doesn't jump away while typing and mid-stream setParameters runs once
@@ -56,6 +57,18 @@ const SimulcastRenditionRow = ({ rendition, setupLocked, simulcastDisabled, remo
           disabled={setupLocked}
           onChange={(e) => onFieldChange('maxBitrate', e.target.value)}
         />
+      </td>
+      <td>
+        <select
+          className="form-select form-select-sm"
+          value={rendition.scalabilityMode ?? ''}
+          disabled={setupLocked}
+          onChange={(e) => onFieldChange('scalabilityMode', e.target.value)}
+        >
+          {SCALABILITY_MODE_OPTIONS.map((mode) => (
+            <option key={mode || 'default'} value={mode}>{mode || 'default'}</option>
+          ))}
+        </select>
       </td>
       <td>
         <button
@@ -137,6 +150,7 @@ const PublishSimulcastSettings = () => {
             <th>RID</th>
             <th>Scale Down</th>
             <th>Max Bitrate (bps)</th>
+            <th>Scalability Mode</th>
             <th></th>
           </tr>
         </thead>
@@ -155,6 +169,12 @@ const PublishSimulcastSettings = () => {
           ))}
         </tbody>
       </table>
+
+      <p className="form-text mb-2">
+        Leave Scalability Mode at <code>default</code> for VP8 and H.264. VP9 needs{' '}
+        <code>L1T1</code> on every rendition, otherwise the browser treats the layers as SVC
+        and sends only the first one.
+      </p>
 
       <button
         type="button"

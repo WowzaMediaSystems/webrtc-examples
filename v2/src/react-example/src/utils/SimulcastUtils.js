@@ -17,17 +17,35 @@ const withRenditionId = (rendition) => ({ ...rendition, id: ++nextRenditionId })
 // rid/scaleResolutionDownBy/maxBitrate is what the browser turns into
 // a=rid / a=simulcast lines in the offer SDP.
 export const DEFAULT_SIMULCAST_RENDITIONS = [
-  { rid: "h", maxBitrate: 2500000, scaleResolutionDownBy: 1.0 },
-  { rid: "m", maxBitrate: 700000, scaleResolutionDownBy: 2.0 },
-  { rid: "l", maxBitrate: 200000, scaleResolutionDownBy: 4.0 }
+  { rid: "h", maxBitrate: 2500000, scaleResolutionDownBy: 1.0, scalabilityMode: "" },
+  { rid: "m", maxBitrate: 700000, scaleResolutionDownBy: 2.0, scalabilityMode: "" },
+  { rid: "l", maxBitrate: 200000, scaleResolutionDownBy: 4.0, scalabilityMode: "" }
 ].map(withRenditionId);
 
 export const createSimulcastRendition = () => {
-  return withRenditionId({ rid: "", scaleResolutionDownBy: 1, maxBitrate: 500000 });
+  return withRenditionId({ rid: "", scaleResolutionDownBy: 1, maxBitrate: 500000, scalabilityMode: "" });
 };
 
 // RFC 8851 rid-id: letters, digits, "-" and "_"
 const RID_PATTERN = /^[A-Za-z0-9_-]+$/;
+
+// WebRTC-SVC scalability mode. Two supported values, and this list is the only
+// definition of them: the dropdown renders it and the validator checks against
+// it, so the UI and what is accepted cannot drift apart.
+//
+// Empty sends no scalabilityMode at all, which is what VP8 and H.264 want:
+// several encodings are enough on their own, the browser runs one encoder per
+// layer. VP9 is the exception. Its encoder expresses layers as SVC inside a
+// single RTP stream, so several encodings collapse to one unless each declares a
+// single-spatial-layer mode, and only the first rid reaches the wire. L1T1 is
+// that declaration: one spatial layer, one temporal layer, one independent
+// stream per encoding.
+//
+// Nothing else is supported. Multi-spatial modes (L2*, L3*) cannot be combined
+// with simulcast on one transceiver at all, and multi-temporal ones (L1T2,
+// L1T3) would only add layering a Wowza server neither records on ingest nor
+// signals downstream.
+export const SCALABILITY_MODE_OPTIONS = ["", "L1T1"];
 
 // User-facing copy. Lives here because it pairs with simulcastAcceptedInAnswer —
 // keep the wire-level detection and the message it triggers co-located.
@@ -56,6 +74,11 @@ export const getSimulcastRenditionsError = (renditions) => {
       return `Invalid resolution scale down for "${rendition.rid}": must be 1 or greater`;
     if (!(Number(rendition.maxBitrate) > 0))
       return `Invalid max bitrate for "${rendition.rid}": must be greater than 0`;
+
+    const scalabilityMode = rendition.scalabilityMode ?? "";
+    if (!SCALABILITY_MODE_OPTIONS.includes(scalabilityMode))
+      return `Invalid scalability mode for "${rendition.rid}": use L1T1, or leave it unset for `
+        + `VP8 and H.264. No other mode is supported.`;
   }
   return null;
 };
@@ -80,7 +103,8 @@ export const parseSimulcastRenditions = (value) => {
   const normalized = renditions.map((rendition) => withRenditionId({
     rid: String(rendition?.rid ?? ""),
     scaleResolutionDownBy: Number(rendition?.scaleResolutionDownBy) || 1,
-    maxBitrate: Number(rendition?.maxBitrate) || 0
+    maxBitrate: Number(rendition?.maxBitrate) || 0,
+    scalabilityMode: String(rendition?.scalabilityMode ?? "").trim()
   }));
 
   return getSimulcastRenditionsError(normalized) ? null : sortSimulcastRenditions(normalized);
@@ -93,6 +117,10 @@ const buildSendEncodings = (renditions) => {
     if (scale > 1) encoding.scaleResolutionDownBy = scale;
     const maxBitrate = Number(rendition.maxBitrate);
     if (maxBitrate > 0) encoding.maxBitrate = maxBitrate;
+    // Omitted unless set: an unset mode is what VP8 and H.264 expect, and it
+    // leaves the browser's own default in place.
+    const scalabilityMode = (rendition.scalabilityMode ?? "").trim();
+    if (scalabilityMode !== "") encoding.scalabilityMode = scalabilityMode;
     return encoding;
   });
 };
