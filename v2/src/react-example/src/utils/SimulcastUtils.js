@@ -29,6 +29,20 @@ export const createSimulcastRendition = () => {
 // RFC 8851 rid-id: letters, digits, "-" and "_"
 const RID_PATTERN = /^[A-Za-z0-9_-]+$/;
 
+// WebRTC-SVC scalability mode declared on every simulcast encoding: one spatial
+// layer, one temporal layer, so each encoding stays an independent stream.
+//
+// VP8 and H.264 do not need it, several encodings are enough on their own. VP9
+// does: its encoder expresses layers as SVC inside a single RTP stream, so
+// several encodings collapse to one and only the first rid reaches the wire
+// unless each declares a single spatial layer.
+//
+// It is applied unconditionally rather than only for VP9, because encodings are
+// fixed at addTransceiver, before the answer says which codec was negotiated.
+// There is no moment at which the page could know to apply it selectively, and
+// setParameters after the answer does not start encoders that never ran.
+const SIMULCAST_SCALABILITY_MODE = "L1T1";
+
 // User-facing copy. Lives here because it pairs with simulcastAcceptedInAnswer —
 // keep the wire-level detection and the message it triggers co-located.
 export const SIMULCAST_REJECTED_MESSAGE =
@@ -88,7 +102,7 @@ export const parseSimulcastRenditions = (value) => {
 
 const buildSendEncodings = (renditions) => {
   return sortSimulcastRenditions(renditions).map((rendition) => {
-    const encoding = { rid: rendition.rid };
+    const encoding = { rid: rendition.rid, scalabilityMode: SIMULCAST_SCALABILITY_MODE };
     const scale = Number(rendition.scaleResolutionDownBy);
     if (scale > 1) encoding.scaleResolutionDownBy = scale;
     const maxBitrate = Number(rendition.maxBitrate);
@@ -99,9 +113,11 @@ const buildSendEncodings = (renditions) => {
 
 // Returns the RTCRtpSender so callers match the contract of addTrack().
 export const addSimulcastVideoSender = (peerConnection, videoTrack, renditions) => {
+  const sendEncodings = buildSendEncodings(renditions);
+
   const transceiver = peerConnection.addTransceiver(videoTrack, {
     direction: "sendonly",
-    sendEncodings: buildSendEncodings(renditions)
+    sendEncodings
   });
   return transceiver.sender;
 };
