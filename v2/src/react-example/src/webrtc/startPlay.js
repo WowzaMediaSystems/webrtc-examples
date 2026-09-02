@@ -2,6 +2,41 @@ import stopPlay from './stopPlay';
 import getSecureToken from './SecureToken';
 import { validateParams } from '../utils/ValidationUtils';
 import { addIceServers } from '../utils/IceServersUtils';
+import { attachIceRestartRecovery, consumeIceRestartOffer } from '../utils/IceRestartUtils';
+import { sendWhipWhepIceRestart } from '../utils/SdpFragUtils';
+import attachDataChannel, {
+  CHAT_CHANNEL_LABEL,
+  CAPTIONS_CHANNEL_LABEL,
+  createSctpBootstrap,
+  dataChannelsAcceptedInAnswer,
+  ensureApplicationSectionInAnswer,
+} from './attachDataChannel';
+
+// Listen for whichever data channels are enabled on the player: chat (full-duplex) and/or captions
+// (one-way, receive here). The bootstrap must come first, whenever any channel is enabled, so the
+// SCTP transport is negotiated in the offer and WSE can open the mirrored channels. Returns a handle
+// to close them if the server refuses the SCTP section.
+const attachPlayDataChannels = (peerConnection, callbacks, playSettings) => {
+  if (!playSettings.chatEnabled && !playSettings.captionsEnabled) return null;
+  const channels = [createSctpBootstrap(peerConnection)];
+  if (playSettings.chatEnabled)
+    channels.push(attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL, create: false }));
+  if (playSettings.captionsEnabled)
+    channels.push(attachDataChannel(peerConnection, callbacks, { label: CAPTIONS_CHANNEL_LABEL, create: false }));
+  return { close: () => channels.forEach((channel) => channel.close()) };
+};
+
+// The SCTP section shares the offer/answer with media but is optional: give up on the channels, tell
+// the UI, leave the session alone. Returns the handle to keep - null once refused, so a later
+// ICE-restart answer doesn't report it twice.
+const handleRefusedDataChannels = (answerSdp, dataChannels, callbacks) => {
+  if (!dataChannels || dataChannelsAcceptedInAnswer(answerSdp)) return dataChannels;
+  console.log('Data channels were refused by the server; continuing with media only.');
+  dataChannels.close();
+  if (callbacks.onDataChannelsUnavailable)
+    callbacks.onDataChannelsUnavailable();
+  return null;
+};
 
 const getAuthHeaders = (authToken) =>
   authToken ? { "Authorization": `Bearer ${authToken}` } : {};
@@ -115,6 +150,22 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
       }
     }
 
+    peerConnection.onnegotiationneeded = () => {
+      // Initial play offer is sent explicitly below, before a connectionId exists; otherwise only
+      // for a restart we asked for.
+      if (session.sessionId === '[empty]' || !consumeIceRestartOffer(peerConnection)) return;
+      console.log('onnegotiationneeded: sending ICE_RESTART offer over the existing connection.');
+      websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks, session);
+    };
+
+    // ICE restart recovery: re-establishes the ICE connection in place when the network
+    // path changes, without tearing down the play session. See IceRestartUtils.
+    attachIceRestartRecovery(peerConnection);
+
+    // The data channels must be listened for before the first offer (we never renegotiate). WSE
+    // opens the mirrored channels toward the player; the player writes back on chat.
+    session.dataChannels = attachPlayDataChannels(peerConnection, callbacks, playSettings);
+
     websocket.addEventListener("message", (event) => { websocketOnMessage(event, playSettings, peerConnection, websocket, callbacks, session, pendingCandidates); });
 
     websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks, session);
@@ -144,7 +195,7 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
     session.repeaterRetryCount++;
 
     if (session.repeaterRetryCount < 10) {
-      setTimeout(() => { websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks) }, 1000);
+      setTimeout(() => { websocketSendPlayGetOffer(playSettings, websocket, peerConnection, callbacks, session) }, 1000);
     } else {
       websocketOnError({message:'Live stream repeater timeout: ' + playSettings.streamName}, callbacks);
       stopPlay(playSettings, peerConnection, websocket, callbacks);
@@ -171,13 +222,16 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
       if (message.sdp) {
         console.log("SDP Data: " + message.sdp);
         let sdpData = {
-          "sdp" : message.sdp,
+          "sdp" : ensureApplicationSectionInAnswer(peerConnection.localDescription.sdp, message.sdp),
           "type": "answer"
         }
         peerConnection
           .setRemoteDescription(new RTCSessionDescription(sdpData))
           .then(() => {
+            // Initial offer/answer is complete; from here a re-offer is an ICE restart.
+            session.negotiationEstablished = true;
             console.log("Remote Description Set Successfully.");
+            session.dataChannels = handleRefusedDataChannels(sdpData.sdp, session.dataChannels, callbacks);
           })
           .catch((err) => peerConnectionOnError(err, callbacks));
       }
@@ -194,8 +248,10 @@ const websocketOnError = (error, callbacks) => {
 
 const createOfferPayload = (playSettings, session, secureToken = null) => {
   const streamInfo = getStreamInfo(playSettings, session);
+  // After the initial negotiation a re-offer is an ICE restart: signal ICE_RESTART carrying the full offer
+  // SDP (the engine normalizes it to a trickle-ice-sdpfrag). A plain OFFER restart is no longer auto-detected.
   const offerPayload = {
-      messageType: "OFFER",
+      messageType: session.negotiationEstablished ? "ICE_RESTART" : "OFFER",
       action: "VIEW",
       applicationName: streamInfo.applicationName,
       streamName: streamInfo.streamName,
@@ -247,6 +303,10 @@ const startPlay = (playSettings, callbacks) =>
     const session = {
       sessionId: '[empty]',
       repeaterRetryCount: 0,
+      // false until the initial offer/answer completes; afterwards a re-offer is an ICE restart.
+      negotiationEstablished: false,
+      // handle to the enabled data channels, cleared once the server refuses them.
+      dataChannels: null,
       peerConnectionConfig: {iceServers: []}
     };
 
@@ -281,11 +341,16 @@ const startPlay = (playSettings, callbacks) =>
 const startPlayWhep = async (playSettings, session, callbacks) => {
   let peerConnection;
   let sessionUrl;
+  let negotiationEstablished = false; // gate onnegotiationneeded so only ICE restarts (not the initial offer) re-offer
   const pendingCandidates = [];
 
   try {
     addIceServers(playSettings, session);
     peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
+
+    // Hand it over immediately, as the WebSocket path does: stopPlay can only close what it was given.
+    if (callbacks.onSetPeerConnection)
+      callbacks.onSetPeerConnection({ peerConnection });
 
     peerConnection.addTransceiver("video", { direction: "recvonly" });
     peerConnection.addTransceiver("audio", { direction: "recvonly" });
@@ -304,6 +369,27 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
       }
     };
 
+    // Auto-recovery: when ICE drops, restartIce() flags fresh credentials and fires
+    // onnegotiationneeded (handled below). Reuses the same recovery state machine as the
+    // WebSocket path so the heuristics stay in one place.
+    const iceRestartRecovery = attachIceRestartRecovery(peerConnection);
+
+    // ICE restart over WHEP (RFC 9725): on onnegotiationneeded we PATCH only the new credentials
+    // to the resource URL as an application/trickle-ice-sdpfrag; the engine renegotiates ICE on
+    // the existing session and returns its new ICE parameters as an sdpfrag, which we splice into
+    // the current answer so playback recovers in place.
+    peerConnection.onnegotiationneeded = () => {
+      // Initial WHEP offer is sent manually below; otherwise only for a restart we asked for.
+      if (!negotiationEstablished || !sessionUrl || !consumeIceRestartOffer(peerConnection)) return;
+      sendWhipWhepIceRestart(peerConnection, sessionUrl, {
+        authHeaders: getAuthHeaders(playSettings.authToken),
+        label: "WHEP",
+      }).catch((e) => {
+        iceRestartRecovery.notifyRestartFailed(); // a failed restart leaves ICE down; let a later transition retry
+        peerConnectionOnError(e, callbacks);
+      });
+    };
+
     peerConnection.onicecandidate = async (event) => {
       const candidate = event.candidate ? event.candidate.candidate : "";
 
@@ -318,6 +404,9 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
         body: candidate
       });
     };
+
+    // Same as the WebSocket path: listen for the channels before the offer (we never renegotiate).
+    const dataChannels = attachPlayDataChannels(peerConnection, callbacks, playSettings);
 
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
@@ -350,15 +439,19 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
       pendingCandidates.length = 0;
     }
 
-    const answerSdp = await response.text();
+    const answerSdp = ensureApplicationSectionInAnswer(
+      peerConnection.localDescription.sdp,
+      await response.text()
+    );
 
     await peerConnection.setRemoteDescription({
       type: "answer",
       sdp: answerSdp
     });
 
-    if (callbacks.onSetPeerConnection)
-      callbacks.onSetPeerConnection({ peerConnection });
+    negotiationEstablished = true; // from here, onnegotiationneeded means an ICE restart
+
+    handleRefusedDataChannels(answerSdp, dataChannels, callbacks);
 
   } catch (error) {
     if (callbacks.onError)

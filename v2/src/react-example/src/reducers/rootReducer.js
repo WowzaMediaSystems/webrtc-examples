@@ -8,6 +8,7 @@ import publishSettings from './publishSettingsReducer';
 import webrtcPublish from './webrtcPublishReducer';
 import webrtcPlay from './webrtcPlayReducer';
 import webrtcMeeting from './webrtcMeetingReducer';
+import dataChannel from './dataChannelReducer';
 
 const rootReducer = combineReducers({
   errors,
@@ -17,7 +18,8 @@ const rootReducer = combineReducers({
   publishSettings,
   webrtcPublish,
   webrtcPlay,
-  webrtcMeeting
+  webrtcMeeting,
+  dataChannel
 })
 
 export default rootReducer;

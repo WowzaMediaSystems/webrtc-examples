@@ -10,6 +10,11 @@ import QueryString from 'query-string';
 import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
 import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
+import { parseSimulcastRenditions, getSimulcastRenditionsError } from '../../utils/SimulcastUtils';
+import PublishSimulcastSettings from './PublishSimulcastSettings';
+import CollapsibleSection from '../shared/CollapsibleSection';
+import FormCheckbox from '../shared/FormCheckbox';
+import { triggerIceRestart } from '../../utils/IceRestartUtils';
 import ExternalLinks from '../../constants/ExternalLinks';
 import videoOnImage from '../../images/videocam-32px.svg';
 import videoOffImage from '../../images/videocam-off-32px.svg';
@@ -26,7 +31,11 @@ const publishUrlParametersMap = {
   applicationName: "publishApplicationName",
   streamName: "publishStreamName",
   useWhip: "publishUseWhip",
-  authToken: "publishAuthToken"
+  authToken: "publishAuthToken",
+  useSimulcast: "publishUseSimulcast",
+  simulcastRenditions: "publishSimulcastRenditions",
+  chatEnabled: "publishChatEnabled",
+  captionsEnabled: "publishCaptionsEnabled",
 };
 
 const PublishSettingsForm = () => {
@@ -42,7 +51,6 @@ const PublishSettingsForm = () => {
   const [urlPlaceholder, setUrlPlaceholder] = useState(SIGNALING_URL_PLACEHOLDER);
 
   const [initialized, setInitialized] = useState(true);
-  const [iceServersExpanded, setIceServersExpanded] = useState(false);
 
 
   useEffect(() => {
@@ -60,19 +68,26 @@ const PublishSettingsForm = () => {
       streamName: PublishSettingsActions.SET_PUBLISH_STREAM_NAME,
       useWhip: PublishSettingsActions.SET_PUBLISH_USE_WHIP,
       authToken: PublishSettingsActions.SET_PUBLISH_AUTH_TOKEN,
+      useSimulcast: PublishSettingsActions.SET_PUBLISH_USE_SIMULCAST,
+      simulcastRenditions: PublishSettingsActions.SET_PUBLISH_SIMULCAST_RENDITIONS,
+      chatEnabled: PublishSettingsActions.SET_PUBLISH_CHAT_ENABLED,
+      captionsEnabled: PublishSettingsActions.SET_PUBLISH_CAPTIONS_ENABLED,
     };
 
+    const booleanKeys = new Set(['useWhip', 'useSimulcast', 'chatEnabled', 'captionsEnabled']);
+
     Object.entries(publishUrlParametersMap).forEach(([stateKey, cookieKey]) => {
-      const value = savedValues[cookieKey];
-      if (value != null) {
-        const actionType = actionMap[stateKey];
-        if (actionType) {
-          const payload = stateKey === 'useWhip'
-            ? { [stateKey]: value === 'true' || value === true }
-            : { [stateKey]: value };
-          dispatch({ type: actionType, ...payload });
-        }
+      let value = savedValues[cookieKey];
+      if (value == null) return;
+      const actionType = actionMap[stateKey];
+      if (!actionType) return;
+      if (booleanKeys.has(stateKey)) {
+        value = value === 'true' || value === true;
+      } else if (stateKey === 'simulcastRenditions') {
+        value = parseSimulcastRenditions(value);
+        if (value == null) return;
       }
+      dispatch({ type: actionType, [stateKey]: value });
     });
 
     setInitialized(true);
@@ -203,8 +218,23 @@ const PublishSettingsForm = () => {
       console.log("No TURN server provided");
     }
 
+    if (publishSettings.useSimulcast) {
+      const simulcastError = getSimulcastRenditionsError(publishSettings.simulcastRenditions);
+      if (simulcastError) {
+        dispatch({
+          type: ErrorsActions.SET_ERROR_MESSAGE,
+          message: simulcastError
+        });
+        return;
+      }
+    }
+
     dispatch(PublishSettingsActions.startPublish());
   };
+
+  // Test aid: trigger an ICE restart on the active publish peer connection. See IceRestartUtils.
+  const handleRestartIce = () => triggerIceRestart(webrtcPublish.peerConnection);
+
   if (!initialized) return null;
 
   return (
@@ -228,22 +258,15 @@ const PublishSettingsForm = () => {
           </div>
         </div>
 
-        <div className="row align-items-center mb-2">
-          <div className="col-5">
-            <div className="form-group form-switch form-check-inline">
-              <label className='form-check-label mr-3' htmlFor="publishUseWhip">
-                Use WHIP
-              </label>
-              <input
-                className='form-check-input form-switch orange-checkbox'
-                type="checkbox"
-                id="publishUseWhip"
-                name="publishUseWhip"
-                checked={publishSettings.useWhip || false}
-                disabled={webrtcPublish.connected}
-                onChange={handleUseWhip(PublishSettingsActions.SET_PUBLISH_USE_WHIP, 'useWhip')}
-              />
-            </div>
+        <div className="row">
+          <div className="col-5 pt-2">
+            <FormCheckbox
+              label="Use WHIP"
+              id="publishUseWhip"
+              checked={publishSettings.useWhip}
+              disabled={webrtcPublish.connected}
+              onChange={handleUseWhip(PublishSettingsActions.SET_PUBLISH_USE_WHIP, 'useWhip')}
+            />
           </div>
           {publishSettings.useWhip && (
             <div className="col-7">
@@ -265,22 +288,28 @@ const PublishSettingsForm = () => {
           )}
         </div>
 
-        <div className="row mb-2">
-          <div className="col-12">
-            <button
-              type="button"
-              className={`btn btn-sm w-100 d-flex align-items-center justify-content-between btn-ice-servers`}
-              onClick={() => setIceServersExpanded(!iceServersExpanded)}
-            >
-              <span>ICE Servers</span>
-              <i className={`bi bi-chevron-${iceServersExpanded ? 'up' : 'down'}`}></i>
-            </button>
+        <div className="row align-items-center mt-3 mb-2">
+          <div className="col-6">
+            <FormCheckbox
+              label="Enable Chat"
+              id="publishChatEnabled"
+              checked={publishSettings.chatEnabled}
+              disabled={webrtcPublish.connected}
+              onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_CHAT_ENABLED,chatEnabled:e.target.checked})}
+            />
+          </div>
+          <div className="col-6">
+            <FormCheckbox
+              label="Enable Captions"
+              id="publishCaptionsEnabled"
+              checked={publishSettings.captionsEnabled}
+              disabled={webrtcPublish.connected}
+              onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_CAPTIONS_ENABLED,captionsEnabled:e.target.checked})}
+            />
           </div>
         </div>
 
-        {iceServersExpanded && (
-          <>
-          <div className="border border-top-0 rounded-bottom p-3 mb-3">
+        <CollapsibleSection title="ICE Servers">
             <div className="row">
               <div className="col-12">
                 <div className="form-group">
@@ -345,9 +374,9 @@ const PublishSettingsForm = () => {
                 </div>
               </div>
             </div>
-            </div>
-          </>
-        )}
+        </CollapsibleSection>
+
+        <PublishSimulcastSettings />
 
         <div className="row">
           <div className="col-lg-6 col-sm-12">
@@ -476,6 +505,19 @@ const PublishSettingsForm = () => {
             </button>
           </div>
         </div>
+        { webrtcPublish.connected &&
+          <div className="row mt-2">
+            <div className="col-12">
+              <button
+                id="ice-restart-toggle"
+                type="button"
+                className="btn w-100"
+                onClick={handleRestartIce}
+                title="Trigger an ICE restart: renegotiates ICE (new ufrag/pwd) without recreating the publish session"
+              >Restart ICE</button>
+            </div>
+          </div>
+        }
         <div className="row mt-2">
           <div className="col-12 text-center">
             <small>{ExternalLinks.legacyLinkText} <a href={ExternalLinks.legacyPublish} target="_blank" rel="noopener noreferrer">{ExternalLinks.legacyLinkLabel}</a></small>

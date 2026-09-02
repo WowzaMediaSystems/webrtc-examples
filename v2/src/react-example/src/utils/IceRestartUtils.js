@@ -1,0 +1,105 @@
+// ICE restart recovery utilities, shared by the publish (startPublish.js) and play
+// (startPlay.js) flows.
+//
+// When the network path changes (NAT rebinding, interface switch, Wi-Fi/cellular handoff)
+// the ICE connection drops to "disconnected" or "failed". restartIce() flags the next
+// negotiation for fresh ICE credentials and fires onnegotiationneeded, which re-sends an
+// OFFER over the existing connection so the session recovers without being torn down and
+// re-established.
+
+const ICE_RESTART_GRACE_PERIOD_MS = 3000;
+
+// Peer connections owing a re-offer. Module-level so requesters and onnegotiationneeded handlers
+// reach it without the recovery handle.
+const pendingRestartOffers = new WeakSet();
+
+const markRestartRequested = (peerConnection) => pendingRestartOffers.add(peerConnection);
+
+// Every onnegotiationneeded handler must gate its re-offer on this: the browser re-raises
+// negotiationneeded on every return to "stable" and answering those renegotiates forever.
+export const consumeIceRestartOffer = (peerConnection) => {
+  if (!peerConnection || !pendingRestartOffers.has(peerConnection)) {
+    console.log('negotiationneeded raised without a pending ICE restart: no re-offer sent.');
+    return false;
+  }
+  pendingRestartOffers.delete(peerConnection);
+  return true;
+};
+
+// Attaches an oniceconnectionstatechange handler that requests an ICE restart when the
+// connection drops, automatically recovering the session in place.
+export const attachIceRestartRecovery = (peerConnection) => {
+  let iceRestartGraceTimer = null;
+  let iceRestartInProgress = false;
+
+  const requestIceRestart = (reason) => {
+    if (iceRestartInProgress) return; // one restart at a time; the engine rejects concurrent restarts
+    if (typeof peerConnection.restartIce !== 'function') {
+      console.warn('ICE restart needed but restartIce() is not supported in this browser.');
+      return;
+    }
+    iceRestartInProgress = true;
+    markRestartRequested(peerConnection);
+    console.log(`Requesting ICE restart (${reason}).`);
+    peerConnection.restartIce();
+  };
+
+  peerConnection.oniceconnectionstatechange = () => {
+    const iceState = peerConnection.iceConnectionState;
+    console.log(`ICE connection state: ${iceState}`);
+
+    switch (iceState) {
+      case 'failed':
+        // Hard failure - recover immediately.
+        if (iceRestartGraceTimer) { clearTimeout(iceRestartGraceTimer); iceRestartGraceTimer = null; }
+        requestIceRestart('iceConnectionState=failed');
+        break;
+      case 'disconnected':
+        // Often transient - give it a moment to self-heal before forcing a restart.
+        if (!iceRestartGraceTimer && !iceRestartInProgress) {
+          iceRestartGraceTimer = setTimeout(() => {
+            iceRestartGraceTimer = null;
+            const current = peerConnection.iceConnectionState;
+            if (current === 'disconnected' || current === 'failed') {
+              requestIceRestart(`iceConnectionState=${current} after grace period`);
+            }
+          }, ICE_RESTART_GRACE_PERIOD_MS);
+        }
+        break;
+      case 'connected':
+      case 'completed':
+        // Recovered (or initial connect): clear pending work and re-arm for the next change.
+        if (iceRestartGraceTimer) { clearTimeout(iceRestartGraceTimer); iceRestartGraceTimer = null; }
+        iceRestartInProgress = false;
+        break;
+      default:
+        // 'new' / 'checking' / 'closed' - no recovery action needed; log just in case.
+        console.log(`ICE connection state ${iceState}: no ICE-restart action taken.`);
+        break;
+    }
+  };
+
+  // For transports that drive the restart from outside this module (WHIP/WHEP renegotiate via
+  // onnegotiationneeded): if that restart attempt fails, ICE stays failed/disconnected and no
+  // further state-change event fires, so the "one restart at a time" guard would block every
+  // retry forever. notifyRestartFailed() clears the guard so a later transition can try again.
+  return {
+    notifyRestartFailed: () => { iceRestartInProgress = false; },
+  };
+};
+
+// Test aid: manually trigger an ICE restart on an active peer connection. restartIce()
+// flags the next negotiation for fresh ICE credentials and fires onnegotiationneeded,
+// which the signaling flow handles by re-sending an OFFER with a new ufrag/pwd over the
+// same connectionId. The engine detects the credential change and renegotiates ICE
+// without recreating the session.
+export const triggerIceRestart = (peerConnection) => {
+  if (peerConnection && typeof peerConnection.restartIce === 'function') {
+    console.log('[ICE restart] Calling peerConnection.restartIce(); a new offer with fresh ICE credentials will be sent.');
+    // Arm the gate, else the negotiationneeded this raises is dropped and nothing reaches the engine.
+    markRestartRequested(peerConnection);
+    peerConnection.restartIce();
+  } else {
+    console.warn('[ICE restart] No active peer connection, or restartIce() is unsupported in this browser.');
+  }
+};

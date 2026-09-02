@@ -2,12 +2,92 @@
 
 import { addIceServers } from "../utils/IceServersUtils";
 import { validateParams } from "../utils/ValidationUtils";
+import {
+  SIMULCAST_REJECTED_MESSAGE,
+  addSimulcastVideoSender,
+  ensureSimulcastSDP,
+  simulcastAcceptedInAnswer
+} from "../utils/SimulcastUtils";
+import { attachIceRestartRecovery, consumeIceRestartOffer } from "../utils/IceRestartUtils";
+import { sendWhipWhepIceRestart } from "../utils/SdpFragUtils";
+import attachDataChannel, {
+  CHAT_CHANNEL_LABEL,
+  dataChannelsAcceptedInAnswer,
+  ensureApplicationSectionInAnswer
+} from "./attachDataChannel";
+import { startCaptionBroadcast } from "./captions";
+
+// Bring up the enabled publisher data channels: the full-duplex chat channel and/or the one-way
+// captions broadcast, each gated by its own setting. `onCaption` (if provided) mirrors each sent
+// caption line to the UI. Returns a handle to shut them down if the server refuses the SCTP section.
+const attachPublishDataChannels = (peerConnection, callbacks, publishSettings) => {
+  if (!publishSettings.chatEnabled && !publishSettings.captionsEnabled) return null;
+  const stops = [];
+  if (publishSettings.chatEnabled) {
+    const chat = attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL, create: true });
+    stops.push(() => chat.close());
+  }
+  if (publishSettings.captionsEnabled)
+    stops.push(startCaptionBroadcast(peerConnection, (text) => {
+      if (callbacks.onCaption) callbacks.onCaption({ text });
+    }));
+  return { close: () => stops.forEach((stop) => stop()) };
+};
+
+// The SCTP section shares the offer/answer with media but is optional: give up on the channels, tell
+// the UI, leave the session alone. Returns the handle to keep - null once refused, so a later
+// ICE-restart answer doesn't report it twice.
+const handleRefusedDataChannels = (answerSdp, dataChannels, callbacks) => {
+  if (!dataChannels || dataChannelsAcceptedInAnswer(answerSdp)) return dataChannels;
+  console.log("Data channels were refused by the server; continuing with media only.");
+  dataChannels.close();
+  if (callbacks.onDataChannelsUnavailable)
+    callbacks.onDataChannelsUnavailable();
+  return null;
+};
+
+// Orchestration dispatcher: simulcast vs. single-track is a publish-flow
+// decision, so it lives here. The simulcast mechanics live in SimulcastUtils.
+const addVideoSender = (peerConnection, videoTrack, publishSettings) => {
+  if (videoTrack == null) return undefined;
+  if (publishSettings.useSimulcast)
+    return addSimulcastVideoSender(peerConnection, videoTrack, publishSettings.simulcastRenditions);
+  return peerConnection.addTrack(videoTrack);
+};
+
+// Detach handlers before closing so the stale PC/WS don't fire "closed" /
+// error events into the next attempt's callbacks
+const tearDownConnection = (peerConnection, websocket) => {
+  if (peerConnection) {
+    peerConnection.onicecandidate = null;
+    peerConnection.onnegotiationneeded = null;
+    peerConnection.onconnectionstatechange = null;
+    try { peerConnection.close(); } catch (_) {}
+  }
+  if (websocket) {
+    try { websocket.close(); } catch (_) {}
+  }
+};
+
+// Single owner of "abandon this attempt and surface the failure". WS and
+// WHIP both route through here (and the WHIP-only DELETE lives alongside
+// the rest of the cleanup, not orphaned in the caller).
+const reportSimulcastRejection = ({
+  callbacks, peerConnection, websocket, whipSessionUrl
+}) => {
+  tearDownConnection(peerConnection, websocket);
+  if (whipSessionUrl) {
+    fetch(whipSessionUrl, { method: "DELETE" }).catch(() => {});
+  }
+  if (callbacks.onError) {
+    callbacks.onError({ message: SIMULCAST_REJECTED_MESSAGE });
+  }
+};
 
 const getAuthHeaders = (authToken) =>
   authToken ? { "Authorization": `Bearer ${authToken}` } : {};
 
 const getStreamInfo = (publishSettings, session) => {
-
   return {
     applicationName: publishSettings.applicationName,
     streamName: publishSettings.streamName,
@@ -24,15 +104,22 @@ const peerConnectionCreateOfferSuccess = (description, publishSettings, websocke
     .setLocalDescription(description)
     .then(() => {
       const streamInfo = getStreamInfo(publishSettings, session);
+      const offerSdp = publishSettings.useSimulcast
+        ? ensureSimulcastSDP(peerConnection.localDescription.sdp, publishSettings.simulcastRenditions)
+        : peerConnection.localDescription.sdp;
+      // After the initial negotiation, a re-offer is an ICE restart and must be signaled as ICE_RESTART.
+      // The engine no longer auto-detects a restart from a plain OFFER (it would reject one); instead the
+      // full offer SDP is sent under ICE_RESTART and the engine normalizes it to a trickle-ice-sdpfrag,
+      // the same representation the WHIP/WHEP PATCH path delivers.
       const payload = {
-        messageType: "OFFER",
+        messageType: session.negotiationEstablished ? "ICE_RESTART" : "OFFER",
         action: "PUBLISH",
-        sdp: peerConnection.localDescription.sdp,
+        sdp: offerSdp,
         applicationName: streamInfo.applicationName,
         streamName: streamInfo.streamName,
         connectionId: streamInfo.sessionId,
       };
-      console.log("Sending offer:", JSON.stringify(payload));
+      console.log(`Sending ${payload.messageType}:`, JSON.stringify(payload));
       websocket.send(JSON.stringify(payload));
     })
     .catch((error) => {
@@ -99,6 +186,9 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
     };
 
     peerConnection.onnegotiationneeded = (event) => {
+      // This sends the initial offer; afterwards only for a restart we asked for - see
+      // consumeIceRestartOffer.
+      if (session.negotiationEstablished && !consumeIceRestartOffer(peerConnection)) return;
       peerConnection.createOffer()
         .then((description) => {
           peerConnectionCreateOfferSuccess(description, publishSettings, websocket, peerConnection, callbacks, session);
@@ -118,17 +208,24 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
       }
     }
 
+    // ICE restart recovery: re-establishes the ICE connection in place when the network
+    // path changes, without tearing down the publish session. See IceRestartUtils.
+    attachIceRestartRecovery(peerConnection);
+
+    // The data channels must be created before the first offer (we never renegotiate). The
+    // publisher opens whichever of chat / captions are enabled up front.
+    session.dataChannels = attachPublishDataChannels(peerConnection, callbacks, publishSettings);
+
     let audioSender = undefined;
     let videoSender = undefined;
     if (publishSettings.audioTrack != null)
       audioSender = peerConnection.addTrack(publishSettings.audioTrack);
-    if (publishSettings.videoTrack != null)
-      videoSender = peerConnection.addTrack(publishSettings.videoTrack);
+    videoSender = addVideoSender(peerConnection, publishSettings.videoTrack, publishSettings);
 
     if (callbacks.onSetSenders)
       callbacks.onSetSenders({ audioSender: audioSender, videoSender: videoSender });
 
-    websocket.addEventListener("message", (event) => { websocketOnMessage(event, websocket, peerConnection, callbacks, session, pendingCandidates); });
+    websocket.addEventListener("message", (event) => { websocketOnMessage(event, publishSettings, websocket, peerConnection, callbacks, session, pendingCandidates); });
 
   }
   catch (e) {
@@ -138,7 +235,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
     callbacks.onSetPeerConnection({ peerConnection: peerConnection });
 }
 
-const websocketOnMessage = (event, websocket, peerConnection, callbacks, session, pendingCandidates) => {
+const websocketOnMessage = (event, publishSettings, websocket, peerConnection, callbacks, session, pendingCandidates) => {
 
   let msgJSON = JSON.parse(event.data);
 
@@ -168,7 +265,7 @@ const websocketOnMessage = (event, websocket, peerConnection, callbacks, session
 
     if (msgJSON.message?.sdp) {
       let sdpData = {
-        "sdp": msgJSON.message.sdp,
+        "sdp": ensureApplicationSectionInAnswer(peerConnection.localDescription.sdp, msgJSON.message.sdp),
         "type": "answer"
       }
 
@@ -177,6 +274,17 @@ const websocketOnMessage = (event, websocket, peerConnection, callbacks, session
 
       peerConnection
         .setRemoteDescription(new RTCSessionDescription(sdpData))
+        .then(() => {
+          // Initial offer/answer is complete; from here any re-offer is an ICE restart.
+          session.negotiationEstablished = true;
+          if (publishSettings.useSimulcast && !simulcastAcceptedInAnswer(sdpData.sdp)) {
+            reportSimulcastRejection({
+              callbacks, peerConnection, websocket
+            });
+            return;
+          }
+          session.dataChannels = handleRefusedDataChannels(sdpData.sdp, session.dataChannels, callbacks);
+        })
         .catch((error) => { peerConnectionOnError(error, callbacks); });
     }
   }
@@ -203,6 +311,10 @@ const startPublish = (publishSettings, websocket, callbacks) =>
     
     const session = {
         sessionId: '[empty]',
+        // false until the initial offer/answer completes; afterwards every re-offer is an ICE restart.
+        negotiationEstablished: false,
+        // handle to the enabled data channels, cleared once the server refuses them.
+        dataChannels: null,
         peerConnectionConfig: {iceServers: []}
       };
 
@@ -252,6 +364,7 @@ const startPublish = (publishSettings, websocket, callbacks) =>
 const startPublishWhip = async (publishSettings, session, callbacks) => {
   let peerConnection;
   let sessionUrl;
+  let negotiationEstablished = false; // gate onnegotiationneeded so only ICE restarts (not the initial offer) re-offer
   const pendingCandidates = [];
 
   try {
@@ -263,6 +376,27 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
       const connected = event.currentTarget.connectionState === "connected";
       if (callbacks.onConnectionStateChange)
         callbacks.onConnectionStateChange({ connected });
+    };
+
+    // Auto-recovery: when ICE drops, restartIce() flags fresh credentials and fires
+    // onnegotiationneeded (handled below). Reuses the same recovery state machine as the
+    // WebSocket path so the heuristics stay in one place.
+    const iceRestartRecovery = attachIceRestartRecovery(peerConnection);
+
+    // ICE restart over WHIP (RFC 9725): on onnegotiationneeded we PATCH only the new credentials
+    // to the resource URL as an application/trickle-ice-sdpfrag; the engine renegotiates ICE on
+    // the existing session and returns its new ICE parameters as an sdpfrag, which we splice into
+    // the current answer so media recovers without a teardown.
+    peerConnection.onnegotiationneeded = () => {
+      // Initial WHIP offer is sent manually below; otherwise only for a restart we asked for.
+      if (!negotiationEstablished || !sessionUrl || !consumeIceRestartOffer(peerConnection)) return;
+      sendWhipWhepIceRestart(peerConnection, sessionUrl, {
+        authHeaders: getAuthHeaders(publishSettings.authToken),
+        label: "WHIP",
+      }).catch((e) => {
+        iceRestartRecovery.notifyRestartFailed(); // a failed restart leaves ICE down; let a later transition retry
+        peerConnectionOnError(e, callbacks);
+      });
     };
 
     peerConnection.onicecandidate = async (event) => {
@@ -286,24 +420,32 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     if (publishSettings.audioTrack != null)
       audioSender = peerConnection.addTrack(publishSettings.audioTrack);
 
-    if (publishSettings.videoTrack != null)
-      videoSender = peerConnection.addTrack(publishSettings.videoTrack);
+    videoSender = addVideoSender(peerConnection, publishSettings.videoTrack, publishSettings);
 
     if (callbacks.onSetSenders)
       callbacks.onSetSenders({ audioSender, videoSender });
 
+    // Same as the WebSocket path: create the channels before the offer so their m-lines are
+    // negotiated up front (we never renegotiate). onnegotiationneeded is gated until
+    // negotiationEstablished, so creating them here does not trigger a spurious WHIP re-offer.
+    const dataChannels = attachPublishDataChannels(peerConnection, callbacks, publishSettings);
+
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 
+    const offerSdp = publishSettings.useSimulcast
+      ? ensureSimulcastSDP(peerConnection.localDescription.sdp, publishSettings.simulcastRenditions)
+      : peerConnection.localDescription.sdp;
+
     console.log("Sending WHIP Offer:");
-    console.log(peerConnection.localDescription.sdp);
+    console.log(offerSdp);
 
     const whipUrl = `${publishSettings.signalingURL}/${publishSettings.applicationName}/${publishSettings.streamName}/whip`;
 
     const response = await fetch(whipUrl, {
       method: "POST",
       headers: { "Content-Type": "application/sdp", ...getAuthHeaders(publishSettings.authToken) },
-      body: peerConnection.localDescription.sdp
+      body: offerSdp
     });
 
     if (!response.ok) {
@@ -322,7 +464,10 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     }
     pendingCandidates.length = 0;
 
-    const answerSDP = await response.text();
+    const answerSDP = ensureApplicationSectionInAnswer(
+      peerConnection.localDescription.sdp,
+      await response.text()
+    );
 
     console.log("Received WHIP Answer:");
     console.log(answerSDP);
@@ -331,6 +476,16 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
       type: "answer",
       sdp: answerSDP
     });
+    negotiationEstablished = true; // from here, onnegotiationneeded means an ICE restart
+
+    if (publishSettings.useSimulcast && !simulcastAcceptedInAnswer(answerSDP)) {
+      reportSimulcastRejection({
+        callbacks, peerConnection, whipSessionUrl: sessionUrl
+      });
+      return;
+    }
+
+    handleRefusedDataChannels(answerSDP, dataChannels, callbacks);
 
     if (callbacks.onSetPeerConnection)
       callbacks.onSetPeerConnection({ peerConnection });

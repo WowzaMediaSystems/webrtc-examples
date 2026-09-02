@@ -79,6 +79,38 @@
   padding-bottom:57%;
   background-color:rgba(102, 102, 102, 1);
   border-radius:0.75em;
+  position: relative;
+}
+
+#rendition-badge {
+  position: absolute;
+  top: 0.75em;
+  right: 0.75em;
+  padding: 0.25em 0.6em;
+  background: rgba(0, 0, 0, 0.65);
+  color: #FFFFFF;
+  font-size: 0.85em;
+  font-family: monospace;
+  border-radius: 0.4em;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Subtitle overlay for the received captions data channel, shown over the player video. */
+.caption-overlay {
+  position: absolute;
+  left: 50%;
+  bottom: 1em;
+  transform: translateX(-50%);
+  max-width: 90%;
+  padding: 0.3em 0.8em;
+  background: rgba(0, 0, 0, 0.7);
+  color: #FFFFFF;
+  font-size: 1em;
+  text-align: center;
+  border-radius: 0.4em;
+  pointer-events: none;
+  z-index: 2;
 }
 
 #publish-content,
@@ -178,21 +210,45 @@ ul.navbar-nav {
   border-color: #FF8400;
 }
 
-.btn-ice-servers {
+.btn-drawer-toggle {
   background-color: #FF8400;
   border-color: #EEEEEE;
   color: #EEEEEE;
 }
 
-.btn-ice-servers:hover {
+.btn-drawer-toggle:hover {
   background-color: #FF8400;
   border-color: #EEEEEE;
   color: #EEEEEE;
 }
 
-.btn-ice-servers:active:focus {
+.btn-drawer-toggle:active:focus {
   background-color: #FF8400 !important;
   border-color: #EEEEEE !important;
   color: #EEEEEE !important;
+}
+
+.data-channel-panel .btn,
+.data-channel-panel .btn:hover,
+.data-channel-panel .btn:focus,
+.data-channel-panel .btn:active {
+  background-color: #FF8400;
+  border-color: #FF8400;
+  color: #FFFFFF;
+  box-shadow: none;
+}
+
+.data-channel-panel .chat-message {
+  max-width: 75%;
+}
+
+.data-channel-panel .chat-message-sent {
+  background-color: #FFE7CC;
+  border: 1px solid #FF8400;
+}
+
+.data-channel-panel .chat-message-received {
+  background-color: #EEEEEE;
+  border: 1px solid #D9D9D9;
 }
 

@@ -4,11 +4,15 @@ import { useDispatch, useSelector } from 'react-redux';
 import * as PublishSettingsActions from '../../actions/publishSettingsActions';
 import * as WebRTCPublishActions from '../../actions/webrtcPublishActions';
 import * as ErrorsActions from '../../actions/errorsActions';
+import * as DataChannelActions from '../../actions/dataChannelActions';
+import { describeReceivedMessage } from '../../utils/DataChannelUtils';
+import { DATA_CHANNELS_UNAVAILABLE_MESSAGE } from '../../webrtc/attachDataChannel';
 
 import startPublish from '../../webrtc/startPublish';
 import stopPublish from '../../webrtc/stopPublish';
 import replaceAudioTrack from '../../webrtc/replaceAudioTrack';
 import replaceVideoTrack from '../../webrtc/replaceVideoTrack';
+import { applySimulcastParameters } from '../../utils/SimulcastUtils';
 
 const Publisher = () => {
 
@@ -30,6 +34,7 @@ const Publisher = () => {
           dispatch({type:PublishSettingsActions.SET_PUBLISH_FLAGS, publishStarting:false, publishStart:false});
           dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_WEBSOCKET, websocket:null});
           dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_PEERCONNECTION, peerConnection:null});
+          dispatch(DataChannelActions.resetDataChannel('publish'));
         },
         onConnectionStateChange: (result) => {
           dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_CONNECTED,connected:result.connected});
@@ -43,6 +48,25 @@ const Publisher = () => {
         onSetSenders: (senders) => {
           dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_PEERCONNECTION_AUDIO_SENDER,peerConnectionAudioSender:senders.audioSender});
           dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_PEERCONNECTION_VIDEO_SENDER,peerConnectionVideoSender:senders.videoSender});
+        },
+        onSetDataChannel: (result) => {
+          dispatch(DataChannelActions.setDataChannelHandle('publish', result.dataChannel));
+        },
+        onDataChannelStateChange: (result) => {
+          dispatch(DataChannelActions.setDataChannelState('publish', result));
+        },
+        onDataChannelMessage: (result) => {
+          dispatch(DataChannelActions.addDataChannelMessage('publish', describeReceivedMessage(result)));
+        },
+        onDataChannelError: (result) => {
+          dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:'Data channel error: ' + result.message});
+        },
+        onDataChannelsUnavailable: () => {
+          // Publishing is unaffected, so this only reports - no media state is touched.
+          dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:DATA_CHANNELS_UNAVAILABLE_MESSAGE});
+        },
+        onCaption: (result) => {
+          dispatch(DataChannelActions.setCaption('publish', result.text));
         }
       });
     }
@@ -63,6 +87,7 @@ const Publisher = () => {
         },
         onPublishStopped: () => {
           dispatch({type:WebRTCPublishActions.SET_WEBRTC_PUBLISH_CONNECTED,connected:false});
+          dispatch(DataChannelActions.resetDataChannel('publish'));
         }
       });
     }
@@ -105,6 +130,18 @@ const Publisher = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[dispatch,videoTrack]);
 
+  // Apply the simulcast scale down values, which can change mid-stream.
+  // Re-runs on connect so edits made while connecting are picked up.
+  useEffect(() => {
+    if (!webrtcPublish.connected || !publishSettings.useSimulcast || videoSender == null) return;
+
+    applySimulcastParameters(videoSender, publishSettings.simulcastRenditions)
+      .catch((error) => {
+        dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:'Simulcast update failed: ' + error.message});
+      });
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[dispatch,publishSettings.simulcastRenditions,webrtcPublish.connected]);
 
   return <></>;
 }
