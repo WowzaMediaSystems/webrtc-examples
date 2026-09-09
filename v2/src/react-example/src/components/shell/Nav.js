@@ -89,6 +89,9 @@ const Nav = (props) => {
         <li className="nav-item mr-3">
           <a href="https://developer.wowza.com">Developer Portal</a>
         </li>
+        <li className="nav-item mr-3">
+          <a href="https://github.com/WowzaMediaSystems/webrtc-examples" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </li>
       </ul>
     </nav>
   );
