@@ -13,7 +13,7 @@ const Errors = () => {
 
   return (
     <div className="row justify-content-center mt-3" id="error-panel">
-      <div className="col-10 alert alert-danger alert-dismissible p-2">
+      <div className="col-10 alert alert-danger alert-dismissible py-2 pl-2">
         <button id="error-panel-close" type="button" className="close" aria-label="Close" onClick={()=>dispatch({type:HIDE_ERROR_PANEL})}>
           <span aria-hidden="true">&times;</span>
         </button>

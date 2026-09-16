@@ -4,6 +4,12 @@ import { validateParams } from '../utils/ValidationUtils';
 import { addIceServers } from '../utils/IceServersUtils';
 import { attachIceRestartRecovery, consumeIceRestartOffer } from '../utils/IceRestartUtils';
 import { sendWhipWhepIceRestart } from '../utils/SdpFragUtils';
+import {
+  armAnswerTimeout,
+  clearAnswerTimeout,
+  getAnswerTimeoutMessage,
+  getWhipWhepFailureMessage
+} from '../utils/NegotiationFailureUtils';
 import attachDataChannel, {
   CHAT_CHANNEL_LABEL,
   CAPTIONS_CHANNEL_LABEL,
@@ -188,6 +194,10 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
     return;
   }
 
+  // Any status reply means the engine saw the offer; only silence is a timeout. The repeater
+  // retry below re-sends the offer and re-arms it.
+  clearAnswerTimeout(session);
+
   let msgStatus = Number(msgJSON['statusCode']);
   console.log(`Status: ${msgStatus}`);
 
@@ -279,6 +289,18 @@ const websocketSendPlayGetOffer = async (playSettings, websocket, peerConnection
 
     console.log("sendPlayGetOffer: " + JSON.stringify(offerPayload));
     websocket.send(JSON.stringify(offerPayload));
+
+    // An engine that doesn't understand the offer (see NegotiationFailureUtils) never replies, so
+    // without this the page would sit in "starting" forever. Only the initial offer is guarded: an
+    // ICE restart has a session behind it and its own recovery.
+    if (offerPayload.messageType === "OFFER") {
+      armAnswerTimeout(session, () => {
+        // Something else already ended this attempt (a Stop, an error) if the socket is gone.
+        if (websocket.readyState !== WebSocket.OPEN) return;
+        if (callbacks.onError)
+          callbacks.onError({ message: getAnswerTimeoutMessage(playSettings) });
+      });
+    }
   } catch (error) {
     console.error('Error generating secure token:', error);
     if (callbacks.onError) {
@@ -307,6 +329,8 @@ const startPlay = (playSettings, callbacks) =>
       negotiationEstablished: false,
       // handle to the enabled data channels, cleared once the server refuses them.
       dataChannels: null,
+      // pending timer waiting for the answer to the initial offer, see NegotiationFailureUtils.
+      answerTimeout: null,
       peerConnectionConfig: {iceServers: []}
     };
 
@@ -323,7 +347,10 @@ const startPlay = (playSettings, callbacks) =>
         websocket.binaryType = 'arraybuffer';
 
         websocket.addEventListener ("open", () => { websocketOnOpen(playSettings, websocket, callbacks, session); });
-        websocket.addEventListener ("error", (error) => { websocketOnError(error, callbacks); });
+        websocket.addEventListener ("error", (error) => {
+          clearAnswerTimeout(session);
+          websocketOnError(error, callbacks);
+        });
 
         if (callbacks.onSetWebsocket)
           callbacks.onSetWebsocket({websocket:websocket});
@@ -420,7 +447,7 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
     });
 
     if (!response.ok) {
-      throw new Error(`WHEP request failed: ${response.status}`);
+      throw new Error(getWhipWhepFailureMessage("WHEP", response.status, playSettings));
     }
 
     const locationHeader = response.headers.get("Location");
