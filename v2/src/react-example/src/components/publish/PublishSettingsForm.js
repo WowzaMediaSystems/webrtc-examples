@@ -16,6 +16,7 @@ import CollapsibleSection from '../shared/CollapsibleSection';
 import FormCheckbox from '../shared/FormCheckbox';
 import { triggerIceRestart } from '../../utils/IceRestartUtils';
 import ExternalLinks from '../../constants/ExternalLinks';
+import DataChannelRequirements from '../../constants/DataChannelRequirements';
 import videoOnImage from '../../images/videocam-32px.svg';
 import videoOffImage from '../../images/videocam-off-32px.svg';
 import micOnImage from '../../images/mic-32px.svg';
@@ -288,7 +289,7 @@ const PublishSettingsForm = () => {
           )}
         </div>
 
-        <div className="row align-items-center mt-3 mb-2">
+        <div className="row align-items-center mt-3 mb-0">
           <div className="col-6">
             <FormCheckbox
               label="Enable Chat"
@@ -306,6 +307,12 @@ const PublishSettingsForm = () => {
               disabled={webrtcPublish.connected}
               onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_CAPTIONS_ENABLED,captionsEnabled:e.target.checked})}
             />
+          </div>
+        </div>
+
+        <div className="row mb-2">
+          <div className="col-12">
+            <small className="form-text text-muted">{DataChannelRequirements.hint}</small>
           </div>
         </div>
 

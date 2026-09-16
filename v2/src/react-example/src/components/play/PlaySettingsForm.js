@@ -10,6 +10,7 @@ import CookieName from '../../constants/CookieName';
 import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
 import CollapsibleSection from '../shared/CollapsibleSection';
 import FormCheckbox from '../shared/FormCheckbox';
+import DataChannelRequirements from '../../constants/DataChannelRequirements';
 import { triggerIceRestart } from '../../utils/IceRestartUtils';
 import ExternalLinks from '../../constants/ExternalLinks';
 import fileCopyImage from '../../images/file_copy-24px.svg';
@@ -248,7 +249,7 @@ const PlaySettingsForm = () => {
           )}
         </div>
 
-        <div className="row align-items-center mt-2 mb-2">
+        <div className="row align-items-center mt-2 mb-0">
           <div className="col-6">
             <FormCheckbox
               label="Enable Chat"
@@ -266,6 +267,12 @@ const PlaySettingsForm = () => {
               disabled={connected}
               onChange={handleCheckboxChange(PlaySettingsActions.SET_PLAY_CAPTIONS_ENABLED, 'captionsEnabled')}
             />
+          </div>
+        </div>
+
+        <div className="row mb-2">
+          <div className="col-12">
+            <small className="form-text text-muted">{DataChannelRequirements.hint}</small>
           </div>
         </div>
 
