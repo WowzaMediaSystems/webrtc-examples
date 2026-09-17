@@ -16,6 +16,12 @@ import attachDataChannel, {
   ensureApplicationSectionInAnswer
 } from "./attachDataChannel";
 import { startCaptionBroadcast } from "./captions";
+import {
+  armAnswerTimeout,
+  clearAnswerTimeout,
+  getAnswerTimeoutMessage,
+  getWhipWhepFailureMessage
+} from "../utils/NegotiationFailureUtils";
 
 // Bring up the enabled publisher data channels: the full-duplex chat channel and/or the one-way
 // captions broadcast, each gated by its own setting. `onCaption` (if provided) mirrors each sent
@@ -121,6 +127,19 @@ const peerConnectionCreateOfferSuccess = (description, publishSettings, websocke
       };
       console.log(`Sending ${payload.messageType}:`, JSON.stringify(payload));
       websocket.send(JSON.stringify(payload));
+
+      // An engine that doesn't understand the offer (see NegotiationFailureUtils) never replies, so
+      // without this the page would sit in "starting" forever. Only the initial offer is guarded: an
+      // ICE restart has a session behind it and its own recovery.
+      if (payload.messageType === "OFFER") {
+        armAnswerTimeout(session, () => {
+          // Something else already ended this attempt (and reported it) if the socket is gone.
+          if (websocket.readyState !== WebSocket.OPEN) return;
+          tearDownConnection(peerConnection, websocket);
+          if (callbacks.onError)
+            callbacks.onError({ message: getAnswerTimeoutMessage(publishSettings) });
+        });
+      }
     })
     .catch((error) => {
       const newError = { message: "Peer connection failed", ...error };
@@ -244,6 +263,9 @@ const websocketOnMessage = (event, publishSettings, websocket, peerConnection, c
     return;
   }
 
+  // Any status reply means the engine saw the offer; only silence is a timeout.
+  clearAnswerTimeout(session);
+
   let msgStatus = Number(msgJSON['statusCode']);
 
   if (msgStatus === 504) {
@@ -315,6 +337,8 @@ const startPublish = (publishSettings, websocket, callbacks) =>
         negotiationEstablished: false,
         // handle to the enabled data channels, cleared once the server refuses them.
         dataChannels: null,
+        // pending timer waiting for the answer to the initial offer, see NegotiationFailureUtils.
+        answerTimeout: null,
         peerConnectionConfig: {iceServers: []}
       };
 
@@ -347,6 +371,7 @@ const startPublish = (publishSettings, websocket, callbacks) =>
 
         websocket.addEventListener("error", (error) => {
           clearTimeout(connectionTimeout);
+          clearAnswerTimeout(session);
           websocketOnError(error, callbacks);
         });
 
@@ -449,7 +474,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     });
 
     if (!response.ok) {
-      throw new Error(`WHIP failed: ${response.status}`);
+      throw new Error(getWhipWhepFailureMessage("WHIP", response.status, publishSettings));
     }
 
     const locationHeader = response.headers.get("Location");
