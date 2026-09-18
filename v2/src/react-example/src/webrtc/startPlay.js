@@ -1,7 +1,7 @@
 import stopPlay from './stopPlay';
 import getSecureToken from './SecureToken';
 import { validateParams } from '../utils/ValidationUtils';
-import { addIceServers } from '../utils/IceServersUtils';
+import { addIceServers, enforceRelayOnly } from '../utils/IceServersUtils';
 import { attachIceRestartRecovery, consumeIceRestartOffer } from '../utils/IceRestartUtils';
 import { sendWhipWhepIceRestart } from '../utils/SdpFragUtils';
 import {
@@ -99,7 +99,7 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
   
   try {
     addIceServers(playSettings, session);
-    peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
+    peerConnection = enforceRelayOnly(new RTCPeerConnection(session.peerConnectionConfig));
     peerConnection.addTransceiver('video', { direction: 'recvonly' });
     peerConnection.addTransceiver('audio', { direction: 'recvonly' });
     peerConnection.ontrack = (event) => {
@@ -373,7 +373,7 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
 
   try {
     addIceServers(playSettings, session);
-    peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
+    peerConnection = enforceRelayOnly(new RTCPeerConnection(session.peerConnectionConfig));
 
     // Hand it over immediately, as the WebSocket path does: stopPlay can only close what it was given.
     if (callbacks.onSetPeerConnection)

@@ -1,6 +1,6 @@
 // Utilities
 
-import { addIceServers } from "../utils/IceServersUtils";
+import { addIceServers, enforceRelayOnly } from "../utils/IceServersUtils";
 import { validateParams } from "../utils/ValidationUtils";
 import {
   SIMULCAST_REJECTED_MESSAGE,
@@ -164,7 +164,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
   try {
 
     addIceServers(publishSettings, session);
-    peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
+    peerConnection = enforceRelayOnly(new RTCPeerConnection(session.peerConnectionConfig));
 
     peerConnection.onicecandidate = (event) => {
       if (websocket.readyState !== WebSocket.OPEN) return;
@@ -395,7 +395,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
   try {
 
     addIceServers(publishSettings, session);
-    peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
+    peerConnection = enforceRelayOnly(new RTCPeerConnection(session.peerConnectionConfig));
 
     peerConnection.onconnectionstatechange = (event) => {
       const connected = event.currentTarget.connectionState === "connected";
