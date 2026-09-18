@@ -39,7 +39,7 @@ You'll need to set up WebRTC for Wowza Streaming Engine to run the examples. For
 - **Configurable ICE servers** — STUN and TURN servers can now be set from the UI. Multiple servers can be provided as a comma-separated list. Credentials for TURN servers (username and password) are also configurable.
 - **SecureToken support** — Wowza Secure Token hash generation is now available in the React example. The token is computed client-side using the Web Crypto API (SHA-256) and sent with the publish/play request. See `v2/src/react-example/src/webrtc/SecureToken.js` for usage notes.
 - **Form validation** — Required fields (application name and stream name) are validated before a connection is attempted, surfacing errors early instead of failing silently.
-- **Current build toolchain** — v2 builds with [Vite](https://vite.dev/) on React 19 and Redux Toolkit. `npm install` reports no known vulnerabilities, `npm run build` produces no warnings, and no `--openssl-legacy-provider` workaround is needed.
+- **Current build toolchain** — v2 builds with [Vite](https://vite.dev/) on React 19, Redux Toolkit and Bootstrap 5.3. `npm install` reports no known vulnerabilities, `npm run build` produces no warnings, and no `--openssl-legacy-provider` workaround is needed. Bootstrap is installed from npm and bundled, and the handful of icons are inline SVG, so the built page loads nothing from a third-party CDN at runtime and waits on no icon font.
 
 ### Running the tests
 
@@ -58,7 +58,7 @@ set WOWZA_APPLICATION=webrtc
 ```
 
 Tests that need an Engine skip themselves when one is not reachable, so the suite is still
-useful without a server. It covers a boot smoke check of the publish and play pages.
+useful without a server. It covers the console shell: the settings forms, remembered values, the header status and the theme, plus a boot smoke check of the publish and play pages.
 
 ### Directory structure
 
