@@ -90,15 +90,25 @@ const publishSettingsReducer = (state = initialState, action) => {
       if (action.publishStopping != null) publishFlagsState.publishStopping = action.publishStopping;
       return publishFlagsState;
     }
+    /*
+     * MediaStreamTrack.enabled is the switch, and it lives on the track rather than in here:
+     * there is nowhere else to put it, because the track is what carries the media. So these
+     * two mutate the track and return a fresh state object, which is what tells React to read
+     * the new value back.
+     *
+     * The guard is not defensive noise. The toggle buttons sit beside the device dropdowns and
+     * are reachable before a device has been granted, and without it the reducer threw on a
+     * null track and took the page down with it.
+     */
     case PublishSettingsActions.TOGGLE_VIDEO_ENABLED: {
-      let videoTrackState = { ...state }
-      videoTrackState.videoTrack.enabled = !videoTrackState.videoTrack.enabled
-      return videoTrackState
+      if (!state.videoTrack) return state
+      state.videoTrack.enabled = !state.videoTrack.enabled
+      return { ...state }
     }
     case PublishSettingsActions.TOGGLE_AUDIO_ENABLED: {
-      let audioTrackState = { ...state }
-      audioTrackState.audioTrack.enabled = !audioTrackState.audioTrack.enabled
-      return audioTrackState
+      if (!state.audioTrack) return state
+      state.audioTrack.enabled = !state.audioTrack.enabled
+      return { ...state }
     }
     default:
       return state

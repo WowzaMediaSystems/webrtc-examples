@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import QueryString from 'query-string';
+import { readQueryParams } from '../../utils/QueryParams';
 
 import * as compositeSettingsActions from '../../actions/compositeSettingsActions';
 import { compositePublishUrlParameters, compositePublishUrlParametersPrefix } from '../../constants/CompositeOptions';
@@ -17,7 +17,7 @@ const CompositePublishSettingsForm = () => {
   useEffect(() => {
 
     let cookieValues = getCookieValues(CookieName);
-    let qs = QueryString.parse(window.location.search);
+    let qs = readQueryParams();
     let savedValues = { ...cookieValues, ...qs };
 
     for (let param in savedValues)
@@ -70,7 +70,7 @@ const CompositePublishSettingsForm = () => {
     <form id="publish-settings-form">
       <div className="row">
         <div className="col-12">
-          <div className="form-group">
+          <div className="mb-3">
             <label htmlFor="sdpURL">Signaling URL</label>
             <input type="text" 
               className="form-control" 
@@ -86,7 +86,7 @@ const CompositePublishSettingsForm = () => {
       </div>
       <div className="row">
         <div className="col-lg-6 col-sm-12">
-          <div className="form-group">
+          <div className="mb-3">
             <label htmlFor="applicationName">Application Name</label>
             <input type="text" 
               className="form-control" 
@@ -99,7 +99,7 @@ const CompositePublishSettingsForm = () => {
           </div>
         </div>
         <div className="col-lg-6 col-sm-12">
-          <div className="form-group">
+          <div className="mb-3">
             <label htmlFor="streamName">Stream Name</label>
             <input type="text" 
               className="form-control" 
@@ -114,7 +114,7 @@ const CompositePublishSettingsForm = () => {
       </div>
       <div className="row">
         <div className="col-lg-6 col-sm-12">
-          <div className="form-group">
+          <div className="mb-3">
             <label htmlFor="audioBitrate">Audio Bitrate</label>
             <div className="input-group">
               <input type="number" 
@@ -124,14 +124,12 @@ const CompositePublishSettingsForm = () => {
                 value={compositeSettings.audioBitrate}
                 onChange={(e)=>dispatch({type:compositeSettingsActions.SET_COMPOSITE_AUDIO_BITRATE,audioBitrate:e.target.value})}
                 />
-              <div className="input-group-append">
-                <span className="input-group-text">Kbps</span>
-              </div>
+              <span className="input-group-text">Kbps</span>
             </div>
           </div>
         </div>
         <div className="col-lg-6 col-sm-12">
-          <div className="form-group">
+          <div className="mb-3">
             <label htmlFor="audioCodec">Audio Codec</label>
             <div className="input-group">
               <select className="form-control" id="audioCodec" name="audioCodec" value="opus" readOnly>
@@ -143,7 +141,7 @@ const CompositePublishSettingsForm = () => {
       </div>
       <div className="row">
         <div className="col-lg-6 col-sm-12">
-          <div className="form-group">
+          <div className="mb-3">
             <label htmlFor="videoBitrate">Video Bitrate</label>
             <div className="input-group">
               <input type="number" 
@@ -153,9 +151,7 @@ const CompositePublishSettingsForm = () => {
                 value={compositeSettings.videoBitrate}
                 onChange={(e)=>dispatch({type:compositeSettingsActions.SET_COMPOSITE_VIDEO_BITRATE,videoBitrate:e.target.value})}
               />
-              <div className="input-group-append">
-                <span className="input-group-text">Kbps</span>
-              </div>
+              <span className="input-group-text">Kbps</span>
             </div>
           </div>
         </div>

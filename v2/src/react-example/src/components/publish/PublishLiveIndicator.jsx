@@ -10,7 +10,7 @@ const PublishLiveIndicator = () => {
     
   return (
     <div id="video-live-indicator">
-      <span id="video-live-indicator-live" className="badge badge-pill badge-danger">LIVE</span>
+      <span id="video-live-indicator-live" className="badge rounded-pill text-bg-danger">LIVE</span>
     </div>
   );
 }
