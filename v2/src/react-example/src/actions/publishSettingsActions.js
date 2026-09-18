@@ -46,3 +46,4 @@ export const resetPublish = () => {
     publishStopping: false,
   }
 }
+export const SET_PUBLISH_VIDEO_CODEC = 'SET_PUBLISH_VIDEO_CODEC';

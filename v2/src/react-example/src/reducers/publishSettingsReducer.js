@@ -1,5 +1,6 @@
 import * as PublishSettingsActions from '../actions/publishSettingsActions';
 import { DEFAULT_SIMULCAST_RENDITIONS } from '../utils/SimulcastUtils';
+import { DEFAULT_VIDEO_CODEC } from '../utils/CodecUtils';
 
 const initialState = {
   signalingURL: '',
@@ -17,6 +18,7 @@ const initialState = {
   videoTrack2DeviceId: '',
   videoFrameRate: '30',
   videoFrameSize: 'default',
+  videoCodec: DEFAULT_VIDEO_CODEC,
   userData: undefined,
   useWhip: false,
   authToken: '',
@@ -66,6 +68,8 @@ const publishSettingsReducer = (state = initialState, action) => {
       return { ...state, videoTrack2DeviceId:action.videoTrack2DeviceId };
     case PublishSettingsActions.SET_PUBLISH_USER_DATA:
       return { ...state, userData:action.userData };
+    case PublishSettingsActions.SET_PUBLISH_VIDEO_CODEC:
+      return { ...state, videoCodec: action.videoCodec };
     case PublishSettingsActions.SET_PUBLISH_USE_WHIP:
       return { ...state, useWhip: action.useWhip };
     case PublishSettingsActions.SET_PUBLISH_AUTH_TOKEN:
