@@ -57,20 +57,17 @@ export const VIDEO_REJECTED_MESSAGE =
   "publishing audio only. Check the application's WebRTC video codecs and this browser's " +
   "send capabilities.";
 
-// RFC 3264: a zero port on the answer's m=video is a rejection - the server found no video
-// codec in common with the browser. A missing section means the same. Only meaningful when
-// we offered video in the first place.
+// RFC 3264: a zero port on the answer's m=video is a rejection - no video codec in common.
+// A missing section means the same. Only meaningful when we offered video.
 const videoRejectedInAnswer = (answerSdp, publishSettings) => {
   if (publishSettings.videoTrack == null) return false;
   const videoSection = answerSdp?.match(/^m=video +(\d+)/m);
   return videoSection == null || videoSection[1] === "0";
 };
 
-// Audio has its own m-section, so a rejected video section is not a session failure: the
-// browser stops sending video by itself and the publish stands as audio only. Tell the UI,
-// leave the session alone. Returns whether video was rejected, because that also explains
-// away any missing simulcast attributes - see the answer handling below. Reported once; an
-// ICE-restart answer carries the same rejection.
+// Audio has its own m-section, so a rejected video section is not a session failure: the publish
+// stands as audio only. Returns whether video was rejected, which also explains away any missing
+// simulcast attributes. Reported once - an ICE-restart answer repeats the rejection.
 const handleRejectedVideo = (answerSdp, publishSettings, session, callbacks) => {
   if (!videoRejectedInAnswer(answerSdp, publishSettings)) return false;
   if (!session.videoRejected) {
@@ -329,9 +326,7 @@ const websocketOnMessage = (event, publishSettings, websocket, peerConnection, c
         .then(() => {
           // Initial offer/answer is complete; from here any re-offer is an ICE restart.
           session.negotiationEstablished = true;
-          // Video first: when the whole video m-line is rejected the simulcast attributes are
-          // missing because of that, so blaming simulcast would send the user after the wrong
-          // thing. Only an accepted video section can fail to confirm simulcast.
+          // Video first: a rejected m-line is why simulcast looks unconfirmed - don't blame simulcast.
           const videoRejected = handleRejectedVideo(sdpData.sdp, publishSettings, session, callbacks);
           if (!videoRejected && publishSettings.useSimulcast && !simulcastAcceptedInAnswer(sdpData.sdp)) {
             reportSimulcastRejection({
@@ -540,8 +535,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     });
     negotiationEstablished = true; // from here, onnegotiationneeded means an ICE restart
 
-    // Same order as the WebSocket path: a rejected video m-line is why simulcast would look
-    // unconfirmed, so it is reported instead of a simulcast rejection.
+    // Video before simulcast, same reason as the WebSocket path.
     const videoRejected = handleRejectedVideo(answerSDP, publishSettings, session, callbacks);
     if (!videoRejected && publishSettings.useSimulcast && !simulcastAcceptedInAnswer(answerSDP)) {
       reportSimulcastRejection({
