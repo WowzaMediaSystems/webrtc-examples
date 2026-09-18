@@ -27,6 +27,15 @@ test.describe('app shell', () => {
     await expect(page.locator('#play-settings')).toBeVisible();
   });
 
+  test('the debug panel starts collapsed and opens on click', async ({ page }) => {
+    await page.goto('/#/play');
+    const toggle = page.getByRole('button', { name: /Server communication/ });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByRole('button', { name: 'Signaling', exact: true })).toBeVisible();
+  });
+
   test('the default frame size does not raise an overconstrained error', async ({ page }) => {
     // Regression: "default" used to impose min 640x360, which failed on cameras that
     // could not reach it, the moment the page loaded.

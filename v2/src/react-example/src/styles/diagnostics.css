@@ -1,0 +1,312 @@
+/* Live stat strip and the docked server-communication log. */
+
+/* ------------------------------------------------------------------ stat strip */
+
+.wz-stats {
+  display: grid;
+  /* 104px fits the player's nine tiles on one row at a usual stage width; narrower than
+     that they wrap, and the container carries the tile colour so a part-filled last row
+     does not read as a hole. */
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  background: var(--wz-surface);
+  border: 1px solid var(--wz-border);
+  border-radius: var(--wz-radius);
+  overflow: hidden;
+}
+
+.wz-stat {
+  background: var(--wz-surface);
+  padding: 9px 12px;
+  min-width: 0;
+  border-right: 1px solid var(--wz-border);
+  border-top: 1px solid var(--wz-border);
+}
+
+/* The grid wraps, so only trim the edges that actually sit on the outside. */
+.wz-stat:nth-child(-n + 8) { border-top: 0; }
+.wz-stat:last-child { border-right: 0; }
+
+.wz-stat__label {
+  font-size: 11px;
+  color: var(--wz-text-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wz-stat__row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 3px;
+}
+
+/*
+ * The UI face with tabular figures, not the monospace stack.
+ *
+ * Monospace was there for one property, digits of equal width, so that a value changing every
+ * second does not shuffle the ones beside it. font-variant-numeric gives that on its own, and
+ * Inter carries the feature. What monospace also gave was whichever terminal face the machine
+ * happened to have: Consolas on Windows, something else elsewhere, none of them chosen. The
+ * mono stack stays where it earns its place, on the log and the URL fields, where character
+ * alignment is the point rather than a side effect.
+ */
+.wz-stat__value {
+  font-family: var(--wz-font-sans);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  color: var(--wz-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /*
+   * The figure does not shrink. Without this both it and the trend line beside it give way
+   * in proportion, so "218 kbps" became "218 kb..." while the sparkline still had 26px it
+   * could have surrendered. min-content here is the whole unbroken string, so the sparkline
+   * absorbs the squeeze down to its own floor.
+   */
+  flex-shrink: 0;
+  min-width: min-content;
+}
+
+.wz-stat__sub {
+  font-size: 10px;
+  color: var(--wz-text-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tone is a rule on the leading edge; the value and unit always carry the meaning in text. */
+.wz-stat--good { box-shadow: inset 2px 0 0 var(--wz-success); }
+.wz-stat--fair { box-shadow: inset 2px 0 0 var(--wz-warning); }
+.wz-stat--poor { box-shadow: inset 2px 0 0 var(--wz-danger); }
+.wz-stat--unknown { box-shadow: inset 2px 0 0 var(--wz-border-strong); }
+.wz-stat--poor .wz-stat__value { color: var(--wz-danger); }
+
+/* ------------------------------------------------------------------ docked log */
+
+.wz-debug {
+  flex-shrink: 0;
+  background: var(--wz-surface-sunken);
+  border-top: 1px solid var(--wz-border-strong);
+  display: flex;
+  flex-direction: column;
+}
+
+.wz-debug__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0 16px;
+  height: 38px;
+  background: transparent;
+  border: 0;
+  color: var(--wz-text);
+  font-weight: 600;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.wz-debug__toggle:hover { background: var(--wz-hover); }
+
+.wz-debug__count {
+  margin-left: auto;
+  font-family: var(--wz-font-mono);
+  font-size: 11px;
+  color: var(--wz-text-subtle);
+}
+
+.wz-debug__body {
+  border-top: 1px solid var(--wz-border);
+  display: flex;
+  flex-direction: column;
+  height: 200px;
+}
+
+.wz-debug__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--wz-border);
+  flex-shrink: 0;
+}
+
+.wz-debug__filters { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.wz-chip {
+  background: transparent;
+  border: 1px solid var(--wz-border-strong);
+  color: var(--wz-text-muted);
+  border-radius: var(--wz-radius-sm);
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.wz-chip:hover { color: var(--wz-text); }
+
+.wz-chip--on {
+  background: var(--wz-accent);
+  border-color: var(--wz-accent);
+  color: var(--wz-accent-contrast);
+  font-weight: 600;
+}
+
+.wz-debug__follow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--wz-text-muted);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.wz-debug__scroller {
+  flex-grow: 1;
+  overflow-y: auto;
+  font-family: var(--wz-font-mono);
+  font-size: 12px;
+}
+
+.wz-debug__empty {
+  margin: 0;
+  padding: 18px 16px;
+  color: var(--wz-text-subtle);
+  font-family: var(--wz-font-sans);
+  font-size: 12px;
+}
+
+.wz-debug__head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 4px 16px;
+  background: transparent;
+  border: 0;
+  color: var(--wz-text-muted);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.wz-debug__head:disabled { cursor: default; }
+.wz-debug__head:not(:disabled):hover { background: var(--wz-hover); }
+
+.wz-debug__time { color: var(--wz-text-subtle); flex: none; }
+.wz-debug__arrow { flex: none; width: 1ch; font-weight: 700; }
+.wz-debug__row--out .wz-debug__arrow { color: var(--wz-accent); }
+.wz-debug__row--in .wz-debug__arrow { color: var(--wz-info); }
+.wz-debug__row--error { background: color-mix(in srgb, var(--wz-danger) 10%, transparent); }
+.wz-debug__row--error .wz-debug__arrow,
+.wz-debug__row--error .wz-debug__label { color: var(--wz-danger); }
+
+.wz-debug__chan {
+  flex: none;
+  min-width: 4ch;
+  color: var(--wz-text-subtle);
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.wz-debug__label {
+  flex: 1 1 auto;
+  color: var(--wz-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wz-debug__chev { flex: none; color: var(--wz-text-subtle); }
+
+.wz-debug__detail {
+  margin: 0;
+  padding: 6px 16px 10px 44px;
+  color: var(--wz-text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow: auto;
+}
+/* ------------------------------------------------------------------ stat groups */
+
+/*
+ * Two groups rather than one row. "Which codec" and "how far behind" are different
+ * questions, and putting them in one undifferentiated strip made you read all of it to
+ * find either.
+ */
+.wz-statgroups { display: flex; flex-direction: column; gap: 10px; }
+
+.wz-statgroup__title {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wz-text-subtle);
+}
+
+/* ------------------------------------------------------------------ simulcast layers */
+
+.wz-layers {
+  border: 1px solid var(--wz-border);
+  border-radius: var(--wz-radius);
+  background: var(--wz-surface);
+  overflow: hidden;
+}
+
+.wz-layers__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--wz-border);
+}
+
+.wz-layers__title { font-size: 11px; font-weight: 600; color: var(--wz-text); }
+.wz-layers__summary { font-size: 11px; color: var(--wz-text-subtle); margin-left: auto; }
+
+.wz-layers__table { width: 100%; border-collapse: collapse; }
+
+.wz-layers__table th,
+.wz-layers__table td {
+  padding: 5px 12px;
+  text-align: left;
+  font-size: 12px;
+  font-family: var(--wz-font-sans);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.wz-layers__table thead th {
+  font-family: var(--wz-font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--wz-text-subtle);
+  border-bottom: 1px solid var(--wz-border);
+}
+
+.wz-layers__table tbody th { color: var(--wz-accent); font-weight: 700; }
+.wz-layers__table tbody tr + tr th,
+.wz-layers__table tbody tr + tr td { border-top: 1px solid var(--wz-border); }
+
+/* An idle layer is dimmed, but its reason is still stated in words beside it. */
+.wz-layers__row--idle td,
+.wz-layers__row--idle th { color: var(--wz-text-subtle); }
+
+.wz-layers__state { font-family: var(--wz-font-sans); font-size: 11px; }
+.wz-layers__state--on { color: var(--wz-success); }
+.wz-layers__state--off { color: var(--wz-warning); }
