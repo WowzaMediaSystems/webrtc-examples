@@ -1,97 +1,203 @@
 /*
- * This code and all components (c) Copyright 2019-2020, Wowza Media Systems, LLC. All rights reserved.
- * This code is licensed pursuant to the BSD 3-Clause License.
+ * This code and all components (c) Copyright 2019-2026, Wowza Media Systems, LLC.
+ * All rights reserved. This code is licensed pursuant to the BSD 3-Clause License.
+ *
+ * Every colour here comes from src/styles/tokens.css. Do not add a literal hex value
+ * to this file.
  */
 
- html {
+html,
+body {
   height: 100%;
- }
- body {
-   background: #F8F8F8;
-   background-image: url(./images/bg-image-1.svg), url(./images/bg-image-2.svg);
-   background-position: bottom center, top center;
-   background-repeat: no-repeat;
-   background-size: 100% 32%, 100% 60%;
-   height: 100%;
- }
- a:disabled,
- button:disabled {
-   cursor: not-allowed;
- }
-
- .alert-dismissible .close {
-   padding: .4rem 1.25rem;
- }
-
- #top-nav {
-   background: #FFFFFF;
-   box-shadow: 0px 3px 3px rgba(0, 0, 0, 0.05);
- }
-
- #content {
-   margin-top: 3em;
-   max-width: 1500px;
- }
- #player-video,
- #publisher-video {
-   width: 100%    !important;
-   height: auto   !important;
-   background: #EEEEEE;
-   border-radius: 10px;
-   position: relative;
-   left: 50%;
-   transform: translateX(-50%);
- }
-
-.meeting-peer-player {
-  width: 45%    !important;
-  height: auto   !important;
-  background: #EEEEEE;
-  border-radius: 10px;
-  margin: 15px 15px;
 }
 
- #video-live-indicator {
-   position: absolute;
-   top: 0.5em;
-   left: 1.5em;
-   opacity: 0.9;
- }
+body {
+  background: var(--wz-bg);
+  color: var(--wz-text);
+  font-family: var(--wz-font-sans);
+  -webkit-font-smoothing: antialiased;
+}
 
- #build {
-   position:absolute;
-   color:#ccc;
-   font-size:50%;
-   bottom:1em;
-   right:1em;
- }
+a:disabled,
+button:disabled {
+  cursor: not-allowed;
+}
 
-/* --- */
+:focus-visible {
+  outline: 2px solid var(--wz-accent);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ app shell */
+
+#top-nav {
+  background: var(--wz-surface);
+  border-bottom: 1px solid var(--wz-border);
+  box-shadow: none;
+}
+
+#content {
+  margin-top: 2rem;
+  max-width: 1500px;
+}
+
+#build {
+  position: absolute;
+  color: var(--wz-text-subtle);
+  font-size: 50%;
+  bottom: 1em;
+  right: 1em;
+}
+
+/* ------------------------------------------------------------------ nav */
+
+ul.navbar-nav {
+  flex-direction: unset;
+}
+
+.navbar-nav li.nav-item.page {
+  text-align: center;
+}
+
+.navbar-nav li.nav-item.page span {
+  padding: 0 28px;
+  position: relative;
+  display: block;
+  top: 20px;
+  border-bottom: 3px solid transparent;
+  transition: color var(--wz-transition), border-color var(--wz-transition);
+}
+
+.navbar-nav li.nav-item.page.active span {
+  border-bottom-color: var(--wz-accent);
+}
+
+.navbar-nav li.nav-item a {
+  text-decoration: none;
+  color: var(--wz-text-muted);
+}
+
+.navbar-nav li.nav-item a:hover {
+  color: var(--wz-text);
+}
+
+.navbar-nav li.nav-item.active a {
+  color: var(--wz-text);
+}
+
+#navbarNav {
+  height: 40px;
+}
+
+#nav-publish-indicator {
+  display: inline;
+  margin-right: 0.5em;
+  color: var(--wz-danger);
+}
+
+/* ------------------------------------------------------------------ video */
 
 /*
- * This code and all components (c) Copyright 2019-2020, Wowza Media Systems, LLC. All rights reserved.
- * This code is licensed pursuant to the BSD 3-Clause License.
+ * The stage hands the video an area and the frame hugs the picture inside it.
+ *
+ * Filling the area and letting object-fit letterbox put a 16:9 camera in a bordered box a
+ * third taller than itself, with dead black above and below. Sizing from the intrinsic
+ * dimensions instead fixes that but never scales up, so a 640x480 webcam became a stamp in
+ * the middle of a large area.
+ *
+ * So the area is a size container and the picture is sized against it: as wide as the area
+ * allows, or as wide as the area's height allows at this aspect ratio, whichever is smaller.
+ * --wz-video-ar is set from the stream's own dimensions; the 16:9 default covers the moment
+ * before the first frame arrives.
  */
-
- #play-video-container {
-  height:0;
-  width:100%;
-  padding-bottom:57%;
-  background-color:rgba(102, 102, 102, 1);
-  border-radius:0.75em;
+.wz-stage__video {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
   position: relative;
+}
+
+/* Baseline, and the fallback for a browser without container query units: fill the area
+   and letterbox. Correct, just not as tight. */
+#player-video,
+#publisher-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: var(--wz-video-bg);
+  border: 1px solid var(--wz-border);
+  border-radius: var(--wz-radius);
+}
+
+@supports (width: 1cqw) {
+  .wz-stage__video { container-type: size; }
+
+  #player-video,
+  #publisher-video {
+    width: min(100cqw, calc(100cqh * var(--wz-video-ar, 1.7778)));
+    height: auto;
+    aspect-ratio: var(--wz-video-ar, 1.7778);
+  }
+}
+
+/* display:block above would otherwise beat the UA rule for the hidden attribute. */
+#player-video[hidden],
+#publisher-video[hidden] { display: none; }
+
+/* Shown while there is no picture, so the stage does not collapse to an empty strip. */
+.wz-video-placeholder {
+  flex: 1 1 auto;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--wz-video-bg);
+  border: 1px solid var(--wz-border);
+  border-radius: var(--wz-radius);
+  color: var(--wz-text-subtle);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* The play page nests the player so the badge and captions overlay the picture, not the
+   area around it, which means this wrapper shrinks to the video rather than filling. */
+#play-video-container {
+  position: relative;
+  display: flex;
+  max-width: 100%;
+  max-height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* With no picture there is nothing to shrink to, so the wrapper fills instead. */
+#play-video-container:has(.wz-video-placeholder) {
+  flex: 1 1 auto;
+  align-self: stretch;
+}
+
+.meeting-peer-player {
+  width: 45% !important;
+  height: auto !important;
+  background: var(--wz-video-bg);
+  border-radius: var(--wz-radius);
+  margin: 15px;
 }
 
 #rendition-badge {
   position: absolute;
-  top: 0.75em;
-  right: 0.75em;
-  padding: 0.25em 0.6em;
-  background: rgba(0, 0, 0, 0.65);
-  color: #FFFFFF;
-  font-size: 0.85em;
-  font-family: monospace;
-  border-radius: 0.4em;
+  top: 0.6em;
+  right: 0.6em;
+  padding: 0.2em 0.55em;
+  background: var(--wz-overlay);
+  color: var(--wz-white);
+  font-size: 0.8em;
+  font-family: var(--wz-font-mono);
+  border-radius: var(--wz-radius-sm);
   pointer-events: none;
   z-index: 2;
 }
@@ -104,14 +210,15 @@
   transform: translateX(-50%);
   max-width: 90%;
   padding: 0.3em 0.8em;
-  background: rgba(0, 0, 0, 0.7);
-  color: #FFFFFF;
-  font-size: 1em;
+  background: var(--wz-overlay);
+  color: var(--wz-white);
+  font-size: 0.95em;
   text-align: center;
-  border-radius: 0.4em;
+  border-radius: var(--wz-radius-sm);
   pointer-events: none;
   z-index: 2;
 }
+/* ------------------------------------------------------------------ panels */
 
 #publish-content,
 #play-content,
@@ -124,32 +231,40 @@
 #publish-settings,
 #meeting-settings,
 #composite-content-inner {
-  background: #FFFFFF;
-  border: 1px solid #F0F0F0;
+  background: var(--wz-surface);
+  border: 1px solid var(--wz-border);
   box-sizing: border-box;
-  box-shadow: 0px 2px 2px rgba(0, 0, 0, 0.05);
-  border-radius: 8px;
-  padding: 1em;
+  box-shadow: none;
+  border-radius: var(--wz-radius);
+  padding: 1.25rem;
 }
+
 #composite-content-outer {
-  padding:0 1em;
+  padding: 0 1em;
 }
+
+/* ------------------------------------------------------------------ controls */
+
 #play-toggle,
 #publish-toggle,
 #meeting-toggle {
-  background: #FF8400;
-  border-radius: 55px;
+  background: var(--wz-accent);
+  border: none;
+  border-radius: var(--wz-radius-pill);
   width: 100%;
-  font-weight: 500;
+  font-weight: 600;
   font-size: 17px;
   line-height: 130%;
   text-align: center;
-  color: #FFFFFF;
+  color: var(--wz-accent-contrast);
+  transition: background var(--wz-transition);
 }
 
-
-#navbarNav {
-  height: 40px;
+#play-toggle:hover,
+#publish-toggle:hover,
+#meeting-toggle:hover {
+  background: var(--wz-accent-hover);
+  color: var(--wz-accent-contrast);
 }
 
 #play-share-link,
@@ -157,84 +272,48 @@
 #meeting-share-link {
   padding: 0.25em 0.7em;
 }
+
 #play-share-link,
 #publish-share-link:focus {
   outline: none;
 }
 
 .control-button {
-  background: #FFFFFF;
-  border: 1px solid #B2B3B5;
+  background: var(--wz-surface-raised);
+  border: 1px solid var(--wz-border-strong);
+  color: var(--wz-text);
   box-sizing: border-box;
-  border-radius: 6px;
+  border-radius: var(--wz-radius-sm);
   margin-top: 2em;
 }
 
-ul.navbar-nav {
-  flex-direction: unset;
-}
-
-.navbar-nav li.nav-item.page {
-  text-align: center;
-}
-
-
-.navbar-nav li.nav-item.page.active span{
-  border-bottom: solid 3px  #65686A;
-}
-.navbar-nav li.nav-item.page span {
-  padding: 0 40px 0 40px;
-  position: relative;
-  left: 0;
-  display: block;
-  top: 20px;
-  border-bottom: none;
-}
-
-.navbar-nav li.nav-item a{
-  text-decoration: none;
-  color: #939597;
-}
-.navbar-nav li.nav-item.active a{
-  color: #65686A;
-}
-
-#nav-publish-indicator {
-  display: inline;
-  margin-right:0.5em;
-  color: #dc3545;
+.control-button:hover {
+  border-color: var(--wz-accent);
+  color: var(--wz-text);
 }
 
 .orange-checkbox:checked {
-  background-color: #FF8400;
-  border-color: #FF8400;
+  background-color: var(--wz-accent);
+  border-color: var(--wz-accent);
 }
 
-.btn-drawer-toggle {
-  background-color: #FF8400;
-  border-color: #EEEEEE;
-  color: #EEEEEE;
-}
-
-.btn-drawer-toggle:hover {
-  background-color: #FF8400;
-  border-color: #EEEEEE;
-  color: #EEEEEE;
-}
-
+.btn-drawer-toggle,
+.btn-drawer-toggle:hover,
 .btn-drawer-toggle:active:focus {
-  background-color: #FF8400 !important;
-  border-color: #EEEEEE !important;
-  color: #EEEEEE !important;
+  background-color: var(--wz-accent) !important;
+  border-color: var(--wz-accent) !important;
+  color: var(--wz-accent-contrast) !important;
 }
+
+/* ------------------------------------------------------------------ data channel */
 
 .data-channel-panel .btn,
 .data-channel-panel .btn:hover,
 .data-channel-panel .btn:focus,
 .data-channel-panel .btn:active {
-  background-color: #FF8400;
-  border-color: #FF8400;
-  color: #FFFFFF;
+  background-color: var(--wz-accent);
+  border-color: var(--wz-accent);
+  color: var(--wz-accent-contrast);
   box-shadow: none;
 }
 
@@ -243,12 +322,35 @@ ul.navbar-nav {
 }
 
 .data-channel-panel .chat-message-sent {
-  background-color: #FFE7CC;
-  border: 1px solid #FF8400;
+  background-color: var(--wz-accent);
+  border: 1px solid var(--wz-accent);
+  color: var(--wz-accent-contrast);
 }
 
 .data-channel-panel .chat-message-received {
-  background-color: #EEEEEE;
-  border: 1px solid #D9D9D9;
+  background-color: var(--wz-surface-raised);
+  border: 1px solid var(--wz-border);
+  color: var(--wz-text);
 }
 
+/*
+ * Shown only when the browser refused to unmute without a gesture. It sits on the picture
+ * because that is where someone is looking when they notice there is no sound.
+ */
+.wz-unmute {
+  position: absolute;
+  left: 50%;
+  bottom: 3.2em;
+  transform: translateX(-50%);
+  z-index: 3;
+  padding: 0.45em 1em;
+  border: 1px solid var(--wz-accent);
+  border-radius: var(--wz-radius-pill);
+  background: var(--wz-overlay);
+  color: var(--wz-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wz-unmute:hover { background: var(--wz-accent); color: var(--wz-accent-contrast); }
