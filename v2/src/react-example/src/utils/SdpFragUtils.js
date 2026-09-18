@@ -1,3 +1,5 @@
+import { loggedFetch } from '../diagnostics/signalLog';
+
 // Helpers for WHIP/WHEP ICE restart over application/trickle-ice-sdpfrag (RFC 9725).
 //
 // The browser only exposes full-SDP APIs (createOffer / setRemoteDescription), while the wire format for an
@@ -56,7 +58,7 @@ export const sendWhipWhepIceRestart = async (peerConnection, sessionUrl, { authH
   const fragment = buildIceRestartFragment(ufrag, pwd);
   console.log(`Sending ${label} ICE-restart sdpfrag:\n${fragment}`);
 
-  const restartResponse = await fetch(sessionUrl, {
+  const restartResponse = await loggedFetch(sessionUrl, {
     method: "PATCH",
     headers: { "Content-Type": "application/trickle-ice-sdpfrag", ...authHeaders },
     body: fragment,
