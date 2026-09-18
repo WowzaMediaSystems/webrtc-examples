@@ -7,6 +7,7 @@ import PublishAudioDropdown from './PublishAudioDropdown';
 import PublishVideoDropdown from './PublishVideoDropdown';
 import Cookies from 'js-cookie';
 import QueryString from 'query-string';
+import { VIDEO_CODEC_OPTIONS, isVideoCodecOfferable } from '../../utils/CodecUtils';
 import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
 import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
@@ -106,6 +107,8 @@ const PublishSettingsForm = () => {
     Cookies.set(CookieName, escape(JSON.stringify(cookieValues)));
   }, [publishSettings]);
 
+
+  const codecUnavailable = isVideoCodecOfferable(publishSettings.videoCodec) === false;
 
   const toggleCamera = () => {
     setIsCameraOn(!isCameraOn);
@@ -412,6 +415,42 @@ const PublishSettingsForm = () => {
                 disabled={webrtcPublish.connected}
                 onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_STREAM_NAME,streamName:e.target.value})}
               />
+            </div>
+          </div>
+        </div>
+
+        <div className="row">
+          <div className="col-12">
+            <div className="form-group">
+              <label htmlFor="videoCodec">Video Codec</label>
+              <select
+                className="form-select"
+                id="videoCodec"
+                name="videoCodec"
+                value={publishSettings.videoCodec}
+                disabled={webrtcPublish.connected}
+                onChange={(e) => dispatch({ type: PublishSettingsActions.SET_PUBLISH_VIDEO_CODEC, videoCodec: e.target.value })}
+              >
+                {VIDEO_CODEC_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              {codecUnavailable ? (
+                /* Said here rather than after a failed publish: a codec this browser cannot
+                   encode is never offered, so the server has nothing to answer with and the
+                   failure looks like a server problem. */
+                <small className="wz-field-error" id="videoCodec-unsupported" role="alert">
+                  This browser cannot encode {publishSettings.videoCodec} for WebRTC, so it
+                  will not be offered and no video will be sent. H.265 needs Chrome on
+                  Windows, macOS or Android with a hardware HEVC encoder; Edge does not send
+                  it at all.
+                </small>
+              ) : (
+                <small className="form-text text-muted">
+                  The server chooses from what the browser offers. Setting this puts your
+                  choice first. Leave it on H.264 unless a workflow needs otherwise.
+                </small>
+              )}
             </div>
           </div>
         </div>

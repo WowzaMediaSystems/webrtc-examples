@@ -1,0 +1,75 @@
+import { describe, expect, it } from 'vitest';
+import { describeRejectedVideo, videoWasRejected } from './SdpAnswerUtils';
+
+const answer = (videoLine, extra = '') =>
+  ['v=0', 'm=audio 7132 UDP/TLS/RTP/SAVPF 111', 'a=recvonly', videoLine, extra].join('\r\n');
+
+const REJECTED = answer('m=video 0 UDP/TLS/RTP/SAVPF 0');
+const INACTIVE = answer('m=video 7134 UDP/TLS/RTP/SAVPF 96', 'a=inactive');
+const ACCEPTED = answer('m=video 7134 UDP/TLS/RTP/SAVPF 96', 'a=recvonly');
+
+describe('videoWasRejected', () => {
+  it('flags a port 0 video line', () => {
+    expect(videoWasRejected(REJECTED)).toBe(true);
+  });
+
+  it('flags an inactive video line', () => {
+    expect(videoWasRejected(INACTIVE)).toBe(true);
+  });
+
+  it('is false for an accepted line, a missing section, or no sdp', () => {
+    expect(videoWasRejected(ACCEPTED)).toBe(false);
+    expect(videoWasRejected('v=0\r\nm=audio 7132 UDP/TLS/RTP/SAVPF 111')).toBe(false);
+    expect(videoWasRejected('')).toBe(false);
+    expect(videoWasRejected(null)).toBe(false);
+  });
+});
+
+describe('describeRejectedVideo', () => {
+  it('leads with the consequence, not the mechanism', () => {
+    expect(describeRejectedVideo(REJECTED, 'H264')).toMatch(/^No video is being sent/);
+    expect(describeRejectedVideo(INACTIVE, 'auto')).toMatch(/^No video is being sent/);
+  });
+
+  it('names the codec that was asked for, and suggests Auto', () => {
+    const m = describeRejectedVideo(REJECTED, 'H264');
+    expect(m).toContain('H264');
+    expect(m).toContain('Auto');
+  });
+
+  it('does not suggest Auto when Auto was already used', () => {
+    expect(describeRejectedVideo(REJECTED, 'auto')).not.toContain('Try setting');
+  });
+
+  /*
+   * The case the Engine team diagnosed on 2026-09-17: Edge cannot encode H.265 for WebRTC,
+   * so it is never offered, and the server refuses the video line for want of anything in
+   * common. Blaming the server there sends people to the wrong machine.
+   */
+  it('blames the browser when the browser could not offer the codec', () => {
+    const m = describeRejectedVideo(REJECTED, 'H265', false);
+    expect(m).toMatch(/this browser cannot encode H265/i);
+    expect(m).not.toMatch(/the server accepted none/i);
+  });
+
+  it('blames the server when the browser did offer the codec', () => {
+    const m = describeRejectedVideo(REJECTED, 'H265', true);
+    expect(m).toMatch(/the server accepted none of the offered H265/i);
+  });
+
+  it('stays neutral when browser support could not be determined', () => {
+    const m = describeRejectedVideo(REJECTED, 'H265', null);
+    expect(m).toMatch(/the server accepted none of the offered H265/i);
+  });
+
+  it('says both sides when no specific codec was asked for', () => {
+    expect(describeRejectedVideo(REJECTED, 'auto')).toMatch(/no video codec in common/i);
+  });
+
+  it('returns null for an accepted video line, a missing section, or no sdp', () => {
+    expect(describeRejectedVideo(ACCEPTED, 'H264')).toBeNull();
+    expect(describeRejectedVideo('v=0\r\nm=audio 7132 UDP/TLS/RTP/SAVPF 111', 'H264')).toBeNull();
+    expect(describeRejectedVideo('', 'H264')).toBeNull();
+    expect(describeRejectedVideo(null, 'H264')).toBeNull();
+  });
+});

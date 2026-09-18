@@ -10,6 +10,8 @@ import {
 } from "../utils/SimulcastUtils";
 import { attachIceRestartRecovery, consumeIceRestartOffer } from "../utils/IceRestartUtils";
 import { sendWhipWhepIceRestart } from "../utils/SdpFragUtils";
+import { applyVideoCodecPreference, isVideoCodecOfferable } from "../utils/CodecUtils";
+import { describeRejectedVideo, videoWasRejected } from "../utils/SdpAnswerUtils";
 import attachDataChannel, {
   CHAT_CHANNEL_LABEL,
   dataChannelsAcceptedInAnswer,
@@ -52,40 +54,40 @@ const handleRefusedDataChannels = (answerSdp, dataChannels, callbacks) => {
   return null;
 };
 
-export const VIDEO_REJECTED_MESSAGE =
-  "The server accepted no video codec, so it rejected the video track. This stream is " +
-  "publishing audio only. Check the application's WebRTC video codecs and this browser's " +
-  "send capabilities.";
+// A server that will not accept any offered video codec answers m=video 0 / a=inactive.
+// The connection still succeeds on audio, so this has to be surfaced or it is invisible.
+const reportRejectedVideo = (answerSdp, publishSettings, callbacks, session) => {
+  // Only meaningful when video was offered: an audio-only publish gets no video answer,
+  // and that is not a rejection (carried over from ENG-5135).
+  if (publishSettings.videoTrack == null) return;
 
-// RFC 3264: a zero port on the answer's m=video is a rejection - no video codec in common.
-// A missing section means the same. Only meaningful when we offered video.
-const videoRejectedInAnswer = (answerSdp, publishSettings) => {
-  if (publishSettings.videoTrack == null) return false;
-  const videoSection = answerSdp?.match(/^m=video +(\d+)/m);
-  return videoSection == null || videoSection[1] === "0";
-};
+  // Once per session. Every ICE restart brings another answer, and a rejection that was
+  // reported at the start does not become news again each time the connection recovers.
+  if (session.videoRejectionReported) return;
+  session.videoRejectionReported = true;
 
-// Audio has its own m-section, so a rejected video section is not a session failure: the publish
-// stands as audio only. Returns whether video was rejected, which also explains away any missing
-// simulcast attributes. Reported once - an ICE-restart answer repeats the rejection.
-const handleRejectedVideo = (answerSdp, publishSettings, session, callbacks) => {
-  if (!videoRejectedInAnswer(answerSdp, publishSettings)) return false;
-  if (!session.videoRejected) {
-    session.videoRejected = true;
-    console.log("The server accepted no video codec; continuing with audio only.");
-    if (callbacks.onVideoUnavailable)
-      callbacks.onVideoUnavailable();
-  }
-  return true;
+  const offerable = isVideoCodecOfferable(publishSettings.videoCodec);
+  const message = describeRejectedVideo(answerSdp, publishSettings.videoCodec, offerable);
+  if (!message) return;
+  // Deliberately not onError: that tears the publish down, and audio is still flowing.
+  // This is a degraded publish, not a failed one.
+  if (callbacks && callbacks.onWarning) callbacks.onWarning({ message });
 };
 
 // Orchestration dispatcher: simulcast vs. single-track is a publish-flow
 // decision, so it lives here. The simulcast mechanics live in SimulcastUtils.
 const addVideoSender = (peerConnection, videoTrack, publishSettings) => {
   if (videoTrack == null) return undefined;
-  if (publishSettings.useSimulcast)
-    return addSimulcastVideoSender(peerConnection, videoTrack, publishSettings.simulcastRenditions);
-  return peerConnection.addTrack(videoTrack);
+
+  const sender = publishSettings.useSimulcast
+    ? addSimulcastVideoSender(peerConnection, videoTrack, publishSettings.simulcastRenditions)
+    : peerConnection.addTrack(videoTrack);
+
+  // Reorder the offer so the wanted codec is first. Without this the answering server
+  // picks, and Engine has been seen answering H.265 even when the browser ranks it last.
+  applyVideoCodecPreference(peerConnection, sender, publishSettings.videoCodec);
+
+  return sender;
 };
 
 // Detach handlers before closing so the stale PC/WS don't fire "closed" /
@@ -324,11 +326,23 @@ const websocketOnMessage = (event, publishSettings, websocket, peerConnection, c
       peerConnection
         .setRemoteDescription(new RTCSessionDescription(sdpData))
         .then(() => {
-          // Initial offer/answer is complete; from here any re-offer is an ICE restart.
+          /*
+           * The flag first, and the report inside its own try.
+           *
+           * A throw inside the reporter must not land in the shared catch as a connection
+           * failure: a warning about a rejected codec would tear the publish down and the
+           * next re-offer would be treated as an initial offer rather than an ICE restart.
+           */
           session.negotiationEstablished = true;
-          // Video first: a rejected m-line is why simulcast looks unconfirmed - don't blame simulcast.
-          const videoRejected = handleRejectedVideo(sdpData.sdp, publishSettings, session, callbacks);
-          if (!videoRejected && publishSettings.useSimulcast && !simulcastAcceptedInAnswer(sdpData.sdp)) {
+          try {
+            reportRejectedVideo(sdpData && sdpData.sdp, publishSettings, callbacks, session);
+          } catch { /* reported best-effort; never a session failure */ }
+          // Order matters. A refused video m-line has no simulcast attribute in it either,
+          // so testing simulcast first blames simulcast for a codec problem. The rejection
+          // has already been reported above; there is nothing more to say here.
+          if (publishSettings.useSimulcast
+              && !videoWasRejected(sdpData && sdpData.sdp)
+              && !simulcastAcceptedInAnswer(sdpData.sdp)) {
             reportSimulcastRejection({
               callbacks, peerConnection, websocket
             });
@@ -355,7 +369,7 @@ const websocketOnError = (error, callbacks) => {
 // - onSetPeerConnection({peerConnection:obj})
 // - onSetWebsocket({websocket:obj})
 // - onSetSenders({audioSender:obj,videoSender:obj})
-// - onVideoUnavailable()
+// - onWarning({message:string})
 
 const startPublish = (publishSettings, websocket, callbacks) =>
 {
@@ -365,10 +379,10 @@ const startPublish = (publishSettings, websocket, callbacks) =>
         sessionId: '[empty]',
         // false until the initial offer/answer completes; afterwards every re-offer is an ICE restart.
         negotiationEstablished: false,
+        // A rejected video m-line is reported once, not on every ICE-restart answer.
+        videoRejectionReported: false,
         // handle to the enabled data channels, cleared once the server refuses them.
         dataChannels: null,
-        // true once the server has rejected the video m-line, so it is only reported once.
-        videoRejected: false,
         // pending timer waiting for the answer to the initial offer, see NegotiationFailureUtils.
         answerTimeout: null,
         peerConnectionConfig: {iceServers: []}
@@ -535,9 +549,13 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     });
     negotiationEstablished = true; // from here, onnegotiationneeded means an ICE restart
 
-    // Video before simulcast, same reason as the WebSocket path.
-    const videoRejected = handleRejectedVideo(answerSDP, publishSettings, session, callbacks);
-    if (!videoRejected && publishSettings.useSimulcast && !simulcastAcceptedInAnswer(answerSDP)) {
+    // Same ordering as the WebSocket path: a refused video line is a codec problem, and
+    // the missing simulcast attribute is a symptom of it rather than a separate fault.
+    reportRejectedVideo(answerSDP, publishSettings, callbacks, session);
+
+    if (publishSettings.useSimulcast
+        && !videoWasRejected(answerSDP)
+        && !simulcastAcceptedInAnswer(answerSDP)) {
       reportSimulcastRejection({
         callbacks, peerConnection, whipSessionUrl: sessionUrl
       });
