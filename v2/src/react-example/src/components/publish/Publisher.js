@@ -8,7 +8,7 @@ import * as DataChannelActions from '../../actions/dataChannelActions';
 import { describeReceivedMessage } from '../../utils/DataChannelUtils';
 import { DATA_CHANNELS_UNAVAILABLE_MESSAGE } from '../../webrtc/attachDataChannel';
 
-import startPublish from '../../webrtc/startPublish';
+import startPublish, { VIDEO_REJECTED_MESSAGE } from '../../webrtc/startPublish';
 import stopPublish from '../../webrtc/stopPublish';
 import replaceAudioTrack from '../../webrtc/replaceAudioTrack';
 import replaceVideoTrack from '../../webrtc/replaceVideoTrack';
@@ -64,6 +64,10 @@ const Publisher = () => {
         onDataChannelsUnavailable: () => {
           // Publishing is unaffected, so this only reports - no media state is touched.
           dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:DATA_CHANNELS_UNAVAILABLE_MESSAGE});
+        },
+        onVideoUnavailable: () => {
+          // Audio still publishes, so like the data channels this only reports.
+          dispatch({type:ErrorsActions.SET_ERROR_MESSAGE, message:VIDEO_REJECTED_MESSAGE});
         },
         onCaption: (result) => {
           dispatch(DataChannelActions.setCaption('publish', result.text));
