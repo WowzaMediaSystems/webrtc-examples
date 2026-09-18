@@ -45,11 +45,12 @@ const compositeReducer = (state = initialState, action) => {
       return { ...state, audioTrackDeviceId:action.audioTrackDeviceId };
     case compositeSettingsActions.SET_COMPOSITE_VIDEO_BITRATE:
       return { ...state, videoBitrate:action.videoBitrate };
-    case compositeSettingsActions.SET_COMPOSITE_VIDEO_FRAME_SIZE_AND_RATE:
+    case compositeSettingsActions.SET_COMPOSITE_VIDEO_FRAME_SIZE_AND_RATE: {
       let frameState = { ...state };
       if (action.videoFrameSize != null) frameState.videoFrameSize = action.videoFrameSize;
       if (action.videoFrameRate != null) frameState.videoFrameRate = action.videoFrameRate;
       return frameState;
+    }
     case compositeSettingsActions.SET_COMPOSITE_VIDEO_TRACK:
       return { ...state, videoTrack:action.videoTrack };
     case compositeSettingsActions.SET_COMPOSITE_VIDEO_TRACK1_DEVICEID:
@@ -58,13 +59,14 @@ const compositeReducer = (state = initialState, action) => {
       return { ...state, videoTrack2DeviceId:action.videoTrack2DeviceId };
     case compositeSettingsActions.SET_COMPOSITE_USER_DATA:
       return { ...state, userData:action.userData };
-    case compositeSettingsActions.SET_COMPOSITE_FLAGS:
+    case compositeSettingsActions.SET_COMPOSITE_FLAGS: {
       let publishFlagsState = { ...state };
       if (action.publishStart != null) publishFlagsState.publishStart = action.publishStart;
       if (action.publishStarting != null) publishFlagsState.publishStarting = action.publishStarting;
       if (action.publishStop != null) publishFlagsState.publishStop = action.publishStop;
       if (action.publishStopping != null) publishFlagsState.publishStopping = action.publishStopping;
       return publishFlagsState;
+    }
     default:
       return state
   }
