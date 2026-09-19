@@ -8,11 +8,16 @@ import Devices from '../media/Devices';
 import Publisher from './Publisher';
 import DataChannelPanel from '../shared/DataChannelPanel';
 import PublishCaptionBox from './PublishCaptionBox';
+import StatsBar from '../diagnostics/StatsBar';
+import SimulcastLayers from '../diagnostics/SimulcastLayers';
+import DebugPanel from '../diagnostics/DebugPanel';
 import Stage from '../shell/Stage';
 import Inspector from '../shell/Inspector';
 import ExternalLinks from '../../constants/ExternalLinks';
+import useConnectionStats from '../../hooks/useConnectionStats';
 
 const Publish = () => {
+  const { stats, history, connectionState } = useConnectionStats('publish');
   const { applicationName, streamName, chatEnabled, captionsEnabled } =
     useSelector((state) => state.publishSettings);
 
@@ -43,6 +48,19 @@ const Publish = () => {
             </div>
           ) : null}
         </div>
+
+        <div className="wz-stage__stats">
+          <StatsBar stats={stats} history={history} connectionState={connectionState} role="publish" />
+        </div>
+
+        {/* Only present on a simulcast publish; one encoding is not a layer list. */}
+        {stats?.outboundLayers?.length > 1 && (
+          <div className="wz-stage__stats">
+            <SimulcastLayers layers={stats.outboundLayers} totalKbps={stats.outboundTotalKbps} />
+          </div>
+        )}
+
+        <DebugPanel />
       </Stage>
 
       <Inspector tabs={tabs} legacyHref={ExternalLinks.legacyPublish} />
