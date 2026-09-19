@@ -8,6 +8,7 @@ import { SET_PUBLISH_VIDEO_TRACK } from '../../actions/publishSettingsActions';
 import useMediaStream from '../../hooks/useMediaStream';
 import { selectPublishVideoTrack } from '../../utils/VideoTrackUtils';
 import { logEvent } from '../../diagnostics/signalLog';
+import { clockedTrackFor, releaseClockedTrack } from '../../diagnostics/burnedClock';
 
 
 
@@ -16,12 +17,17 @@ const PublishVideoDropdown = () => {
   const dispatch = useDispatch();
   const publishSettings = useSelector ((state) => state.publishSettings);
   const { cameras, videoTracksMap, displayScreenTrack } = useSelector ((state) => state.media);
-  const { videoTrack1DeviceId } = useSelector ((state) => state.publishSettings);
+  const { videoTrack1DeviceId, burnedClock } = useSelector ((state) => state.publishSettings);
 
   // Handle videoTrack1 changes
   const streamRef = useMediaStream();
 
 
+  /*
+   * The timecode wrap lives here rather than in a component of its own, because this effect
+   * already owns the decision about which track is previewed and published. Two owners for
+   * one track is how the preview and the publish came apart before.
+   */
   useEffect(() => {
     let newStream = new MediaStream();
 
@@ -32,6 +38,15 @@ const PublishVideoDropdown = () => {
       videoTracksMap, videoTrack1DeviceId, displayScreenTrack
     );
     let videoTrack = track || undefined;
+
+    /*
+      * The clock is drawn here, where the one decision about which track is previewed and
+      * published is already made. Derived in any other place and the preview would show the
+      * camera while the publish carried the clock, or the other way about, and the point of
+      * the clock is that the two can be held up against each other.
+      */
+     if (burnedClock) videoTrack = clockedTrackFor(videoTrack);
+     else releaseClockedTrack();
 
     if (videoTrack) newStream.addTrack(videoTrack);
     if (usedFallback) {
@@ -48,7 +63,9 @@ const PublishVideoDropdown = () => {
     dispatch({ type: SET_MEDIA_STREAM, stream: newStream });
     dispatch({ type: SET_PUBLISH_VIDEO_TRACK, videoTrack: videoTrack });
 
-  }, [dispatch, videoTracksMap, displayScreenTrack, videoTrack1DeviceId, streamRef]);
+    // No cleanup. The derived track's lifetime belongs to the camera and the setting, not to
+    // this effect: see clockedTrackFor.
+  }, [dispatch, videoTracksMap, displayScreenTrack, videoTrack1DeviceId, streamRef, burnedClock]);
 
   return(
     <div className="mb-3">

@@ -13,7 +13,7 @@ test.describe('app shell', () => {
     const errors = [];
     failOnPageErrors(page, errors);
 
-    for (const route of ['#/publish', '#/play']) {
+    for (const route of ['#/publish', '#/play', '#/loopback']) {
       await page.goto(`/${route}`);
       await expect(page.locator('#top-nav')).toBeVisible();
       await expect(page.locator('#root')).not.toBeEmpty();
@@ -21,9 +21,22 @@ test.describe('app shell', () => {
     expect(errors, errors.join('\n')).toEqual([]);
   });
 
-  test('the nav links reach the play page', async ({ page }) => {
+  test('the nav links reach all three pages', async ({ page }) => {
     await page.goto('/#/publish');
     await page.getByRole('link', { name: 'Play', exact: true }).click();
+    await expect(page.locator('#play-settings')).toBeVisible();
+    await page.getByRole('link', { name: 'Publish + Play' }).click();
+    await expect(page.locator('#loopback-content')).toBeVisible();
+  });
+
+  test('the loopback page shows a publisher and a player side by side', async ({ page }) => {
+    await page.goto('/#/loopback');
+    await expect(page.getByRole('heading', { name: /Publisher/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Player/ })).toBeVisible();
+    // The inspector points at one side at a time, so the switch is what proves both are
+    // reachable, not both forms being on screen together.
+    await expect(page.locator('#publish-settings')).toBeVisible();
+    await page.getByRole('button', { name: 'Player', exact: true }).click();
     await expect(page.locator('#play-settings')).toBeVisible();
   });
 

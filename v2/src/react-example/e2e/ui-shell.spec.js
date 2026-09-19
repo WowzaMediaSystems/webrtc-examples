@@ -82,7 +82,7 @@ test.describe('shell alignment', () => {
    * rather than as a design.
    */
   test('the topbar rule and the tab rule share a line', async ({ page }) => {
-    for (const route of ['#/publish', '#/play']) {
+    for (const route of ['#/publish', '#/play', '#/loopback']) {
       await page.goto(`/${route}`);
       const rules = await page.evaluate(() => {
         const bottom = (sel) => {
@@ -147,7 +147,7 @@ test.describe('status badges', () => {
  * ended up floating above the video.
  */
 test.describe('video overlays', () => {
-  for (const route of ['#/play']) {
+  for (const route of ['#/play', '#/loopback']) {
     test(`the rendition badge sits on the picture (${route})`, async ({ browser }) => {
       const publisher = await browser.newPage();
       await publisher.goto('/#/publish');
@@ -160,6 +160,9 @@ test.describe('video overlays', () => {
       const viewer = await browser.newPage();
       await viewer.setViewportSize({ width: 1440, height: 900 });
       await viewer.goto(`/${route}`);
+      if (route === '#/loopback') {
+        await viewer.getByRole('button', { name: 'Player', exact: true }).click();
+      }
       await startPlaying(viewer, { streamName });
       await expectPlaying(viewer);
       await viewer.waitForFunction(
@@ -628,6 +631,27 @@ test.describe('camera and microphone toggles', () => {
     expect((await trackState(page)).audio).toBe(false);
   });
 
+  /*
+   * The combined page swaps the whole settings form when the side changes, which is the
+   * remount that used to lose the state.
+   */
+  test('a muted microphone stays muted, and still looks muted, across a remount', async ({ page }) => {
+    await page.goto('/#/loopback');
+    await waitForCamera(page);
+    await openTab(page, 'Source');
+    expect(await captureTracks(page)).toBe(true);
+
+    await page.locator('#mute-toggle').click();
+    expect((await trackState(page)).audio).toBe(false);
+
+    await page.getByRole('button', { name: 'Player', exact: true }).click();
+    await page.getByRole('button', { name: 'Publisher', exact: true }).click();
+    await openTab(page, 'Source');
+
+    expect((await trackState(page)).audio).toBe(false);
+    await expect(page.locator('#mute-toggle')).toHaveAttribute('aria-pressed', 'true');
+  });
+
   test('the camera toggle behaves the same way', async ({ page }) => {
     await page.goto('/#/publish');
     await waitForCamera(page);
@@ -672,6 +696,27 @@ test.describe('settings that explain themselves', () => {
       controlToOwnHint: Math.round(box(hint).top - box(control).bottom),
       hintToNextSetting: Math.round(box(nextLabel).top - box(hint).bottom),
     };
+  });
+
+  test('a hint sits closer to its own switch than to the next one', async ({ page }) => {
+    await page.goto('/#/publish');
+    await openTab(page, 'Advanced');
+
+    const gaps = await spacing(page);
+    expect(gaps.settings, 'both diagnostics should be grouped').toBe(2);
+    expect(gaps.hintToNextSetting,
+      'the next setting runs into the previous explanation')
+      .toBeGreaterThan(gaps.controlToOwnHint + 8);
+  });
+
+  test('the two diagnostics are separate settings, not one block of prose', async ({ page }) => {
+    await page.goto('/#/publish');
+    await openTab(page, 'Advanced');
+
+    await expect(page.locator('.wz-setting', { has: page.locator('#publishLatencyProbe') }))
+      .toHaveCount(1);
+    await expect(page.locator('.wz-setting', { has: page.locator('#publishBurnedClock') }))
+      .toHaveCount(1);
   });
 });
 
@@ -792,6 +837,22 @@ test.describe('tab stability', () => {
       expect(await positions(), `after selecting ${label}`).toEqual(start);
     }
   });
+
+  test('the publisher and player switch does not move either', async ({ page }) => {
+    await page.goto('/#/loopback');
+
+    const positions = async () => page.evaluate(() =>
+      [...document.querySelectorAll('.wz-segment button')].map((b) => {
+        const r = b.getBoundingClientRect();
+        return { label: b.textContent.trim(), left: Math.round(r.left), width: Math.round(r.width) };
+      }));
+
+    const start = await positions();
+    await page.getByRole('button', { name: 'Player', exact: true }).click();
+    expect(await positions()).toEqual(start);
+    await page.getByRole('button', { name: 'Publisher', exact: true }).click();
+    expect(await positions()).toEqual(start);
+  });
 });
 
 
@@ -861,6 +922,22 @@ test.describe('panel structure', () => {
     await openTab(page, 'Advanced');
     await expect(page.locator('#stunServer')).toBeVisible();
     await expect(page.locator('#turnServer')).toBeVisible();
+  });
+
+  /*
+   * The combined page hands one Inspector two different tab arrays, so a tab selected on one
+   * side could be absent from the other: the body fell back to the first tab while the strip
+   * showed nothing selected at all.
+   */
+  test('the tab strip always shows a selection, even after a side switch', async ({ page }) => {
+    await page.goto('/#/loopback');
+    await openTab(page, 'Source');
+
+    await page.getByRole('button', { name: 'Player', exact: true }).click();
+    await expect(page.locator('.wz-tabs button[aria-selected="true"]')).toHaveCount(1);
+
+    await page.getByRole('button', { name: 'Publisher', exact: true }).click();
+    await expect(page.locator('.wz-tabs button[aria-selected="true"]')).toHaveCount(1);
   });
 
   test('the legacy Engine note is on the panel without opening anything', async ({ page }) => {

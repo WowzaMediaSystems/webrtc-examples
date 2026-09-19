@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import * as PlaySettingsActions from '../../actions/playSettingsActions';
+import { attachProbeVideoElement } from '../../diagnostics/latencyProbe';
 import * as WebRTCPlayActions from '../../actions/webrtcPlayActions';
 import * as ErrorsActions from '../../actions/errorsActions';
 import * as DataChannelActions from '../../actions/dataChannelActions';
@@ -186,6 +187,21 @@ const Player = () => {
   // A connection that has not yet produced a frame has no dimensions, so the element would
   // sit at its default 300x150. The placeholder holds the stage until there is a picture.
   const hasPicture = connected && videoSize.width > 0;
+
+  /*
+   * The probe's decode-and-display leg is measured from this element, because
+   * requestVideoFrameCallback is the only thing that reports when a frame was actually put on
+   * screen. The encoded side of the probe attaches to the receiver in startPlay; this is the
+   * other half of the join, and without it the panel has a transport figure and dashes for the
+   * player leg and the total.
+   */
+  useEffect(() => {
+    if (!hasPicture || !playSettings.latencyProbe) return undefined;
+    const element = videoElement.current;
+    if (!element) return undefined;
+    const joined = attachProbeVideoElement(element);
+    return () => joined.stop();
+  }, [hasPicture, playSettings.latencyProbe]);
 
   // Try once, when there is something to hear.
   useEffect(() => {
