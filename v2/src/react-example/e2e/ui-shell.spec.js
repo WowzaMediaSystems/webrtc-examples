@@ -585,6 +585,22 @@ test.describe('assets', () => {
       .filter((r) => /bootstrap-icons/.test(r.name)).length);
     expect(fontRequests).toBe(0);
   });
+
+  test('the composite and meeting routes load on demand', async ({ page }) => {
+    await page.goto('/#/publish');
+
+    const loadedChunks = () => page.evaluate(() => performance
+      .getEntriesByType('resource')
+      .filter((r) => /Composite-|Meeting-/.test(r.name)).length);
+    expect(await loadedChunks()).toBe(0);
+
+    await page.goto('/#/composite');
+    await expect(page.locator('#composite-content')).toBeVisible();
+    expect(await loadedChunks()).toBeGreaterThan(0);
+
+    await page.goto('/#/meeting');
+    await expect(page.locator('#meeting-settings, #meeting-content').first()).toBeVisible();
+  });
 });
 
 /*
