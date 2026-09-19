@@ -1,0 +1,35 @@
+// Bootstrap, cut down to the parts this example actually uses.
+//
+// The full dist stylesheet is 232 KB and a CSS coverage run across every page and tab of the
+// console exercised 12.7% of what shipped. The rest is components the example has no markup
+// for: modals, carousels, dropdowns, toasts, tooltips, popovers, offcanvas, accordions.
+//
+// This is Bootstrap's own documented modular build, so it is still Bootstrap and still
+// upgrades with it. Adding a component back is one line. The order is fixed and follows
+// bootstrap/scss/bootstrap.scss; the entries below are the ones kept from it.
+
+// Configuration, required by everything after it.
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/variables-dark";
+@import "bootstrap/scss/maps";
+@import "bootstrap/scss/mixins";
+@import "bootstrap/scss/utilities";
+
+// Layout and components.
+@import "bootstrap/scss/root";       // the CSS custom properties the app's own tokens build on
+@import "bootstrap/scss/reboot";
+@import "bootstrap/scss/type";
+@import "bootstrap/scss/containers";  // .container-fluid
+@import "bootstrap/scss/grid";        // .row, .col-*
+@import "bootstrap/scss/tables";      // the simulcast and stats tables
+@import "bootstrap/scss/forms";       // .form-control, .form-select, .form-check, .input-group
+@import "bootstrap/scss/buttons";
+@import "bootstrap/scss/nav";
+@import "bootstrap/scss/navbar";      // the meeting and composite pages
+@import "bootstrap/scss/card";        // the chat panel
+@import "bootstrap/scss/badge";
+
+// Helpers, then the utility API that generates .mb-3, .d-flex, .text-center and the rest.
+@import "bootstrap/scss/helpers";
+@import "bootstrap/scss/utilities/api";
