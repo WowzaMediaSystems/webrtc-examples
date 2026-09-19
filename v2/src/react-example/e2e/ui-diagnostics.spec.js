@@ -183,6 +183,42 @@ test.describe('player picture', () => {
     await publisher.close();
     await viewer.close();
   });
+
+  /*
+   * Both sides live, which is the state the figures were cut off in: two sets of tiles share
+   * the stage, so each tile is at its narrowest and the numbers are at their longest.
+   *
+   * Swept across widths deliberately. A first version of this test ran only at Playwright's
+   * default 1280 and passed, while 1440 - where the grid fits another column and every tile
+   * is narrower - was still ellipsising the bitrate. A layout assertion at one width is an
+   * assertion about that width.
+   */
+  test('no stat value is cut off on the combined page, at any width', async ({ page }) => {
+    await requireEngine(page, test);
+    const streamName = uniqueStream('both');
+
+    await page.goto('/#/loopback');
+    await startPublishing(page, { streamName });
+    await expectLive(page);
+
+    await page.getByRole('button', { name: 'Player', exact: true }).click();
+    await startPlaying(page, { streamName });
+    await expectPlaying(page);
+
+    // Let the counters grow to their full width before measuring.
+    await page.waitForTimeout(5000);
+
+    for (const width of [1280, 1366, 1440, 1600, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.waitForTimeout(400);
+
+      const clipped = await page.$$eval('.wz-loopback .wz-stat__value', (els) =>
+        els.filter((e) => e.scrollWidth > e.clientWidth + 1)
+          .map((e) => `${e.closest('.wz-stat').querySelector('.wz-stat__label').textContent}="${e.textContent}"`));
+
+      expect(clipped, `at ${width}px, ellipsised: ${clipped.join(', ')}`).toEqual([]);
+    }
+  });
 });
 
 
@@ -566,6 +602,30 @@ test.describe('panel polish', () => {
       expect(tops.foot, `${route}: foot ${tops.foot} vs debug ${tops.debug}`).toBe(tops.debug);
     }
   });
+
+  test('the player Advanced tab leads with Diagnostics, and no section is double ruled',
+    async ({ page }) => {
+      await page.goto('/#/play');
+      await openTab(page, 'Advanced');
+
+      const shape = await page.evaluate(() => {
+        const adv = [...document.querySelectorAll('.wz-inspector__body form > div')]
+          .find((d) => d.querySelector('#playSecret'));
+        const seq = [];
+        adv.childNodes.forEach((n) => {
+          if (n.nodeType !== 1) return;
+          const c = n.className.toString();
+          seq.push(c.includes('wz-group') ? `GROUP ${n.textContent.trim()}` : (c.includes('wz-rule') ? 'rule' : 'block'));
+        });
+        return seq;
+      });
+
+      expect(shape[0]).toBe('GROUP Diagnostics');
+      expect(shape.filter((v) => v.startsWith('GROUP'))).toEqual(
+        ['GROUP Diagnostics', 'GROUP Secure Token', 'GROUP ICE Servers']);
+      expect(shape.some((v, i) => v === 'rule' && shape[i + 1] === 'rule'),
+        'two separators in a row').toBe(false);
+    });
 
   /*
    * The hover wash was a 5 percent WHITE overlay in both themes, so on a white panel it was

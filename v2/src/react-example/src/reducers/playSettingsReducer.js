@@ -21,6 +21,9 @@ const initialState = {
   authToken: '',
   chatEnabled: false,
   captionsEnabled: false,
+  // The latency probe is a diagnostic and costs a peer-connection flag plus a data channel, so
+  // it is off until asked for, on both pages.
+  latencyProbe: false,
 }
 
 const playSettingsReducer = (state = initialState, action) => {
@@ -47,6 +50,8 @@ const playSettingsReducer = (state = initialState, action) => {
       return { ...state, chatEnabled: action.chatEnabled };
     case PlaySettingsActions.SET_PLAY_CAPTIONS_ENABLED:
       return { ...state, captionsEnabled: action.captionsEnabled };
+    case PlaySettingsActions.SET_PLAY_LATENCY_PROBE:
+      return { ...state, latencyProbe: action.latencyProbe };
     case PlaySettingsActions.SET_PLAY_SECRET:
       console.log(`Secret: ${action.secret}`)
       return { ...state, secret: action.secret };
