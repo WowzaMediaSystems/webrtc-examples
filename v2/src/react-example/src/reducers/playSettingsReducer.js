@@ -58,13 +58,14 @@ const playSettingsReducer = (state = initialState, action) => {
       return { ...state, isIp: action.isIp };
     case PlaySettingsActions.SET_PLAY_IP:
       return { ...state, ip: action.ip };
-    case PlaySettingsActions.SET_PLAY_FLAGS:
+    case PlaySettingsActions.SET_PLAY_FLAGS: {
       let playFlagsState = { ...state };
       if (action.playStart != null) playFlagsState.playStart = action.playStart;
       if (action.playStarting != null) playFlagsState.playStarting = action.playStarting;
       if (action.playStop != null) playFlagsState.playStop = action.playStop;
       if (action.playStopping != null) playFlagsState.playStopping = action.playStopping;
       return playFlagsState;
+    }
     default:
       return state
   }

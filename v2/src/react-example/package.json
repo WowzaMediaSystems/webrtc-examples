@@ -1,49 +1,59 @@
 {
-  "name": "react-example",
-  "version": "0.1.0",
-  "private": true,
-  "homepage": ".",
-  "dependencies": {
-    "@testing-library/jest-dom": "^4.2.4",
-    "@testing-library/react": "^9.3.2",
-    "@testing-library/user-event": "^7.1.2",
-    "bootstrap": "^4.5.0",
-    "js-cookie": "^2.2.1",
-    "query-string": "^6.13.1",
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1",
-    "react-scripts": "3.4.1",
-    "webrtc-adapter": "^7.6.3"
-  },
-  "scripts": {
-    "start": "cross-env NODE_OPTIONS=--openssl-legacy-provider react-scripts start",
-    "build": "cross-env NODE_OPTIONS=--openssl-legacy-provider react-scripts build",
-    "build-private": "cross-env REACT_APP_BASENAME=/_private/webrtc/react-example/ react-scripts build",
-    "build-composite": "cross-env REACT_APP_BASENAME=/developer/webrtc/dev-composite/ react-scripts build",
-    "build-meeting": "cross-env REACT_APP_BASENAME=/developer/webrtc/dev-meeting/ react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
-  "eslintConfig": {
-    "extends": "react-app"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
+    "name": "wowza-webrtc-react-example",
+    "version": "2.0.0",
+    "private": true,
+    "type": "module",
+    "description": "Wowza Streaming Engine WebRTC publish, play, meeting and composite example (React)",
+    "license": "Apache-2.0",
+    "engines": {
+        "node": ">=20.19"
+    },
+    "scripts": {
+        "start": "vite",
+        "dev": "vite",
+        "build": "vite build",
+        "build-private": "cross-env VITE_BASENAME=/_private/webrtc/react-example/ vite build",
+        "build-composite": "cross-env VITE_BASENAME=/developer/webrtc/dev-composite/ vite build",
+        "build-meeting": "cross-env VITE_BASENAME=/developer/webrtc/dev-meeting/ vite build",
+        "preview": "vite preview",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "lint": "eslint .",
+        "test:e2e": "playwright test",
+        "test:e2e:headed": "playwright test --headed",
+        "test:unit": "vitest run"
+    },
+    "dependencies": {
+        "@reduxjs/toolkit": "^2.12.0",
+        "bootstrap": "^4.6.2",
+        "js-cookie": "^3.0.8",
+        "query-string": "^9.3.1",
+        "react": "^19.3.0",
+        "react-dom": "^19.3.0",
+        "react-redux": "^9.3.0",
+        "react-router-dom": "^7.18.4",
+        "redux": "^5.0.1",
+        "webrtc-adapter": "^9.0.6"
+    },
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "@playwright/test": "^1.63.0",
+        "@testing-library/jest-dom": "^7.0.1",
+        "@testing-library/react": "^16.3.3",
+        "@testing-library/user-event": "^14.6.7",
+        "@vitejs/plugin-react": "^6.1.1",
+        "cross-env": "^10.1.0",
+        "eslint": "^10.10.0",
+        "eslint-plugin-react-hooks": "^7.1.1",
+        "eslint-plugin-react-refresh": "^0.5.7",
+        "globals": "^17.12.0",
+        "jsdom": "^30.1.0",
+        "vite": "^8.3.0",
+        "vitest": "^5.0.1"
+    },
+    "browserslist": [
+        ">0.2%",
+        "not dead",
+        "not op_mini all"
     ]
-  },
-  "devDependencies": {
-    "react-redux": "^7.2.0",
-    "react-router-dom": "^5.2.0",
-    "redux": "^4.0.5",
-    "redux-devtools-extension": "^2.13.8",
-    "cross-env": "^7.0.2"
-  }
 }

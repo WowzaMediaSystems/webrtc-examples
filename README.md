@@ -13,6 +13,7 @@ Welcome to the official Wowza Media Systems Web Real-time Communication (WebRTC)
   - [Prerequisites](#prerequisites)
   - [Set up WebRTC](#set-up-webrtc)
   - [What's new in v2](#whats-new-in-v2)
+  - [Running the tests](#running-the-tests)
   - [Directory Structure](#directory-structure)
   - [Run the example code](#run-the-example-code)
 - [Resources](#more-resources)
@@ -26,7 +27,7 @@ WebRTC is an open source project to enable real-time communication of audio, vid
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) v16 or later
+- [Node.js](https://nodejs.org/) v20.19 or later for the v2 React example
 - A running [Wowza Streaming Engine](https://www.wowza.com/docs/wowza-streaming-engine-product-articles) instance with WebRTC enabled
 
 ### Set up WebRTC
@@ -38,6 +39,26 @@ You'll need to set up WebRTC for Wowza Streaming Engine to run the examples. For
 - **Configurable ICE servers** — STUN and TURN servers can now be set from the UI. Multiple servers can be provided as a comma-separated list. Credentials for TURN servers (username and password) are also configurable.
 - **SecureToken support** — Wowza Secure Token hash generation is now available in the React example. The token is computed client-side using the Web Crypto API (SHA-256) and sent with the publish/play request. See `v2/src/react-example/src/webrtc/SecureToken.js` for usage notes.
 - **Form validation** — Required fields (application name and stream name) are validated before a connection is attempted, surfacing errors early instead of failing silently.
+- **Current build toolchain** — v2 builds with [Vite](https://vite.dev/) on React 19 and Redux Toolkit. `npm install` reports no known vulnerabilities, `npm run build` produces no warnings, and no `--openssl-legacy-provider` workaround is needed.
+
+### Running the tests
+
+```bash
+cd v2/src/react-example
+npm test          # unit tests (Vitest)
+npm run test:e2e  # end-to-end tests (Playwright)
+```
+
+The end-to-end suite drives a real browser. It uses Chromium's fake capture device, so no
+webcam is needed, and it talks to a real Wowza Streaming Engine. Point it at yours with:
+
+```bash
+set WOWZA_SIGNALING_URL=wss://your-engine/webrtc-session.json
+set WOWZA_APPLICATION=webrtc
+```
+
+Tests that need an Engine skip themselves when one is not reachable, so the suite is still
+useful without a server. It covers a boot smoke check of the publish and play pages.
 
 ### Directory structure
 

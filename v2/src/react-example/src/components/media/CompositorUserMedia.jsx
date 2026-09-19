@@ -76,7 +76,7 @@ const getPermissions = (dispatch) => enqueue(async () => {
     stream.getTracks().forEach((t) => t.stop());
     gotPermissions = true;
   }
-  catch(e) {}
+  catch { /* permission denied or no device: gotPermissions stays false */ }
   dispatch({type:MediaActions.SET_MEDIA_GOT_PERMISSIONS,gotPermissions:gotPermissions});
 });
 
@@ -189,8 +189,7 @@ const loadDisplayScreenTrack = (dispatch, mountedRef) => enqueue(async () => {
     if (mountedRef && !mountedRef.current) { stopTrack(screenTrack); return; }
     screenTrack.onended = () => { stopTrack(screenTrack); onScreenShareEnded(dispatch); };
     dispatch({type:MediaActions.SET_MEDIA_TRACKS,displayScreenTrack:screenTrack});
-  } catch (e) {
-  }
+  } catch { /* user cancelled the screen picker, or the capture failed */ }
 });
 
 const loadUserMediaForMicrophones = (dispatch, microphones, audioTracksMapRef, mountedRef) => enqueue(async () => {
@@ -211,8 +210,7 @@ const loadUserMediaForMicrophones = (dispatch, microphones, audioTracksMapRef, m
       registerTrack(track);
       if (mountedRef && !mountedRef.current) { stopTrack(track); return; }
       newAudioTracksMap[microphones[i].deviceId] = track;
-    } catch (e) {
-    }
+    } catch { /* this microphone is unavailable; skip it and keep the others */ }
   }
   if (!sameTracks(newAudioTracksMap, audioTracksMapRef.current)) {
     dispatch({type:MediaActions.SET_MEDIA_TRACKS,audioTracksMap:newAudioTracksMap});
