@@ -9,7 +9,7 @@ import * as PublishSettingsActions from '../../actions/publishSettingsActions';
 import getUserMedia from '../../webrtc/getUserMedia';
 import getDisplayScreen from '../../webrtc/getDisplayScreen';
 
-// Mobile hardware (iOS/Android) typically only allows one camera open at a time —
+// Mobile hardware (iOS/Android) typically only allows one camera open at a time,
 // the ISP is single-tenant, so keeping multiple camera tracks live raises
 // NotReadableError on the second acquisition.
 const isMobile = () => /Android|webOS|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
@@ -28,7 +28,7 @@ const isMobile = () => /Android|webOS|iPhone|iPad|iPod|Mobile/i.test(navigator.u
 //
 //   2. REGISTRY-BASED RELEASE. Every track getUserMedia hands back is recorded in
 //      `openedTracks` the instant it is created. `releaseAllTracks` stops
-//      everything in that set — NOT just whatever happens to be in the redux map.
+//      everything in that set, NOT just whatever happens to be in the redux map.
 //      So a track that was replaced or dropped from the map can never leak: it is
 //      still in the registry until explicitly stopped.
 //
@@ -91,7 +91,7 @@ const loadUserMediaForCameras = (dispatch, cameras, videoTracksMapRef, mountedRe
 
     // Use `exact` so the browser opens the requested camera. A bare deviceId is only
     // a soft hint that Chrome ignores, returning the default camera for every request
-    // — which makes every preview show the same physical device.
+    // which makes every preview show the same physical device.
     let constraints = { video:{...videoConstraintsByFrameSize.default, deviceId:{ exact: cameras[i].deviceId }}, audio:false };
 
     try {
@@ -100,7 +100,7 @@ const loadUserMediaForCameras = (dispatch, cameras, videoTracksMapRef, mountedRe
       if (!track) continue;
       registerTrack(track);
       // If we unmounted while getUserMedia was in flight, stop the fresh track now
-      // instead of keeping it — the page that needed it is already gone.
+      // instead of keeping it: the page that needed it is already gone.
       if (mountedRef && !mountedRef.current) { stopTrack(track); return; }
       newVideoTracksMap[cameras[i].deviceId] = track;
     } catch (e) {
@@ -133,7 +133,7 @@ const loadUserMediaForSingleCamera = (dispatch, deviceId, videoTracksMapRef, mou
   // Clear references so the preview <video> detaches its srcObject. iOS Safari and
   // Android Chrome both keep the camera hardware pinned until the video element
   // picks up the null srcObject. We deliberately do NOT dispatch SET_PUBLISH_VIDEO_TRACK
-  // here — PublishVideoDropdown reacts to the empty videoTracksMap and dispatches
+  // here: PublishVideoDropdown reacts to the empty videoTracksMap and dispatches
   // `videoTrack: undefined`, which replaceVideoTrack handles as a no-op. Dispatching
   // `{}` would trip the addTrack(...) crash while publishing.
   dispatch({type:MediaActions.SET_MEDIA_TRACKS,videoTracksMap:{}});

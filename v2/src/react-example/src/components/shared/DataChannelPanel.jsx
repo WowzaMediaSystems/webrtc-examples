@@ -36,11 +36,11 @@ const DataChannelPanel = ({ context }) => {
   const isOpen = state === 'open' && handle != null;
 
   const stateBadgeClass = {
-    open: 'badge-success',
-    connecting: 'badge-secondary',
-    closing: 'badge-warning',
-    closed: 'badge-danger',
-  }[state] || 'badge-secondary';
+    open: 'text-bg-success',
+    connecting: 'text-bg-secondary',
+    closing: 'text-bg-warning',
+    closed: 'text-bg-danger',
+  }[state] || 'text-bg-secondary';
 
   const send = () => {
     const value = text.trim();
@@ -101,11 +101,9 @@ const DataChannelPanel = ({ context }) => {
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
           />
-          <div className="input-group-append">
-            <button type="button" className="btn" disabled={!isOpen} onClick={send}>
-              Send
-            </button>
-          </div>
+          <button type="button" className="btn btn-outline-secondary" disabled={!isOpen} onClick={send}>
+            Send
+          </button>
         </div>
       </div>
     </div>

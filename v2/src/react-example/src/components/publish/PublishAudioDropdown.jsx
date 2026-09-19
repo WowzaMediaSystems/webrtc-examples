@@ -36,9 +36,9 @@ const PublishAudioDropdown = () => {
   }, [dispatch, audioTracksMap, audioTrackDeviceId, streamRef]);
 
   return(
-    <div className="form-group">
+    <div className="mb-3">
       <label htmlFor="mic-list-select">
-        Input Microphone
+        Audio Input
       </label>
       <select id="mic-list-select" className="form-select"
         value={publishSettings.audioTrackDeviceId}

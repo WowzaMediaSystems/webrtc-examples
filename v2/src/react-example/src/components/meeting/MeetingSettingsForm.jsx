@@ -7,7 +7,7 @@ import ShareLink from '../shared/ShareLink'
 import * as PublishSettingsActions from '../../actions/publishSettingsActions';
 import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
-import QueryString from 'query-string';
+import { readQueryParams } from '../../utils/QueryParams';
 import muteImage from '../../images/mic-32px.svg'
 import unmuteImage from '../../images/mic-off-32px.svg'
 import videoImage from '../../images/videocam-32px.svg'
@@ -27,7 +27,7 @@ const MeetingSettingsForm = () => {
   useEffect(() => {
 
     let cookieValues = getCookieValues(CookieName);
-    let qs = QueryString.parse(window.location.search);
+    let qs = readQueryParams();
     let savedValues = { ...cookieValues, ...qs };
 
     for (let param in savedValues)
@@ -94,7 +94,7 @@ const MeetingSettingsForm = () => {
       <form id="meeting-settings-form">
         <div className="row">
           <div className="col-12">
-            <div className="form-group">
+            <div className="mb-3">
               <label htmlFor="signalingURL">Signaling URL</label>
               <input type="text"
                 className="form-control"
@@ -110,7 +110,7 @@ const MeetingSettingsForm = () => {
         </div>
         <div className="row">
           <div className="col-6">
-            <div className="form-group">
+            <div className="mb-3">
               <label htmlFor="applicationName">Application Name</label>
               <input type="text"
                 className="form-control"
@@ -123,7 +123,7 @@ const MeetingSettingsForm = () => {
             </div>
           </div>
           <div className="col-6">
-            <div className="form-group">
+            <div className="mb-3">
               <label htmlFor="meetingStreamName">Stream Name</label>
               <input type="text"
                 className="form-control"
@@ -138,7 +138,7 @@ const MeetingSettingsForm = () => {
         </div>
         <div className="row">
           <div className="col-10">
-            <div className="form-group">
+            <div className="mb-3">
               <label htmlFor="camera-list-select">
                 Input Camera
               </label>
@@ -162,7 +162,7 @@ const MeetingSettingsForm = () => {
         </div>
         <div className="row">
           <div className="col-10">
-            <div className="form-group">
+            <div className="mb-3">
               <label htmlFor="mic-list-select">
                 Input Microphone
               </label>

@@ -1,0 +1,22 @@
+/*
+ * Inter is installed from npm and bundled by Vite rather than pulled from Google Fonts,
+ * so the built page still loads nothing from a third-party origin at runtime.
+ */
+@import "@fontsource-variable/inter";
+@import "./styles/tokens.css";
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--wz-font-sans);
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--wz-font-mono);
+}

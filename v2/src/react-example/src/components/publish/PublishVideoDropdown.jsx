@@ -39,9 +39,9 @@ const PublishVideoDropdown = () => {
   }, [dispatch, videoTracksMap, displayScreenTrack, videoTrack1DeviceId, streamRef]);
 
   return(
-    <div className="form-group">
+    <div className="mb-3">
       <label htmlFor="camera-list-select">
-        Input Camera
+        Video Input
       </label>
       <select id="camera-list-select" className="form-select"
         value={publishSettings.videoTrack1DeviceId}
