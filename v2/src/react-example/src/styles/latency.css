@@ -1,0 +1,245 @@
+/*
+ * The frame stamp latency panel and the explanation behind its More info button.
+ *
+ * Split out of diagnostics.css because they are a different feature: diagnostics.css is the
+ * connection statistics and the server communication log, which every page has, while these two
+ * only appear where the probe is running.
+ */
+
+/* ------------------------------------------------------------------ frame stamp latency */
+
+/*
+ * Same shell as the simulcast layer panel: one border, a head
+ * with a right-aligned summary, a two-column table, and a footnote. Three panels can appear
+ * in the same column, and three different frames there would read as three unrelated tools.
+ */
+.wz-latency {
+  border: 1px solid var(--wz-border);
+  border-radius: var(--wz-radius);
+  background: var(--wz-surface);
+  overflow: hidden;
+}
+
+.wz-latency__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--wz-border);
+}
+
+.wz-latency__title { font-size: 11px; font-weight: 600; color: var(--wz-text); }
+
+.wz-latency__summary {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--wz-text-subtle);
+}
+
+/* Colour is never the only carrier: the summary says what happened in words beside it. */
+.wz-latency__summary--bad { color: var(--wz-warning); }
+
+.wz-latency__table { width: 100%; border-collapse: collapse; }
+
+.wz-latency__table th {
+  padding: 5px 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--wz-text);
+}
+
+.wz-latency__note {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--wz-text-subtle);
+}
+
+.wz-latency__value {
+  padding: 5px 12px;
+  width: 1%;
+  text-align: right;
+  font-family: var(--wz-font-sans);
+  font-weight: 500;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--wz-text);
+}
+
+.wz-latency__table tbody tr + tr th,
+.wz-latency__table tbody tr + tr td { border-top: 1px solid var(--wz-border); }
+
+/*
+ * A stalled publisher leaves the last sample in place. Dimming it says the figures are no
+ * longer current without deleting them, and the head and the footnote both state the age in
+ * seconds, so nothing here depends on noticing a shade of grey.
+ */
+.wz-latency__table--stale th,
+.wz-latency__table--stale .wz-latency__value { color: var(--wz-text-subtle); }
+
+/* A row whose value is a refusal rather than a figure, for example an untrustworthy clock. */
+.wz-latency__row--muted th,
+.wz-latency__row--muted .wz-latency__value { color: var(--wz-text-subtle); }
+
+/*
+ * On the Play page the panel and the stat strip stack inside one plain block, so the gap has
+ * to come from here. The combined page needs nothing: that pane is a flex column and already
+ * carries its own gap.
+ */
+.wz-stage__stats > .wz-latency { margin-bottom: 10px; }
+
+.wz-latency__caveat {
+  margin: 0;
+  padding: 7px 12px;
+  border-top: 1px solid var(--wz-border);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--wz-text-subtle);
+}
+
+/* ------------------------------------------------------------------ measurement help */
+
+/*
+ * The explanation of how the figures relate, behind a button. See MeasurementHelp.jsx for
+ * why it is a <dialog>: the modal behaviour, focus containment, Escape and backdrop are all
+ * the element's, not ours.
+ */
+/*
+ * Sized like the note text it sits beside, not like the title it sits next to. `font: inherit`
+ * took the head's title size and made a link twice the weight of anything around it.
+ */
+.wz-help__open {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--wz-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.wz-help__open:hover { color: var(--wz-text); }
+
+.wz-help__open:focus-visible {
+  outline: 2px solid var(--wz-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.wz-help {
+  width: min(680px, calc(100vw - 32px));
+  max-height: min(78vh, 720px);
+  padding: 0;
+  border: 1px solid var(--wz-border-strong);
+  border-radius: var(--wz-radius);
+  background: var(--wz-surface);
+  color: var(--wz-text);
+  overflow: hidden;
+}
+
+.wz-help::backdrop { background: rgba(0, 0, 0, 0.55); }
+
+/* The head stays put while the body scrolls, so the close button is always reachable. */
+.wz-help__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--wz-border);
+  background: var(--wz-surface-raised);
+}
+
+.wz-help__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--wz-text);
+}
+
+.wz-help__close {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--wz-radius-sm);
+  background: none;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--wz-text-muted);
+  cursor: pointer;
+}
+
+.wz-help__close:hover { color: var(--wz-text); background: var(--wz-hover); }
+
+.wz-help__body {
+  max-height: calc(min(78vh, 720px) - 51px);
+  overflow-y: auto;
+  padding: 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--wz-text-muted);
+}
+
+.wz-help__body p { margin: 0 0 12px; }
+.wz-help__body p:last-child { margin-bottom: 0; }
+.wz-help__body strong { color: var(--wz-text); }
+
+.wz-help__body h3 {
+  margin: 20px 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wz-text-subtle);
+}
+
+.wz-help__body code {
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: var(--wz-surface-sunken);
+  font-family: var(--wz-font-mono);
+  font-size: 11.5px;
+  color: var(--wz-text);
+}
+
+.wz-help__table {
+  width: 100%;
+  margin: 0 0 12px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.wz-help__table th,
+.wz-help__table td {
+  padding: 6px 10px 6px 0;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--wz-border);
+}
+
+.wz-help__table thead th {
+  font-weight: 600;
+  color: var(--wz-text-subtle);
+}
+
+.wz-help__table tbody th {
+  font-weight: 500;
+  color: var(--wz-text);
+  white-space: nowrap;
+}
+
+/* A phone has no room for three columns of prose; the header row goes and the cells stack. */
+@media (max-width: 560px) {
+  .wz-help__table thead { display: none; }
+  .wz-help__table tr { display: block; padding: 6px 0; border-bottom: 1px solid var(--wz-border); }
+  .wz-help__table th,
+  .wz-help__table td { display: block; padding: 1px 0; border: 0; white-space: normal; }
+}

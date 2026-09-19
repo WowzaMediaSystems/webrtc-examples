@@ -17,6 +17,7 @@ import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PL
 import { parseSimulcastRenditions, getSimulcastRenditionsError } from '../../utils/SimulcastUtils';
 import PublishSimulcastSettings from './PublishSimulcastSettings';
 import FormCheckbox from '../shared/FormCheckbox';
+import PublishDiagnosticsSettings from './PublishDiagnosticsSettings';
 import FormToggleSelect from '../shared/FormToggleSelect';
 import { WSS, HTTP, isHostless, mismatched, convertTo } from '../../utils/SignalingUrlUtils';
 import { triggerIceRestart } from '../../utils/IceRestartUtils';
@@ -42,6 +43,8 @@ const publishUrlParametersMap = {
   authToken: "publishAuthToken",
   useSimulcast: "publishUseSimulcast",
   simulcastRenditions: "publishSimulcastRenditions",
+  latencyProbe: "publishLatencyProbe",
+  burnedClock: "publishBurnedClock",
   chatEnabled: "publishChatEnabled",
   captionsEnabled: "publishCaptionsEnabled",
 };
@@ -109,11 +112,15 @@ const PublishSettingsForm = ({ tab = 'connection' }) => {
       authToken: PublishSettingsActions.SET_PUBLISH_AUTH_TOKEN,
       useSimulcast: PublishSettingsActions.SET_PUBLISH_USE_SIMULCAST,
       simulcastRenditions: PublishSettingsActions.SET_PUBLISH_SIMULCAST_RENDITIONS,
+      latencyProbe: PublishSettingsActions.SET_PUBLISH_LATENCY_PROBE,
+      burnedClock: PublishSettingsActions.SET_PUBLISH_BURNED_CLOCK,
       chatEnabled: PublishSettingsActions.SET_PUBLISH_CHAT_ENABLED,
       captionsEnabled: PublishSettingsActions.SET_PUBLISH_CAPTIONS_ENABLED,
     };
 
-    const booleanKeys = new Set(['useWhip', 'useSimulcast', 'chatEnabled', 'captionsEnabled']);
+    // Carried in the share link on purpose: testing across two machines means handing the
+    // other machine a URL, and a probe that is on here and off there measures nothing.
+    const booleanKeys = new Set(['useWhip', 'useSimulcast', 'latencyProbe', 'burnedClock', 'chatEnabled', 'captionsEnabled']);
 
     Object.entries(publishUrlParametersMap).forEach(([stateKey, cookieKey]) => {
       let value = savedValues[cookieKey];
@@ -569,6 +576,9 @@ const PublishSettingsForm = ({ tab = 'connection' }) => {
         {/* Kept mounted and hidden rather than unmounted: these groups own effects that
             set up devices and tracks, and those must run whether or not the tab is open. */}
         <div hidden={tab !== 'advanced'}>
+        <PublishDiagnosticsSettings />
+
+        <div className="wz-rule" />
 
         <div className="wz-group">ICE Servers</div>
             <div className="row">

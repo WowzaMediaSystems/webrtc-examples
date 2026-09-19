@@ -27,12 +27,19 @@ import {
   getAnswerTimeoutMessage,
   getWhipWhepFailureMessage
 } from "../utils/NegotiationFailureUtils";
+import {
+  attachClockResponder,
+  configureEncodedStreams,
+  passThroughEncodedFrames,
+  probeUnavailableReason,
+  startSenderStamp
+} from "../diagnostics/latencyProbe";
 
 // Bring up the enabled publisher data channels: the full-duplex chat channel and/or the one-way
 // captions broadcast, each gated by its own setting. `onCaption` (if provided) mirrors each sent
 // caption line to the UI. Returns a handle to shut them down if the server refuses the SCTP section.
 const attachPublishDataChannels = (peerConnection, callbacks, publishSettings) => {
-  if (!publishSettings.chatEnabled && !publishSettings.captionsEnabled)
+  if (!publishSettings.chatEnabled && !publishSettings.captionsEnabled && !publishSettings.latencyProbe)
     return null;
   const stops = [];
   if (publishSettings.chatEnabled) {
@@ -43,6 +50,12 @@ const attachPublishDataChannels = (peerConnection, callbacks, publishSettings) =
     stops.push(startCaptionBroadcast(peerConnection, (text) => {
       if (callbacks.onCaption) callbacks.onCaption({ text });
     }));
+  // The latency probe's clock channel, on the same terms as the others: created here because a
+  // channel's m-line has to be in the first offer. The publisher only answers pings on it.
+  if (publishSettings.latencyProbe) {
+    const clock = attachClockResponder(peerConnection);
+    stops.push(() => clock.close());
+  }
   return { close: () => stops.forEach((stop) => stop()) };
 };
 
@@ -92,6 +105,15 @@ const reportRejectedVideo = (answerSdp, publishSettings, callbacks, session) => 
   }
 };
 
+// The probe needs encodedInsertableStreams on the RTCPeerConnection itself, and that can only be
+// set when the connection is constructed, so this runs before one exists. A probe that was asked
+// for and cannot run says why here, rather than failing at the first frame.
+const armEncodedStreams = (session, publishSettings) => {
+  if (!publishSettings.latencyProbe) return;
+  if (!configureEncodedStreams(session.peerConnectionConfig, true))
+    logEvent('error', 'pc', 'latency probe unavailable', probeUnavailableReason());
+};
+
 const addVideoSender = (peerConnection, videoTrack, publishSettings) => {
   // Say plainly whether a video track was attached. A publish with no video still reaches
   // "connected" and still shows LIVE, so without this line the failure is invisible.
@@ -137,6 +159,12 @@ const addVideoSender = (peerConnection, videoTrack, publishSettings) => {
         : `publish codec preference NOT applied (wanted ${publishSettings.videoCodec})`),
     { requested: publishSettings.videoCodec, applied }
   );
+
+  // The frame stamp is written after encode, on the sender's encoded stream, so it attaches to
+  // the sender and never touches the track or the media stream.
+  if (publishSettings.latencyProbe)
+    keepUntilStopped(peerConnection,
+      startSenderStamp(sender, { videoCodec: publishSettings.videoCodec }));
 
   return sender;
 };
@@ -250,6 +278,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
   try {
 
     addIceServers(publishSettings, session);
+    armEncodedStreams(session, publishSettings);
     peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
     instrumentPeerConnection(peerConnection, 'publish');
 
@@ -320,6 +349,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
 
     // The data channels must be created before the first offer (we never renegotiate). The
     // publisher opens whichever of chat / captions are enabled up front.
+    // The clock responder rides in here, so closing this is what releases its channel.
     session.dataChannels = keepUntilStopped(
       peerConnection, attachPublishDataChannels(peerConnection, callbacks, publishSettings));
 
@@ -328,6 +358,15 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
     if (publishSettings.audioTrack != null)
       audioSender = peerConnection.addTrack(instrumentTrack(publishSettings.audioTrack, 'publish', 'outbound'));
     videoSender = addVideoSender(peerConnection, publishSettings.videoTrack, publishSettings);
+
+
+    /*
+     * The audio sender's encoded frames have to be handed back too. encodedInsertableStreams
+     * is set on the connection, not on one sender, so with the probe on this publish sent no
+     * audio at all until the stream was piped through. See passThroughEncodedFrames.
+     */
+    if (publishSettings.latencyProbe && audioSender)
+      passThroughEncodedFrames(audioSender, 'publish audio sender');
 
     if (callbacks.onSetSenders)
       callbacks.onSetSenders({ audioSender: audioSender, videoSender: videoSender });
@@ -503,6 +542,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
   try {
 
     addIceServers(publishSettings, session);
+    armEncodedStreams(session, publishSettings);
     peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
     instrumentPeerConnection(peerConnection, 'publish');
 
@@ -553,6 +593,10 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
 
     if (publishSettings.audioTrack != null)
       audioSender = peerConnection.addTrack(instrumentTrack(publishSettings.audioTrack, 'publish', 'outbound'));
+
+    // See the WebSocket path above: with the probe on, an untouched encoded stream sends nothing.
+    if (publishSettings.latencyProbe && audioSender)
+      passThroughEncodedFrames(audioSender, 'publish audio sender');
 
     videoSender = addVideoSender(peerConnection, publishSettings.videoTrack, publishSettings);
 
@@ -614,7 +658,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
 
     // Same ordering as the WebSocket path: a refused video line is a codec problem, and
     // the missing simulcast attribute is a symptom of it rather than a separate fault.
-    reportRejectedVideo(answerSDP, publishSettings, callbacks);
+    reportRejectedVideo(answerSDP, publishSettings, callbacks, session);
 
     if (publishSettings.useSimulcast
         && !videoWasRejected(answerSDP)
