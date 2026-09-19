@@ -19,7 +19,7 @@ const InputLayoutSettingsForm = () => {
         <div className="col-md-4 col-sm-12">
           <div className="row">
             <div className="col-10">
-              <div className="form-group">
+              <div className="mb-3">
                 <label htmlFor="camera1-list-select">
                   Video Input 1
                 </label>
@@ -38,7 +38,7 @@ const InputLayoutSettingsForm = () => {
           </div>
           <div className="row">
             <div className="col-10">
-              <div className="form-group">
+              <div className="mb-3">
                 <label htmlFor="camera2-list-select">
                   Video Input 2
                 </label>
@@ -56,7 +56,7 @@ const InputLayoutSettingsForm = () => {
           </div>
           <div className="row">
             <div className="col-10">
-              <div className="form-group">
+              <div className="mb-3">
                 <label htmlFor="mic-list-select">
                   Microphone
                 </label>
