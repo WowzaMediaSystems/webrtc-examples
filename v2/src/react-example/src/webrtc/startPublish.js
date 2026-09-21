@@ -95,10 +95,10 @@ const tearDownConnection = (peerConnection, websocket) => {
     peerConnection.onicecandidate = null;
     peerConnection.onnegotiationneeded = null;
     peerConnection.onconnectionstatechange = null;
-    try { peerConnection.close(); } catch (_) {}
+    try { peerConnection.close(); } catch { /* already closed or closing */ }
   }
   if (websocket) {
-    try { websocket.close(); } catch (_) {}
+    try { websocket.close(); } catch { /* already closed or closing */ }
   }
 };
 

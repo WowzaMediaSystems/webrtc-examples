@@ -1,2 +1,13 @@
 node_modules/
 build/
+dist/
+coverage/
+.vite/
+*.local
+.env.local
+.env.*.local
+.DS_Store
+test-results/
+playwright-report/
+blob-report/
+.playwright/
