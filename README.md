@@ -53,6 +53,13 @@ The end-to-end suite drives a real browser. It uses Chromium's fake capture devi
 webcam is needed, and it talks to a real Wowza Streaming Engine. Point it at yours with:
 
 ```bash
+# macOS / Linux
+export WOWZA_SIGNALING_URL=wss://your-engine/webrtc-session.json
+export WOWZA_APPLICATION=webrtc
+```
+
+```cmd
+:: Windows (cmd)
 set WOWZA_SIGNALING_URL=wss://your-engine/webrtc-session.json
 set WOWZA_APPLICATION=webrtc
 ```

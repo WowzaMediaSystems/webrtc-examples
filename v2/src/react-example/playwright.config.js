@@ -51,7 +51,8 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: `npm run preview -- --port ${PORT} --strictPort`,
+    // Build first: preview serves an existing output folder and errors on a fresh clone.
+    command: `npm run build && npm run preview -- --port ${PORT} --strictPort`,
     port: PORT,
     reuseExistingServer: true,
     timeout: 120_000,

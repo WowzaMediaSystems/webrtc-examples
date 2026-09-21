@@ -7,6 +7,14 @@ export default defineConfig({
   base: './',
   plugins: [react()],
 
+  /*
+   * CRA emitted to build/ and the wowza.com deploy that publishes these pages copies that
+   * folder (/_private/webrtc/react-example/ and the /developer/webrtc/dev-* paths), so the
+   * name is a contract with the deploy job, not Vite's choice to make. Move to the dist/
+   * default only together with whoever owns that job.
+   */
+  build: { outDir: 'build' },
+
   server: {
     port: 3000,
     open: true,
