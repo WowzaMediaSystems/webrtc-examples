@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import * as ErrorsActions from '../../actions/errorsActions';
 import * as PublishSettingsActions from '../../actions/publishSettingsActions';
@@ -108,7 +108,11 @@ const PublishSettingsForm = () => {
   }, [publishSettings]);
 
 
-  const codecUnavailable = isVideoCodecOfferable(publishSettings.videoCodec) === false;
+  // Memoized: getCapabilities is not free and this form re-renders on every keystroke.
+  const codecUnavailable = useMemo(
+    () => isVideoCodecOfferable(publishSettings.videoCodec) === false,
+    [publishSettings.videoCodec]
+  );
 
   const toggleCamera = () => {
     setIsCameraOn(!isCameraOn);
@@ -436,19 +440,20 @@ const PublishSettingsForm = () => {
                 ))}
               </select>
               {codecUnavailable ? (
-                /* Said here rather than after a failed publish: a codec this browser cannot
-                   encode is never offered, so the server has nothing to answer with and the
-                   failure looks like a server problem. */
+                /* Said here rather than after a failed publish: an unsupported choice is
+                   silently replaced with the full offer, so without this note the selector
+                   looks like it worked. */
                 <small className="wz-field-error" id="videoCodec-unsupported" role="alert">
-                  This browser cannot encode {publishSettings.videoCodec} for WebRTC, so it
-                  will not be offered and no video will be sent. H.265 needs Chrome on
-                  Windows, macOS or Android with a hardware HEVC encoder; Edge does not send
-                  it at all.
+                  This browser cannot encode {publishSettings.videoCodec} for WebRTC, so the
+                  choice is ignored and the browser's full codec list is offered instead, as
+                  with Auto. H.265 needs Chrome on Windows, macOS or Android with a hardware
+                  HEVC encoder; Edge does not send it at all.
                 </small>
               ) : (
                 <small className="form-text text-muted">
-                  The server chooses from what the browser offers. Setting this puts your
-                  choice first. Leave it on H.264 unless a workflow needs otherwise.
+                  The server chooses from what the browser offers. Setting a codec offers
+                  only that codec, so the server cannot answer with another. Leave it on
+                  Auto unless a workflow needs a specific codec.
                 </small>
               )}
             </div>

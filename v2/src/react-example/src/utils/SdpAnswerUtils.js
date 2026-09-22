@@ -32,8 +32,12 @@ const mediaSections = (sdp) => {
 
 /** True when the answer's video m-section was refused outright. */
 export const videoWasRejected = (answerSdp) => {
+  if (!answerSdp) return false;
   const video = mediaSections(answerSdp).find((s) => s.header.startsWith('m=video'));
-  if (!video) return false;
+  // No m=video section at all refuses the video track as surely as port 0 does. Callers
+  // only ask when video was offered, so a missing section reads as a rejection
+  // (ENG-5135 behavior, restored).
+  if (!video) return true;
 
   const port = Number(video.header.split(' ')[1]);
   const inactive = video.lines.some((l) => l.trim() === 'a=inactive');
@@ -55,9 +59,10 @@ export const videoWasRejected = (answerSdp) => {
  *        all; null when it could not be determined
  * @returns {string|null} a message when video was rejected, otherwise null
  *
- * The distinction in the message matters. "The server refused what I sent" and "my browser
- * never sent it" are different problems with different fixes, and naming the wrong one sends
- * people to look at the Engine when the answer is the browser they are sitting in front of.
+ * The distinction in the message matters. "The server refused the codec I chose" and "my
+ * browser cannot encode it, so the fallback offer went out and was refused too" are
+ * different problems with different fixes, and naming the wrong one sends people to look
+ * at the Engine when the answer is the browser they are sitting in front of.
  */
 export const describeRejectedVideo = (answerSdp, offeredCodec, browserOffersCodec = null) => {
   if (!videoWasRejected(answerSdp)) return null;
@@ -65,10 +70,9 @@ export const describeRejectedVideo = (answerSdp, offeredCodec, browserOffersCode
   const asked = offeredCodec && offeredCodec !== 'auto' ? offeredCodec : null;
 
   if (asked && browserOffersCodec === false) {
-    return `No video is being sent: this browser cannot encode ${asked} for WebRTC, so it `
-      + `was never offered and the server had no video codec in common to answer with. `
-      + `Audio is still being sent. Choose a codec this browser supports, or set Video `
-      + `Codec to Auto.`;
+    return `No video is being sent: this browser cannot encode ${asked} for WebRTC, so the `
+      + `full codec list was offered instead, as with Auto, and the server accepted none of `
+      + `it. Audio is still being sent.`;
   }
 
   if (asked) {

@@ -7,6 +7,7 @@ const answer = (videoLine, extra = '') =>
 const REJECTED = answer('m=video 0 UDP/TLS/RTP/SAVPF 0');
 const INACTIVE = answer('m=video 7134 UDP/TLS/RTP/SAVPF 96', 'a=inactive');
 const ACCEPTED = answer('m=video 7134 UDP/TLS/RTP/SAVPF 96', 'a=recvonly');
+const NO_VIDEO_SECTION = answer('', '');
 
 describe('videoWasRejected', () => {
   it('flags a port 0 video line', () => {
@@ -17,9 +18,14 @@ describe('videoWasRejected', () => {
     expect(videoWasRejected(INACTIVE)).toBe(true);
   });
 
-  it('is false for an accepted line, a missing section, or no sdp', () => {
+  it('treats a missing video section as a rejection', () => {
+    // Restored from ENG-5135: an answer that drops the m=video line refused the track.
+    // Callers only ask when video was offered, so this cannot fire on audio-only.
+    expect(videoWasRejected(NO_VIDEO_SECTION)).toBe(true);
+  });
+
+  it('is false for an accepted line or no sdp at all', () => {
     expect(videoWasRejected(ACCEPTED)).toBe(false);
-    expect(videoWasRejected('v=0\r\nm=audio 7132 UDP/TLS/RTP/SAVPF 111')).toBe(false);
     expect(videoWasRejected('')).toBe(false);
     expect(videoWasRejected(null)).toBe(false);
   });
@@ -42,14 +48,16 @@ describe('describeRejectedVideo', () => {
   });
 
   /*
-   * The case the Engine team diagnosed on 2026-09-17: Edge cannot encode H.265 for WebRTC,
-   * so it is never offered, and the server refuses the video line for want of anything in
-   * common. Blaming the server there sends people to the wrong machine.
+   * The case the Engine team diagnosed on 2026-09-17: Edge cannot encode H.265 for WebRTC.
+   * The choice is ignored and the full codec list goes out instead, so when the server
+   * still rejects video the message has to say both halves or it sends people to the
+   * wrong machine.
    */
-  it('blames the browser when the browser could not offer the codec', () => {
+  it('says the fallback offer was used when the browser could not offer the codec', () => {
     const m = describeRejectedVideo(REJECTED, 'H265', false);
     expect(m).toMatch(/this browser cannot encode H265/i);
-    expect(m).not.toMatch(/the server accepted none/i);
+    expect(m).toMatch(/full codec list was offered/i);
+    expect(m).not.toMatch(/offered H265/);
   });
 
   it('blames the server when the browser did offer the codec', () => {
@@ -66,9 +74,12 @@ describe('describeRejectedVideo', () => {
     expect(describeRejectedVideo(REJECTED, 'auto')).toMatch(/no video codec in common/i);
   });
 
-  it('returns null for an accepted video line, a missing section, or no sdp', () => {
+  it('reports an answer with no video section at all', () => {
+    expect(describeRejectedVideo(NO_VIDEO_SECTION, 'H264')).toMatch(/^No video is being sent/);
+  });
+
+  it('returns null for an accepted video line or no sdp', () => {
     expect(describeRejectedVideo(ACCEPTED, 'H264')).toBeNull();
-    expect(describeRejectedVideo('v=0\r\nm=audio 7132 UDP/TLS/RTP/SAVPF 111', 'H264')).toBeNull();
     expect(describeRejectedVideo('', 'H264')).toBeNull();
     expect(describeRejectedVideo(null, 'H264')).toBeNull();
   });

@@ -61,17 +61,22 @@ const reportRejectedVideo = (answerSdp, publishSettings, callbacks, session) => 
   // and that is not a rejection (carried over from ENG-5135).
   if (publishSettings.videoTrack == null) return;
 
-  // Once per session. Every ICE restart brings another answer, and a rejection that was
-  // reported at the start does not become news again each time the connection recovers.
-  if (session.videoRejectionReported) return;
-  session.videoRejectionReported = true;
-
   const offerable = isVideoCodecOfferable(publishSettings.videoCodec);
   const message = describeRejectedVideo(answerSdp, publishSettings.videoCodec, offerable);
   if (!message) return;
+
+  // Report once per session, and only latch when there is something to report. Every ICE
+  // restart brings another answer; a clean first answer must not swallow a rejection
+  // that arrives on a later one.
+  if (session.videoRejectionReported) return;
+  session.videoRejectionReported = true;
   // Deliberately not onError: that tears the publish down, and audio is still flowing.
-  // This is a degraded publish, not a failed one.
-  if (callbacks && callbacks.onWarning) callbacks.onWarning({ message });
+  // This is a degraded publish, not a failed one. The callback gets its own try here so
+  // a throw in a warning handler reads the same on the WebSocket and WHIP paths and
+  // never surfaces as a connection failure.
+  try {
+    if (callbacks && callbacks.onWarning) callbacks.onWarning({ message });
+  } catch { /* reported best-effort; never a session failure */ }
 };
 
 // Orchestration dispatcher: simulcast vs. single-track is a publish-flow
@@ -83,8 +88,8 @@ const addVideoSender = (peerConnection, videoTrack, publishSettings) => {
     ? addSimulcastVideoSender(peerConnection, videoTrack, publishSettings.simulcastRenditions)
     : peerConnection.addTrack(videoTrack);
 
-  // Reorder the offer so the wanted codec is first. Without this the answering server
-  // picks, and Engine has been seen answering H.265 even when the browser ranks it last.
+  // Filter the offer down to the wanted codec. Engine picks from the offer rather than
+  // honoring its order, so reordering alone does not make the choice stick.
   applyVideoCodecPreference(peerConnection, sender, publishSettings.videoCodec);
 
   return sender;
@@ -327,16 +332,12 @@ const websocketOnMessage = (event, publishSettings, websocket, peerConnection, c
         .setRemoteDescription(new RTCSessionDescription(sdpData))
         .then(() => {
           /*
-           * The flag first, and the report inside its own try.
-           *
-           * A throw inside the reporter must not land in the shared catch as a connection
-           * failure: a warning about a rejected codec would tear the publish down and the
-           * next re-offer would be treated as an initial offer rather than an ICE restart.
+           * The flag first. reportRejectedVideo catches around its warning callback, so a
+           * throw there cannot land in the shared catch as a connection failure and turn
+           * the next re-offer into an initial offer instead of an ICE restart.
            */
           session.negotiationEstablished = true;
-          try {
-            reportRejectedVideo(sdpData && sdpData.sdp, publishSettings, callbacks, session);
-          } catch { /* reported best-effort; never a session failure */ }
+          reportRejectedVideo(sdpData && sdpData.sdp, publishSettings, callbacks, session);
           // Order matters. A refused video m-line has no simulcast attribute in it either,
           // so testing simulcast first blames simulcast for a codec problem. The rejection
           // has already been reported above; there is nothing more to say here.
