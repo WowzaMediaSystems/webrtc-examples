@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import * as ErrorsActions from '../../actions/errorsActions';
 import * as PublishSettingsActions from '../../actions/publishSettingsActions';
@@ -7,6 +7,7 @@ import PublishAudioDropdown from './PublishAudioDropdown';
 import PublishVideoDropdown from './PublishVideoDropdown';
 import Cookies from 'js-cookie';
 import QueryString from 'query-string';
+import { VIDEO_CODEC_OPTIONS, isVideoCodecOfferable } from '../../utils/CodecUtils';
 import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
 import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
@@ -106,6 +107,12 @@ const PublishSettingsForm = () => {
     Cookies.set(CookieName, escape(JSON.stringify(cookieValues)));
   }, [publishSettings]);
 
+
+  // Memoized: getCapabilities is not free and this form re-renders on every keystroke.
+  const codecUnavailable = useMemo(
+    () => isVideoCodecOfferable(publishSettings.videoCodec) === false,
+    [publishSettings.videoCodec]
+  );
 
   const toggleCamera = () => {
     setIsCameraOn(!isCameraOn);
@@ -412,6 +419,43 @@ const PublishSettingsForm = () => {
                 disabled={webrtcPublish.connected}
                 onChange={(e)=>dispatch({type:PublishSettingsActions.SET_PUBLISH_STREAM_NAME,streamName:e.target.value})}
               />
+            </div>
+          </div>
+        </div>
+
+        <div className="row">
+          <div className="col-12">
+            <div className="form-group">
+              <label htmlFor="videoCodec">Video Codec</label>
+              <select
+                className="form-select"
+                id="videoCodec"
+                name="videoCodec"
+                value={publishSettings.videoCodec}
+                disabled={webrtcPublish.connected}
+                onChange={(e) => dispatch({ type: PublishSettingsActions.SET_PUBLISH_VIDEO_CODEC, videoCodec: e.target.value })}
+              >
+                {VIDEO_CODEC_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              {codecUnavailable ? (
+                /* Said here rather than after a failed publish: an unsupported choice is
+                   silently replaced with the full offer, so without this note the selector
+                   looks like it worked. */
+                <small className="wz-field-error" id="videoCodec-unsupported" role="alert">
+                  This browser cannot encode {publishSettings.videoCodec} for WebRTC, so the
+                  choice is ignored and the browser's full codec list is offered instead, as
+                  with Auto. H.265 needs Chrome on Windows, macOS or Android with a hardware
+                  HEVC encoder; Edge does not send it at all.
+                </small>
+              ) : (
+                <small className="form-text text-muted">
+                  The server chooses from what the browser offers. Setting a codec offers
+                  only that codec, so the server cannot answer with another. Leave it on
+                  Auto unless a workflow needs a specific codec.
+                </small>
+              )}
             </div>
           </div>
         </div>
