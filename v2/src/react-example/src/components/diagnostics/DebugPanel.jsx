@@ -63,7 +63,7 @@ const DebugPanel = ({ defaultOpen = false }) => {
 
   // At most two thirds of the window, so the stage above stays usable.
   const maxHeight = useCallback(() => Math.max(120, Math.round(window.innerHeight * 0.66)), []);
-  const { size, handleProps } = useResizable({
+  const { size, handleProps, targetRef } = useResizable({
     axis: 'y',
     initial: 200,
     min: 90,
@@ -107,7 +107,7 @@ const DebugPanel = ({ defaultOpen = false }) => {
       {open ? (
         <>
         <Resizer label="Resize the server communication panel" {...handleProps} />
-        <div className="wz-debug__body" style={{ height: size }}>
+        <div ref={targetRef} className="wz-debug__body" style={{ height: size }}>
           <div className="wz-debug__bar">
             <div className="wz-debug__filters" role="group" aria-label="Filter by channel">
               {CHANNELS.map((c) => (
