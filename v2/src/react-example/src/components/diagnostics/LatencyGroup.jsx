@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { latencyProbeSupport, subscribe } from '../../diagnostics/latencyProbe';
+import MeasurementHelp from './MeasurementHelp';
 
 /*
  * Publisher-to-player latency from the frame stamp, split into the Engine leg and this
@@ -117,6 +118,8 @@ const Shell = ({ summary, summaryTone, children }) => (
   <div className="wz-latency" id="latency-group">
     <div className="wz-latency__head">
       <span className="wz-latency__title">Frame stamp latency</span>
+      {/* In the head so it is present in every state of the panel. */}
+      <MeasurementHelp />
       {summary ? (
         <span
           className={'wz-latency__summary' + (summaryTone ? ' wz-latency__summary--' + summaryTone : '')}
