@@ -54,6 +54,20 @@ test.describe('settings panel', () => {
     await page.fill('#playIp', '192.168.1.42');
     await expect(page.locator('#playIp')).not.toHaveAttribute('aria-invalid', 'true');
   });
+
+  test('a player reports frames decoded, never frames encoded', async ({ page }) => {
+    await page.goto('/#/play');
+    const media = page.getByRole('group', { name: 'Media' });
+    await expect(media).toContainText('Frames decoded');
+    await expect(media).not.toContainText('Frames encoded');
+  });
+
+  test('a publisher reports frames encoded, never frames decoded', async ({ page }) => {
+    await page.goto('/#/publish');
+    const media = page.getByRole('group', { name: 'Media' });
+    await expect(media).toContainText('Frames encoded');
+    await expect(media).not.toContainText('Frames decoded');
+  });
 });
 
 

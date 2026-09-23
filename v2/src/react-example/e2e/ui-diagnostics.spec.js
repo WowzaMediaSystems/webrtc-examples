@@ -9,6 +9,7 @@ import {
   expectPlaying,
   startPlaying,
   startPublishing,
+  statValue,
 } from './ui-helpers.js';
 
 /*
@@ -141,6 +142,106 @@ test.describe('server communication panel', () => {
   });
 });
 
+
+test.describe('stat groups', () => {
+  test('media and network are separate groups, and audio is reported', async ({ page }) => {
+    await requireEngine(page, test);
+    await page.goto('/#/publish');
+    await startPublishing(page, { streamName: uniqueStream('groups') });
+    await expectLive(page);
+    await page.waitForTimeout(3000);
+
+    const network = page.getByRole('group', { name: 'Network' });
+    const media = page.getByRole('group', { name: 'Media' });
+
+    await expect(network).toContainText('Round trip');
+    await expect(network).toContainText('Packet loss');
+    await expect(media).toContainText('Video codec');
+    await expect(media).toContainText('Audio codec');
+    await expect(media).toContainText('Frames encoded');
+
+    await expect(network).not.toContainText('codec');
+    await expect(media).not.toContainText('Round trip');
+  });
+});
+
+
+/*
+ * RTCPeerConnection.close() fires no connectionstatechange, so the State tile must not rely
+ * on that event to leave "connected".
+ */
+test.describe('state after stopping', () => {
+
+  test('the publisher stops saying connected when publishing stops', async ({ page }) => {
+    await requireEngine(page, test);
+    await page.goto('/#/publish');
+    await startPublishing(page, { streamName: uniqueStream('stopState') });
+    await expectLive(page);
+    await expect(statValue(page, 'State')).toHaveText('connected');
+
+    await page.locator('#publish-toggle').click();
+    await expect(page.locator('#video-live-indicator-live')).toBeHidden();
+    // Promptly: a tile that catches up seconds later is still wrong.
+    await expect(statValue(page, 'State')).toHaveText('idle', { timeout: 2000 });
+  });
+
+  /*
+   * Closes the connection directly, as the error path does. Pressing Unpublish does not
+   * reproduce this: the ordinary stop happens to produce a reported transition.
+   */
+  test('a connection closed without an event does not stay connected', async ({ page }) => {
+    await requireEngine(page, test);
+
+    await page.addInitScript(() => {
+      const Original = window.RTCPeerConnection;
+      window.__pcs = [];
+      window.RTCPeerConnection = class extends Original {
+        constructor(...args) {
+          super(...args);
+          window.__pcs.push(this);
+        }
+      };
+    });
+
+    await page.goto('/#/publish');
+    await startPublishing(page, { streamName: uniqueStream('silentClose') });
+    await expectLive(page);
+    await expect(statValue(page, 'State')).toHaveText('connected');
+
+    const fired = await page.evaluate(() => new Promise((resolve) => {
+      const pc = window.__pcs.filter((c) => c.connectionState === 'connected').pop();
+      let sawEvent = false;
+      pc.addEventListener('connectionstatechange', () => { sawEvent = true; });
+      pc.close();
+      setTimeout(() => resolve(sawEvent), 300);
+    }));
+    expect(fired, 'close() is expected to be silent; if it fired, this no longer tests anything')
+      .toBe(false);
+
+    await expect(statValue(page, 'State')).not.toHaveText('connected', { timeout: 3000 });
+  });
+
+  test('the player stops saying connected when playback stops', async ({ page }) => {
+    await requireEngine(page, test);
+    const streamName = uniqueStream('stopStatePlay');
+
+    const publisher = await page.context().newPage();
+    await publisher.goto('/#/publish');
+    await startPublishing(publisher, { streamName });
+    await expectLive(publisher);
+
+    await page.goto('/#/play');
+    await startPlaying(page, { streamName });
+    await expectPlaying(page);
+    await expect(statValue(page, 'State')).toHaveText('connected');
+
+    await page.locator('#play-toggle').click();
+    await expect(page.locator('#video-play-indicator')).toBeHidden();
+    await expect(statValue(page, 'State')).toHaveText('idle', { timeout: 2000 });
+
+    await publisher.close();
+  });
+});
 
 /*
  * Closing the socket is not always quiet: with a frame in flight the browser fails it with
