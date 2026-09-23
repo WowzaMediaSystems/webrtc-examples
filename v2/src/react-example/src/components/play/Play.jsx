@@ -5,12 +5,15 @@ import Player from './Player';
 import PlaySettingsForm from './PlaySettingsForm';
 import DataChannelPanel from '../shared/DataChannelPanel';
 import CaptionOverlay from '../shared/CaptionOverlay';
+import StatsBar from '../diagnostics/StatsBar';
 import DebugPanel from '../diagnostics/DebugPanel';
 import Stage from '../shell/Stage';
 import Inspector from '../shell/Inspector';
 import ExternalLinks from '../../constants/ExternalLinks';
+import useConnectionStats from '../../hooks/useConnectionStats';
 
 const Play = () => {
+  const { stats, history, connectionState } = useConnectionStats('play');
   const { applicationName, streamName, chatEnabled } = useSelector((state) => state.playSettings);
 
   const target = applicationName || streamName
@@ -37,6 +40,10 @@ const Play = () => {
               <DataChannelPanel context="play" />
             </div>
           ) : null}
+        </div>
+
+        <div className="wz-stage__stats">
+          <StatsBar stats={stats} history={history} connectionState={connectionState} role="play" />
         </div>
 
         <DebugPanel />

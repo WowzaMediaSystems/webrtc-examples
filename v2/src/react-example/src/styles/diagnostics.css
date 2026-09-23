@@ -1,5 +1,93 @@
 /* Live stat strip and the docked server-communication log. */
 
+/* ------------------------------------------------------------------ stat strip */
+
+.wz-stats {
+  display: grid;
+  /* 104px fits the player's nine tiles on one row at a usual stage width; narrower than
+     that they wrap, and the container carries the tile colour so a part-filled last row
+     does not read as a hole. */
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  background: var(--wz-surface);
+  border: 1px solid var(--wz-border);
+  border-radius: var(--wz-radius);
+  overflow: hidden;
+}
+
+.wz-stat {
+  background: var(--wz-surface);
+  padding: 9px 12px;
+  min-width: 0;
+  border-right: 1px solid var(--wz-border);
+  border-top: 1px solid var(--wz-border);
+}
+
+/* The grid wraps, so only trim the edges that actually sit on the outside. */
+.wz-stat:nth-child(-n + 8) { border-top: 0; }
+.wz-stat:last-child { border-right: 0; }
+
+.wz-stat__label {
+  font-size: 11px;
+  color: var(--wz-text-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wz-stat__row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 3px;
+}
+
+/*
+ * The UI face with tabular figures, not the monospace stack.
+ *
+ * Monospace was there for one property, digits of equal width, so that a value changing every
+ * second does not shuffle the ones beside it. font-variant-numeric gives that on its own, and
+ * Inter carries the feature. What monospace also gave was whichever terminal face the machine
+ * happened to have: Consolas on Windows, something else elsewhere, none of them chosen. The
+ * mono stack stays where it earns its place, on the log and the URL fields, where character
+ * alignment is the point rather than a side effect.
+ */
+.wz-stat__value {
+  font-family: var(--wz-font-sans);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  color: var(--wz-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /*
+   * The figure does not shrink. Without this both it and the trend line beside it give way
+   * in proportion, so "218 kbps" became "218 kb..." while the sparkline still had 26px it
+   * could have surrendered. min-content here is the whole unbroken string, so the sparkline
+   * absorbs the squeeze down to its own floor.
+   */
+  flex-shrink: 0;
+  min-width: min-content;
+}
+
+.wz-stat__sub {
+  font-size: 10px;
+  color: var(--wz-text-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tone is a rule on the leading edge; the value and unit always carry the meaning in text. */
+.wz-stat--good { box-shadow: inset 2px 0 0 var(--wz-success); }
+.wz-stat--fair { box-shadow: inset 2px 0 0 var(--wz-warning); }
+.wz-stat--poor { box-shadow: inset 2px 0 0 var(--wz-danger); }
+.wz-stat--unknown { box-shadow: inset 2px 0 0 var(--wz-border-strong); }
+.wz-stat--poor .wz-stat__value { color: var(--wz-danger); }
+
 /* ------------------------------------------------------------------ docked log */
 
 .wz-debug {
@@ -151,4 +239,21 @@
   word-break: break-word;
   max-height: 240px;
   overflow: auto;
+}
+/* ------------------------------------------------------------------ stat groups */
+
+/*
+ * Two groups rather than one row. "Which codec" and "how far behind" are different
+ * questions, and putting them in one undifferentiated strip made you read all of it to
+ * find either.
+ */
+.wz-statgroups { display: flex; flex-direction: column; gap: 10px; }
+
+.wz-statgroup__title {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wz-text-subtle);
 }
