@@ -126,9 +126,10 @@ const RecentInput = ({
               aria-selected={index === highlighted}
               className={index === highlighted ? 'wz-recent__row is-active' : 'wz-recent__row'}
               onMouseEnter={() => setActive(index)}
+              /* mousedown, not click: the input blurs first and the row would be gone. */
+              onMouseDown={() => choose(suggestion)}
             >
-              {/* mousedown, not click: the input blurs first and the row would be gone. */}
-              <span className="wz-recent__value" onMouseDown={() => choose(suggestion)}>
+              <span className="wz-recent__value">
                 {suggestion}
               </span>
               {onForget && (
@@ -137,7 +138,7 @@ const RecentInput = ({
                   className="wz-recent__forget"
                   tabIndex={-1}
                   aria-label={`Forget ${suggestion}`}
-                  onMouseDown={(e) => { e.preventDefault(); onForget(suggestion); }}
+                  onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onForget(suggestion); }}
                 >
                   <span aria-hidden="true">×</span>
                 </button>

@@ -134,6 +134,18 @@ test.describe('remembered values dropdown', () => {
     await expect(page.locator('#streamName-recent')).toHaveCount(0);
   });
 
+  test('clicking a row outside its text picks it too', async ({ page }) => {
+    await page.goto('/#/publish');
+    await remember(page, 'wz.recent.streamName', ['alpha', 'beta']);
+    await page.reload();
+    await page.locator('#streamName-recent-toggle').click();
+
+    // The row's left padding, outside the text.
+    await page.locator('#streamName-recent .wz-recent__row', { hasText: 'beta' })
+      .click({ position: { x: 3, y: 12 } });
+    await expect(page.locator('#streamName')).toHaveValue('beta');
+  });
+
   test('a row is no taller than the control it belongs to', async ({ page }) => {
     await page.goto('/#/publish');
     await remember(page, 'wz.recent.streamName', ['alpha']);

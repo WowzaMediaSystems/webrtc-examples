@@ -10,6 +10,7 @@ import { Provider as StoreProvider } from "react-redux";
 import store from './store'
 
 import Rail from './components/shell/Rail';
+import TrackEnabledSync from './components/shared/TrackEnabledSync';
 import Play from './components/play/Play';
 import Publish from './components/publish/Publish';
 import 'bootstrap/dist/css/bootstrap.css';
@@ -21,6 +22,7 @@ const App = () => {
 
   return (
     <StoreProvider store={store}>
+      <TrackEnabledSync />
       <Router>
         <div className="wz-app">
           <Rail />

@@ -14,6 +14,8 @@ const initialState = {
   audioTrack: {},
   audioTrackDeviceId: '',
   videoTrack: {},
+  videoEnabled: true,
+  audioEnabled: true,
   videoTrack1DeviceId: '',
   videoTrack2DeviceId: '',
   videoFrameRate: '30',
@@ -90,20 +92,13 @@ const publishSettingsReducer = (state = initialState, action) => {
       if (action.publishStopping != null) publishFlagsState.publishStopping = action.publishStopping;
       return publishFlagsState;
     }
-    /*
-     * MediaStreamTrack.enabled lives on the track, so these mutate it and return a fresh object
-     * for React to re-read. The null guard is needed: the buttons work before a device exists.
-     */
-    case PublishSettingsActions.TOGGLE_VIDEO_ENABLED: {
+    // Plain flags; TrackEnabledSync applies them to whatever tracks are current.
+    case PublishSettingsActions.TOGGLE_VIDEO_ENABLED:
       if (!state.videoTrack) return state
-      state.videoTrack.enabled = !state.videoTrack.enabled
-      return { ...state }
-    }
-    case PublishSettingsActions.TOGGLE_AUDIO_ENABLED: {
+      return { ...state, videoEnabled: !state.videoEnabled }
+    case PublishSettingsActions.TOGGLE_AUDIO_ENABLED:
       if (!state.audioTrack) return state
-      state.audioTrack.enabled = !state.audioTrack.enabled
-      return { ...state }
-    }
+      return { ...state, audioEnabled: !state.audioEnabled }
     default:
       return state
   }

@@ -54,12 +54,9 @@ const PublishSettingsForm = ({ tab = 'connection' }) => {
   const publishSettings = useSelector((state) => state.publishSettings);
   const webrtcPublish = useSelector((state) => state.webrtcPublish);
 
-  /*
-   * Read off the track, not copied into state: a remount reset the copy but not the track,
-   * showing a live microphone over a muted one. A missing track reads as off.
-   */
-  const isCameraOn = publishSettings.videoTrack?.enabled === true;
-  const isMicOn = publishSettings.audioTrack?.enabled === true;
+  // From the store, so a remount keeps the state. A missing track reads as off.
+  const isCameraOn = typeof publishSettings.videoTrack?.kind === 'string' && publishSettings.videoEnabled;
+  const isMicOn = typeof publishSettings.audioTrack?.kind === 'string' && publishSettings.audioEnabled;
 
   // Derived, not stored: a stored copy fell out of step with the transport on cookie load.
   const transport = publishSettings.useWhip ? HTTP : WSS;

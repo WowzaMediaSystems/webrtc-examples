@@ -500,6 +500,7 @@
   align-items: center;
   gap: 4px;
   padding: 0 4px 0 9px;
+  cursor: pointer;
 }
 
 .wz-recent__row.is-active { background: var(--wz-hover); }
