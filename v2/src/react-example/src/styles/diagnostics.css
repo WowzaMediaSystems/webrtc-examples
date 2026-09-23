@@ -1,0 +1,154 @@
+/* Live stat strip and the docked server-communication log. */
+
+/* ------------------------------------------------------------------ docked log */
+
+.wz-debug {
+  flex-shrink: 0;
+  background: var(--wz-surface-sunken);
+  border-top: 1px solid var(--wz-border-strong);
+  display: flex;
+  flex-direction: column;
+}
+
+.wz-debug__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0 16px;
+  height: 38px;
+  background: transparent;
+  border: 0;
+  color: var(--wz-text);
+  font-weight: 600;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.wz-debug__toggle:hover { background: var(--wz-hover); }
+
+.wz-debug__count {
+  margin-left: auto;
+  font-family: var(--wz-font-mono);
+  font-size: 11px;
+  color: var(--wz-text-subtle);
+}
+
+.wz-debug__body {
+  border-top: 1px solid var(--wz-border);
+  display: flex;
+  flex-direction: column;
+  height: 200px;
+}
+
+.wz-debug__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--wz-border);
+  flex-shrink: 0;
+}
+
+.wz-debug__filters { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.wz-chip {
+  background: transparent;
+  border: 1px solid var(--wz-border-strong);
+  color: var(--wz-text-muted);
+  border-radius: var(--wz-radius-sm);
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.wz-chip:hover { color: var(--wz-text); }
+
+.wz-chip--on {
+  background: var(--wz-accent);
+  border-color: var(--wz-accent);
+  color: var(--wz-accent-contrast);
+  font-weight: 600;
+}
+
+.wz-debug__follow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--wz-text-muted);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.wz-debug__scroller {
+  flex-grow: 1;
+  overflow-y: auto;
+  font-family: var(--wz-font-mono);
+  font-size: 12px;
+}
+
+.wz-debug__empty {
+  margin: 0;
+  padding: 18px 16px;
+  color: var(--wz-text-subtle);
+  font-family: var(--wz-font-sans);
+  font-size: 12px;
+}
+
+.wz-debug__head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 4px 16px;
+  background: transparent;
+  border: 0;
+  color: var(--wz-text-muted);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.wz-debug__head:disabled { cursor: default; }
+.wz-debug__head:not(:disabled):hover { background: var(--wz-hover); }
+
+.wz-debug__time { color: var(--wz-text-subtle); flex: none; }
+.wz-debug__arrow { flex: none; width: 1ch; font-weight: 700; }
+.wz-debug__row--out .wz-debug__arrow { color: var(--wz-accent); }
+.wz-debug__row--in .wz-debug__arrow { color: var(--wz-info); }
+.wz-debug__row--error { background: color-mix(in srgb, var(--wz-danger) 10%, transparent); }
+.wz-debug__row--error .wz-debug__arrow,
+.wz-debug__row--error .wz-debug__label { color: var(--wz-danger); }
+
+.wz-debug__chan {
+  flex: none;
+  min-width: 4ch;
+  color: var(--wz-text-subtle);
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.wz-debug__label {
+  flex: 1 1 auto;
+  color: var(--wz-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wz-debug__chev { flex: none; color: var(--wz-text-subtle); }
+
+.wz-debug__detail {
+  margin: 0;
+  padding: 6px 16px 10px 44px;
+  color: var(--wz-text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow: auto;
+}

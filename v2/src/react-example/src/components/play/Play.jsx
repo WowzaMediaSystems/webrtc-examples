@@ -5,6 +5,7 @@ import Player from './Player';
 import PlaySettingsForm from './PlaySettingsForm';
 import DataChannelPanel from '../shared/DataChannelPanel';
 import CaptionOverlay from '../shared/CaptionOverlay';
+import DebugPanel from '../diagnostics/DebugPanel';
 import Stage from '../shell/Stage';
 import Inspector from '../shell/Inspector';
 import ExternalLinks from '../../constants/ExternalLinks';
@@ -37,6 +38,8 @@ const Play = () => {
             </div>
           ) : null}
         </div>
+
+        <DebugPanel />
       </Stage>
 
       <Inspector tabs={tabs} legacyHref={ExternalLinks.legacyPlay} />

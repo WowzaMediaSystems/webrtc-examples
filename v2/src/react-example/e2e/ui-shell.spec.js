@@ -807,3 +807,19 @@ test.describe('theme colors', () => {
     expect(Math.max(...channels.light), 'the light wash should be dark').toBeLessThan(120);
   });
 });
+
+test.describe('panel alignment', () => {
+  // The legacy note's rule and the server communication bar's rule read as one line.
+  test('the legacy note rule lines up with the server communication rule', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    for (const route of ['#/publish', '#/play']) {
+      await page.goto(`/${route}`);
+      const tops = await page.evaluate(() => ({
+        foot: document.querySelector('.wz-inspector__foot').getBoundingClientRect().top,
+        debug: document.querySelector('.wz-debug').getBoundingClientRect().top,
+      }));
+      expect(Math.abs(tops.foot - tops.debug), `${route}: foot ${tops.foot} vs debug ${tops.debug}`)
+        .toBeLessThanOrEqual(2);
+    }
+  });
+});
