@@ -180,6 +180,13 @@ ul.navbar-nav {
   align-self: stretch;
 }
 
+/* Covers the laid-out video until its first frame. */
+.wz-video-placeholder--over {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
 #rendition-badge {
   position: absolute;
   top: 0.6em;

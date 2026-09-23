@@ -65,7 +65,9 @@ const Player = () => {
         onPeerConnectionOnTrack: (event) => {
           console.log('ontrack:', event.track.kind, 'muted:', event.track.muted, 'readyState:', event.track.readyState);
           streamRef.current.addTrack(event.track);
-          if (videoElement.current) {
+          // Attach once. Reassigning on every track reloads the element after the Play
+          // click's gesture has expired, which leaves Safari with audio and no picture.
+          if (videoElement.current && videoElement.current.srcObject !== streamRef.current) {
             videoElement.current.srcObject = streamRef.current;
             console.log('srcObject set, tracks:', streamRef.current.getTracks().map(t => t.kind));
           }
@@ -115,10 +117,8 @@ const Player = () => {
 
   }, [dispatch,videoElement,playSettings,peerConnection,websocket,connected]);
 
-  /*
-   * Watch the video's dimensions on loadedmetadata as well as resize: the element is hidden
-   * until it has a picture, and a display:none video never fires resize.
-   */
+  // Dimensions come from loadedmetadata and loadeddata as well as resize, since resize alone
+  // can arrive late for the first frame.
   useEffect(() => {
     const video = videoElement.current;
     if (!video) return;
@@ -189,23 +189,24 @@ const Player = () => {
     setNeedsGesture(false);
   }, []);
 
-  // A connection that has not yet produced a frame has no dimensions, so the element would
-  // sit at its default 300x150. The placeholder holds the stage until there is a picture.
-  const hasPicture = connected && videoSize.width > 0;
+  // No picture until both dimensions are known. The video is never display:none (WebKit may
+  // not paint a video that started playing hidden); the placeholder covers it until then.
+  const hasPicture = connected && videoSize.width > 0 && videoSize.height > 0;
 
   return (
   <>
-    {!hasPicture && <div className="wz-video-placeholder">Not playing</div>}
+    {!hasPicture && (
+      <div className="wz-video-placeholder wz-video-placeholder--over">
+        Not playing
+      </div>
+    )}
     <video
       id="player-video"
       ref={videoElement}
       autoPlay
       playsInline
       controls
-      style={{
-        display: hasPicture ? 'block' : 'none',
-        ...(hasPicture ? { '--wz-video-ar': videoSize.width / videoSize.height } : {}),
-      }}
+      style={hasPicture ? { '--wz-video-ar': videoSize.width / videoSize.height } : undefined}
     />
     {hasPicture && needsGesture && muted && (
       <button

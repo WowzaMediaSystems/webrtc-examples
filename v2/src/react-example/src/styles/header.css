@@ -1,21 +1,6 @@
 /* Live status badges and the error banner. Both live inside the app shell. */
 
-.wz-visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-/*
- * A row, because the badges now live in the topbar and a column overflowed it. The column
- * was for the rail, where they used to sit.
- */
+/* A row: the badges sit in the topbar. */
 .wz-status {
   display: flex;
   flex-direction: row;
@@ -24,10 +9,6 @@
   padding: 0;
 }
 
-/* The rail's legacy nav still stacks them. */
-.wz-status--compact { flex-direction: column; gap: 6px; }
-
-.wz-status--compact { align-items: center; padding: 0; }
 
 
 .wz-status__badge {
@@ -42,8 +23,6 @@
   border: 1px solid transparent;
   white-space: nowrap;
 }
-
-.wz-status__badge--compact { padding: 4px; }
 
 .wz-status__badge--live {
   background: color-mix(in srgb, var(--wz-danger) 18%, transparent);
