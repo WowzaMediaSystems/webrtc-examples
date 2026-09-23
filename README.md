@@ -82,7 +82,7 @@ set WOWZA_APPLICATION=webrtc
 ```
 
 Tests that need an Engine skip themselves when one is not reachable, so the suite is still
-useful without a server. It covers the console shell: the settings forms, remembered values, the header status and the theme, plus a boot smoke check of the publish and play pages.
+useful without a server. It covers publish and play over both signalling paths, WHIP ingest and WHEP egress, the chat and captions data channels, the header status, the diagnostics panel and the stats graphs.
 
 ### Directory structure
 

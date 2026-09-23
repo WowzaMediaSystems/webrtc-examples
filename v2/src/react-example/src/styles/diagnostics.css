@@ -257,3 +257,56 @@
   text-transform: uppercase;
   color: var(--wz-text-subtle);
 }
+
+/* ------------------------------------------------------------------ simulcast layers */
+
+.wz-layers {
+  border: 1px solid var(--wz-border);
+  border-radius: var(--wz-radius);
+  background: var(--wz-surface);
+  overflow: hidden;
+}
+
+.wz-layers__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--wz-border);
+}
+
+.wz-layers__title { font-size: 11px; font-weight: 600; color: var(--wz-text); }
+.wz-layers__summary { font-size: 11px; color: var(--wz-text-subtle); margin-left: auto; }
+
+.wz-layers__table { width: 100%; border-collapse: collapse; }
+
+.wz-layers__table th,
+.wz-layers__table td {
+  padding: 5px 12px;
+  text-align: left;
+  font-size: 12px;
+  font-family: var(--wz-font-sans);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.wz-layers__table thead th {
+  font-family: var(--wz-font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--wz-text-subtle);
+  border-bottom: 1px solid var(--wz-border);
+}
+
+.wz-layers__table tbody th { color: var(--wz-accent); font-weight: 700; }
+.wz-layers__table tbody tr + tr th,
+.wz-layers__table tbody tr + tr td { border-top: 1px solid var(--wz-border); }
+
+/* An idle layer is dimmed, but its reason is still stated in words beside it. */
+.wz-layers__row--idle td,
+.wz-layers__row--idle th { color: var(--wz-text-subtle); }
+
+.wz-layers__state { font-family: var(--wz-font-sans); font-size: 11px; }
+.wz-layers__state--on { color: var(--wz-success); }
+.wz-layers__state--off { color: var(--wz-warning); }

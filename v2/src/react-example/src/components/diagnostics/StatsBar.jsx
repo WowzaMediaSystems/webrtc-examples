@@ -1,5 +1,7 @@
 import React from 'react';
 
+import Sparkline from './Sparkline';
+
 /*
  * Live connection readout in two groups: Media (codecs, size, rate, frame counters) and
  * Network (state, round trip, latency, jitter buffer, loss).
@@ -20,11 +22,12 @@ const band = (value, good, fair) => {
   return 'poor';
 };
 
-const Tile = ({ label, value, sub, tone = 'unknown', title }) => (
+const Tile = ({ label, value, sub, tone = 'unknown', title, history, format, sparkLabel }) => (
   <div className={'wz-stat wz-stat--' + tone} title={title}>
     <div className="wz-stat__label">{label}</div>
     <div className="wz-stat__row">
       <span className="wz-stat__value">{value}</span>
+      {history ? <Sparkline points={history} format={format} ariaLabel={sparkLabel || label} /> : null}
     </div>
     {sub ? <div className="wz-stat__sub">{sub}</div> : null}
   </div>
