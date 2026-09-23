@@ -20,6 +20,7 @@ import './styles/shell.css';
 import './styles/inspector.css';
 import './styles/header.css';
 import './styles/diagnostics.css';
+import './styles/latency.css';
 import './styles/sparkline.css';
 import './styles/loopback.css';
 import './App.css';

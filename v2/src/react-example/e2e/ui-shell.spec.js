@@ -629,6 +629,27 @@ test.describe('settings that explain themselves', () => {
       hintToNextSetting: Math.round(box(nextLabel).top - box(hint).bottom),
     };
   });
+
+  test('a hint sits closer to its own switch than to the next one', async ({ page }) => {
+    await page.goto('/#/publish');
+    await openTab(page, 'Advanced');
+
+    const gaps = await spacing(page);
+    expect(gaps.settings, 'both diagnostics should be grouped').toBe(2);
+    expect(gaps.hintToNextSetting,
+      'the next setting runs into the previous explanation')
+      .toBeGreaterThan(gaps.controlToOwnHint + 8);
+  });
+
+  test('the two diagnostics are separate settings, not one block of prose', async ({ page }) => {
+    await page.goto('/#/publish');
+    await openTab(page, 'Advanced');
+
+    await expect(page.locator('.wz-setting', { has: page.locator('#publishLatencyProbe') }))
+      .toHaveCount(1);
+    await expect(page.locator('.wz-setting', { has: page.locator('#publishBurnedClock') }))
+      .toHaveCount(1);
+  });
 });
 
 /*
@@ -886,4 +907,30 @@ test.describe('panel alignment', () => {
         .toBeLessThanOrEqual(2);
     }
   });
+});
+
+test.describe('advanced tab', () => {
+  test('the player Advanced tab leads with Diagnostics, and no section is double ruled',
+    async ({ page }) => {
+      await page.goto('/#/play');
+      await openTab(page, 'Advanced');
+
+      const shape = await page.evaluate(() => {
+        const adv = [...document.querySelectorAll('.wz-inspector__body form > div')]
+          .find((d) => d.querySelector('#playSecret'));
+        const seq = [];
+        adv.childNodes.forEach((n) => {
+          if (n.nodeType !== 1) return;
+          const c = n.className.toString();
+          seq.push(c.includes('wz-group') ? `GROUP ${n.textContent.trim()}` : (c.includes('wz-rule') ? 'rule' : 'block'));
+        });
+        return seq;
+      });
+
+      expect(shape[0]).toBe('GROUP Diagnostics');
+      expect(shape.filter((v) => v.startsWith('GROUP'))).toEqual(
+        ['GROUP Diagnostics', 'GROUP Secure Token', 'GROUP ICE Servers']);
+      expect(shape.some((v, i) => v === 'rule' && shape[i + 1] === 'rule'),
+        'two separators in a row').toBe(false);
+    });
 });

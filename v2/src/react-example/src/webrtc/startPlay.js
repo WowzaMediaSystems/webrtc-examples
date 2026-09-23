@@ -19,20 +19,39 @@ import attachDataChannel, {
   dataChannelsAcceptedInAnswer,
   ensureApplicationSectionInAnswer,
 } from './attachDataChannel';
+import {
+  attachClockInitiator,
+  configureEncodedStreams,
+  passThroughEncodedFrames,
+  probeUnavailableReason,
+  startReceiverProbe,
+} from '../diagnostics/latencyProbe';
 
 // Listen for whichever data channels are enabled on the player: chat (full-duplex) and/or captions
 // (one-way, receive here). The bootstrap must come first, whenever any channel is enabled, so the
 // SCTP transport is negotiated in the offer and WSE can open the mirrored channels. Returns a handle
 // to close them if the server refuses the SCTP section.
 const attachPlayDataChannels = (peerConnection, callbacks, playSettings) => {
-  if (!playSettings.chatEnabled && !playSettings.captionsEnabled)
+  if (!playSettings.chatEnabled && !playSettings.captionsEnabled && !playSettings.latencyProbe)
     return null;
   const channels = [createSctpBootstrap(peerConnection)];
   if (playSettings.chatEnabled)
     channels.push(attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL, create: false }));
   if (playSettings.captionsEnabled)
     channels.push(attachDataChannel(peerConnection, callbacks, { label: CAPTIONS_CHANNEL_LABEL, create: false }));
+  // The probe's clock channel. The player asks, because the frame send times are on the
+  // publisher's clock; it needs the bootstrap above like the other channels.
+  if (playSettings.latencyProbe)
+    channels.push(attachClockInitiator(peerConnection));
   return { close: () => channels.forEach((channel) => channel.close()) };
+};
+
+// encodedInsertableStreams can only be set at RTCPeerConnection construction, so this runs
+// before one exists, and logs why if the probe cannot run.
+const armEncodedStreams = (session, playSettings) => {
+  if (!playSettings.latencyProbe) return;
+  if (!configureEncodedStreams(session.peerConnectionConfig, true))
+    logEvent('error', 'pc', 'latency probe unavailable', probeUnavailableReason());
 };
 
 // The SCTP section shares the offer/answer with media but is optional: give up on the channels, tell
@@ -103,11 +122,20 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
   
   try {
     addIceServers(playSettings, session);
+    armEncodedStreams(session, playSettings);
     peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
     instrumentPeerConnection(peerConnection, 'play');
     peerConnection.addTransceiver('video', { direction: 'recvonly' });
     peerConnection.addTransceiver('audio', { direction: 'recvonly' });
     peerConnection.ontrack = (event) => {
+      // The stamp is read before decode. Attached in ontrack because a receiver's encoded
+      // stream can be taken only once. startReceiverProbe cannot throw into this handler.
+      if (playSettings.latencyProbe && event.track.kind === 'video')
+        keepUntilStopped(peerConnection, startReceiverProbe(event.receiver));
+      // encodedInsertableStreams covers the whole connection, so audio frames must be passed on.
+      if (playSettings.latencyProbe && event.track.kind !== 'video')
+        keepUntilStopped(peerConnection,
+          passThroughEncodedFrames(event.receiver, 'play audio receiver'));
       if (callbacks.onPeerConnectionOnTrack)
         callbacks.onPeerConnectionOnTrack(event);
     };
@@ -175,6 +203,7 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
 
     // The data channels must be listened for before the first offer (we never renegotiate). WSE
     // opens the mirrored channels toward the player; the player writes back on chat.
+    // The clock channel rides in here, so closing this is what stops its timer chain.
     session.dataChannels = keepUntilStopped(
       peerConnection, attachPlayDataChannels(peerConnection, callbacks, playSettings));
 
@@ -385,6 +414,7 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
 
   try {
     addIceServers(playSettings, session);
+    armEncodedStreams(session, playSettings);
     peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
     instrumentPeerConnection(peerConnection, 'play');
 
@@ -396,6 +426,12 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
     peerConnection.addTransceiver("audio", { direction: "recvonly" });
 
     peerConnection.ontrack = (event) => {
+      // Same probe wiring as the WebSocket path.
+      if (playSettings.latencyProbe && event.track.kind === "video")
+        keepUntilStopped(peerConnection, startReceiverProbe(event.receiver));
+      if (playSettings.latencyProbe && event.track.kind !== "video")
+        keepUntilStopped(peerConnection,
+          passThroughEncodedFrames(event.receiver, 'play audio receiver'));
       if (callbacks.onPeerConnectionOnTrack) {
         callbacks.onPeerConnectionOnTrack(event);
       }

@@ -9,10 +9,11 @@ import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
 import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
 import { isValidIpAddress, IP_ADDRESS_PLACEHOLDER } from '../../utils/IpAddressUtils';
-import RecentInput from '../shared/RecentInput';
 import PlayRenditionSelect from './PlayRenditionSelect';
+import RecentInput from '../shared/RecentInput';
 import useRecent from '../../hooks/useRecent';
 import FormCheckbox from '../shared/FormCheckbox';
+import PlayDiagnosticsSettings from './PlayDiagnosticsSettings';
 import FormToggleSelect from '../shared/FormToggleSelect';
 import { WSS, HTTP, isHostless, mismatched, convertTo } from '../../utils/SignalingUrlUtils';
 import DataChannelRequirements from '../../constants/DataChannelRequirements';
@@ -35,7 +36,8 @@ const playUrlParametersMap = {
   useWhep: "playUseWhep",
   authToken: "playAuthToken",
   chatEnabled: "playChatEnabled",
-  captionsEnabled: "playCaptionsEnabled"
+  captionsEnabled: "playCaptionsEnabled",
+  latencyProbe: "playLatencyProbe"
 };
 
 const SIGNALING_URL_PLACEHOLDER = "wss://[ssl-certificate-domain-name]/webrtc-session.json";
@@ -101,10 +103,13 @@ const PlaySettingsForm = ({ tab = 'connection' }) => {
           useWhep: PlaySettingsActions.SET_PLAY_USE_WHEP,
           authToken: PlaySettingsActions.SET_PLAY_AUTH_TOKEN,
           chatEnabled: PlaySettingsActions.SET_PLAY_CHAT_ENABLED,
-          captionsEnabled: PlaySettingsActions.SET_PLAY_CAPTIONS_ENABLED
+          captionsEnabled: PlaySettingsActions.SET_PLAY_CAPTIONS_ENABLED,
+          latencyProbe: PlaySettingsActions.SET_PLAY_LATENCY_PROBE
         };
 
-        const booleanKeys = ['isIp', 'useWhep', 'chatEnabled', 'captionsEnabled'];
+        // latencyProbe travels in the share link on purpose: a two-machine test is set up by
+        // handing the other machine a URL, and a probe on at one end only measures nothing.
+        const booleanKeys = ['isIp', 'useWhep', 'chatEnabled', 'captionsEnabled', 'latencyProbe'];
 
         const actionType = actionMap[stateKey];
         if (actionType) {
@@ -374,6 +379,10 @@ const PlaySettingsForm = ({ tab = 'connection' }) => {
         </div>
 
         <div hidden={tab !== 'advanced'}>
+        <PlayDiagnosticsSettings />
+
+        <div className="wz-rule" />
+
         <div className="wz-group">Secure Token</div>
         <div className="row">
           <div className="col-12">
