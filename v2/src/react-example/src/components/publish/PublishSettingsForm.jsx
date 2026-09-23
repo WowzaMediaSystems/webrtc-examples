@@ -451,9 +451,10 @@ const PublishSettingsForm = () => {
                 </small>
               ) : (
                 <small className="form-text text-muted">
-                  The server chooses from what the browser offers. Setting a codec offers
-                  only that codec, so the server cannot answer with another. Leave it on
-                  Auto unless a workflow needs a specific codec.
+                  The Engine application has the final say: it only accepts the codecs in
+                  its PreferredCodecsVideo setting. Setting a codec here offers only that
+                  codec, so if the application does not allow it, no video is sent. Leave
+                  it on Auto unless a workflow needs a specific codec.
                 </small>
               )}
             </div>

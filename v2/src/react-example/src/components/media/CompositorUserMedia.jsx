@@ -222,7 +222,6 @@ const CompositorUserMedia = () => {
   const dispatch = useDispatch();
   const { gotPermissions, cameras, microphones, videoTracksMap, audioTracksMap, displayScreenTrack } = useSelector((state) => state.media);
   const { videoTrack1DeviceId : publishVideoTrack1DeviceId } = useSelector((state) => state.publishSettings);
-  const { videoTrack1DeviceId : compositeVideoTrack1DeviceId } = useSelector((state) => state.compositeSettings);
   const videoTracksMapRef = useRef(videoTracksMap);
   const audioTracksMapRef = useRef(audioTracksMap);
   videoTracksMapRef.current = videoTracksMap;
@@ -255,13 +254,12 @@ const CompositorUserMedia = () => {
     if (!gotPermissions) return;
     if (isMobile()) {
       let desired = publishVideoTrack1DeviceId;
-      if (!desired || desired === 'screen') desired = compositeVideoTrack1DeviceId;
       if (!desired || desired === 'screen') desired = cameras[0] != null ? cameras[0].deviceId : '';
       loadUserMediaForSingleCamera(dispatch, desired, videoTracksMapRef, mountedRef);
     } else {
       loadUserMediaForCameras(dispatch, cameras, videoTracksMapRef, mountedRef);
     }
-  }, [dispatch,gotPermissions,cameras,publishVideoTrack1DeviceId,compositeVideoTrack1DeviceId]);
+  }, [dispatch,gotPermissions,cameras,publishVideoTrack1DeviceId]);
 
   // get audio track for each microphone
   useEffect(() => {
@@ -275,13 +273,6 @@ const CompositorUserMedia = () => {
       loadDisplayScreenTrack(dispatch, mountedRef);
     }
   }, [dispatch,publishVideoTrack1DeviceId, displayScreenTrack])
-
-  // start screen sharing for 'composite' example
-  useEffect(() => {
-    if (compositeVideoTrack1DeviceId === 'screen' && displayScreenTrack == null) {
-      loadDisplayScreenTrack(dispatch, mountedRef);
-    }
-  }, [dispatch,compositeVideoTrack1DeviceId, displayScreenTrack])
 
   useEffect(() => {
     let audioTrack = null;

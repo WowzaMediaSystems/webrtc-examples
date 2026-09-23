@@ -44,7 +44,18 @@ describe('describeRejectedVideo', () => {
   });
 
   it('does not suggest Auto when Auto was already used', () => {
-    expect(describeRejectedVideo(REJECTED, 'auto')).not.toContain('Try setting');
+    expect(describeRejectedVideo(REJECTED, 'auto')).not.toContain('set Video Codec to Auto');
+  });
+
+  it('points at the Engine application codec setting whenever the Engine refused', () => {
+    for (const m of [
+      describeRejectedVideo(REJECTED, 'H264'),
+      describeRejectedVideo(REJECTED, 'H265', false),
+      describeRejectedVideo(REJECTED, 'auto'),
+    ]) {
+      expect(m).toMatch(/Engine application/);
+      expect(m).toContain('PreferredCodecsVideo');
+    }
   });
 
   /*
@@ -60,14 +71,14 @@ describe('describeRejectedVideo', () => {
     expect(m).not.toMatch(/offered H265/);
   });
 
-  it('blames the server when the browser did offer the codec', () => {
+  it('blames the Engine application when the browser did offer the codec', () => {
     const m = describeRejectedVideo(REJECTED, 'H265', true);
-    expect(m).toMatch(/the server accepted none of the offered H265/i);
+    expect(m).toMatch(/the Engine application does not accept H265/i);
   });
 
   it('stays neutral when browser support could not be determined', () => {
     const m = describeRejectedVideo(REJECTED, 'H265', null);
-    expect(m).toMatch(/the server accepted none of the offered H265/i);
+    expect(m).toMatch(/the Engine application does not accept H265/i);
   });
 
   it('says both sides when no specific codec was asked for', () => {

@@ -3,7 +3,7 @@
     "version": "2.0.0",
     "private": true,
     "type": "module",
-    "description": "Wowza Streaming Engine WebRTC publish, play, meeting and composite example (React)",
+    "description": "Wowza Streaming Engine WebRTC publish and play example (React)",
     "license": "Apache-2.0",
     "engines": {
         "node": ">=20.19"
@@ -13,8 +13,6 @@
         "dev": "vite",
         "build": "vite build",
         "build-private": "cross-env VITE_BASENAME=/_private/webrtc/react-example/ vite build",
-        "build-composite": "cross-env VITE_BASENAME=/developer/webrtc/dev-composite/ vite build",
-        "build-meeting": "cross-env VITE_BASENAME=/developer/webrtc/dev-meeting/ vite build",
         "preview": "vite preview",
         "test": "vitest run",
         "test:watch": "vitest",

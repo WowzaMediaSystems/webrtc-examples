@@ -1,5 +1,5 @@
 import React from 'react';
-import QueryString from 'query-string';
+import { buildUrlWithParams } from '../../utils/QueryParams';
 import fileImage from '../../images/file_copy-24px.svg'
 
 const ShareLink = (props) => {
@@ -43,7 +43,7 @@ const ShareLink = (props) => {
     }
 
     let baseUrl = window.location.origin + window.location.pathname;
-    let qs = QueryString.stringifyUrl({url:baseUrl,query:queryParams});
+    let qs = buildUrlWithParams(baseUrl, queryParams);
     copyTextToClipboard(qs);
   }
 
