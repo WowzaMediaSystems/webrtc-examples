@@ -9,11 +9,12 @@ import { Provider as StoreProvider } from "react-redux";
 
 import store from './store'
 
-import Nav from './components/shell/Nav';
-import Errors from './components/shell/Errors';
+import Rail from './components/shell/Rail';
 import Play from './components/play/Play';
 import Publish from './components/publish/Publish';
 import 'bootstrap/dist/css/bootstrap.css';
+import './styles/shell.css';
+import './styles/inspector.css';
 import './App.css';
 
 const App = () => {
@@ -21,15 +22,14 @@ const App = () => {
   return (
     <StoreProvider store={store}>
       <Router>
-        <div className="container-fluid">
-          <Nav />
-          <Errors />
+        <div className="wz-app">
+          <Rail />
+          <Routes>
+            <Route path="/play" element={<Play />} />
+            <Route path="/publish" element={<Publish />} />
+            <Route path="/" element={<Navigate to="/publish" replace />} />
+          </Routes>
         </div>
-        <Routes>
-          <Route path="/play" element={<Play />} />
-          <Route path="/publish" element={<Publish />} />
-          <Route path="/" element={<Navigate to="/publish" replace />} />
-        </Routes>
       </Router>
     </StoreProvider>
   );

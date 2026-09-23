@@ -1,8 +1,8 @@
 import React from 'react';
 
 const FormCheckbox = ({ label, id, checked, onChange, disabled }) => (
-  <div className="form-group form-switch form-check-inline">
-    <label className="form-check-label mr-3" htmlFor={id}>
+  <div className="mb-3 form-switch form-check-inline">
+    <label className="form-check-label me-3" htmlFor={id}>
       {label}
     </label>
     <input
