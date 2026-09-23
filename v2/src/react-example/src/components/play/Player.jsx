@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import * as PlaySettingsActions from '../../actions/playSettingsActions';
@@ -65,7 +65,9 @@ const Player = () => {
         onPeerConnectionOnTrack: (event) => {
           console.log('ontrack:', event.track.kind, 'muted:', event.track.muted, 'readyState:', event.track.readyState);
           streamRef.current.addTrack(event.track);
-          if (videoElement.current) {
+          // Attach once. Reassigning on every track reloads the element after the Play
+          // click's gesture has expired, which leaves Safari with audio and no picture.
+          if (videoElement.current && videoElement.current.srcObject !== streamRef.current) {
             videoElement.current.srcObject = streamRef.current;
             console.log('srcObject set, tracks:', streamRef.current.getTracks().map(t => t.kind));
           }
@@ -115,7 +117,8 @@ const Player = () => {
 
   }, [dispatch,videoElement,playSettings,peerConnection,websocket,connected]);
 
-  // Watch the <video> element's dimensions
+  // Dimensions come from loadedmetadata and loadeddata as well as resize, since resize alone
+  // can arrive late for the first frame.
   useEffect(() => {
     const video = videoElement.current;
     if (!video) return;
@@ -127,9 +130,15 @@ const Player = () => {
       setVideoSize({ width, height });
     };
 
+    video.addEventListener('loadedmetadata', updateSize);
+    video.addEventListener('loadeddata', updateSize);
     video.addEventListener('resize', updateSize);
     updateSize();
-    return () => video.removeEventListener('resize', updateSize);
+    return () => {
+      video.removeEventListener('loadedmetadata', updateSize);
+      video.removeEventListener('loadeddata', updateSize);
+      video.removeEventListener('resize', updateSize);
+    };
   }, [connected]);
 
   // Reset the "max width seen" baseline between sessions so a new connection
@@ -141,20 +150,86 @@ const Player = () => {
     }
   }, [connected]);
 
-  const showBadge = connected && videoSize.width > 0;
+  /*
+   * Sound starts on: the Play click unmutes the element while it is still a user gesture. If
+   * the browser refuses sound anyway, playback would stop with no picture, so the first
+   * metadata retries silent and offers "Click to unmute". The toggle below keeps sound
+   * controllable whenever there is a picture.
+   */
+  const [muted, setMuted] = useState(false);
+  const [needsGesture, setNeedsGesture] = useState(false);
+
+  useEffect(() => {
+    const video = videoElement.current;
+    if (!video) return undefined;
+    const sync = () => setMuted(video.muted);
+    const ensurePlaying = async () => {
+      if (!video.paused) return;
+      try {
+        await video.play();
+      } catch {
+        video.muted = true;
+        try { await video.play(); } catch { /* nothing more to try without a gesture */ }
+        setNeedsGesture(true);
+      }
+    };
+    video.addEventListener('volumechange', sync);
+    video.addEventListener('loadedmetadata', ensurePlaying);
+    return () => {
+      video.removeEventListener('volumechange', sync);
+      video.removeEventListener('loadedmetadata', ensurePlaying);
+    };
+  }, []);
+
+  const setSound = useCallback((on) => {
+    const video = videoElement.current;
+    if (!video) return;
+    video.muted = !on;
+    if (on) video.play().catch(() => {});
+    setNeedsGesture(false);
+  }, []);
+
+  // No picture until both dimensions are known. The video is never display:none (WebKit may
+  // not paint a video that started playing hidden); the placeholder covers it until then.
+  const hasPicture = connected && videoSize.width > 0 && videoSize.height > 0;
 
   return (
   <>
+    {!hasPicture && (
+      <div className="wz-video-placeholder wz-video-placeholder--over">
+        Not playing
+      </div>
+    )}
     <video
       id="player-video"
       ref={videoElement}
       autoPlay
       playsInline
-      muted
       controls
-      style={{ display: connected ? 'block' : 'none' }}
+      style={hasPicture ? { '--wz-video-ar': videoSize.width / videoSize.height } : undefined}
     />
-    {showBadge && (
+    {hasPicture && needsGesture && muted && (
+      <button
+        type="button"
+        id="player-unmute"
+        className="wz-unmute"
+        onClick={() => setSound(true)}
+      >
+        Click to unmute
+      </button>
+    )}
+    {hasPicture && (
+      <button
+        type="button"
+        id="player-mute-toggle"
+        className="wz-mute-toggle"
+        aria-pressed={muted}
+        onClick={() => setSound(muted)}
+      >
+        {muted ? 'Unmute' : 'Mute'}
+      </button>
+    )}
+    {hasPicture && (
       <div id="rendition-badge">
         {videoSize.width}&times;{videoSize.height}
       </div>
