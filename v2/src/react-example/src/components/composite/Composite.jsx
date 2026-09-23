@@ -9,12 +9,12 @@ import Devices from '../media/Devices';
 
 import './Composite.css';
 
-import adapter from 'webrtc-adapter';
+import { isSafari } from '../../utils/BrowserUtils';
 import CompositorUserMedia from '../media/CompositorUserMedia';
 
 const Composite = () => {
 
-  if (adapter.browserDetails.browser === 'safari')
+  if (isSafari())
   {
     return (
       <div className="container-fluid mt-3" id="composite-content">

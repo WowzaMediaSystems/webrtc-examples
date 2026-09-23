@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import {
   HashRouter as Router,
   Routes,
@@ -13,9 +13,19 @@ import Rail from './components/shell/Rail';
 import Play from './components/play/Play';
 import Publish from './components/publish/Publish';
 import Loopback from './components/loopback/Loopback';
-import Composite from './components/composite/Composite';
-import Meeting from './components/meeting/Meeting';
-import 'bootstrap/dist/css/bootstrap.css';
+
+/*
+ * Two of the five routes are separate demonstrations rather than parts of the console, and
+ * each brings a compositor or a mesh of peer connections that the publish and play pages
+ * never touch. Loading them on demand keeps that weight out of the first request, which is
+ * the one the person opening the example waits for.
+ *
+ * Route level only. Everything inside a route stays eagerly imported, because the components
+ * in there own device and track effects that have to run whether or not their tab is open.
+ */
+const Composite = lazy(() => import('./components/composite/Composite'));
+const Meeting = lazy(() => import('./components/meeting/Meeting'));
+import './styles/bootstrap.scss';
 import './styles/shell.css';
 import './styles/inspector.css';
 import './styles/header.css';
@@ -41,6 +51,7 @@ const App = () => {
       <Router>
         <div className="wz-app">
           <Rail buildComponent={ buildComponent }/>
+          <Suspense fallback={<div className="wz-route-loading" role="status">Loading…</div>}>
           {buildComponent === 'develop' && (
             <Routes>
               <Route path="/play" element={<Play />} />
@@ -61,6 +72,7 @@ const App = () => {
               <Route path="*" element={<Meeting />} />
             </Routes>
           )}
+          </Suspense>
         </div>
       </Router>
     </StoreProvider>
