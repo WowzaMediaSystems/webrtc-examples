@@ -19,6 +19,7 @@ import './styles/shell.css';
 import './styles/inspector.css';
 import './styles/header.css';
 import './styles/diagnostics.css';
+import './styles/sparkline.css';
 import './App.css';
 
 const App = () => {

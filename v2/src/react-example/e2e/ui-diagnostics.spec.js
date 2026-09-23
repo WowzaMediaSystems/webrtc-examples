@@ -7,9 +7,11 @@ import {
 import {
   expectLive,
   expectPlaying,
+  openTab,
   startPlaying,
   startPublishing,
   statValue,
+  waitForCamera,
 } from './ui-helpers.js';
 
 /*
@@ -104,6 +106,54 @@ test.describe('player picture', () => {
 
     await publisher.close();
     await viewer.close();
+  });
+});
+
+
+/*
+ * The browser reports one outbound-rtp per simulcast encoding; every one must be shown, or a
+ * publish with two idle layers looks the same as a healthy one.
+ */
+test.describe('simulcast layers', () => {
+  test('every rung is listed, with what it is doing', async ({ browser }) => {
+    const page = await browser.newPage();
+    await page.goto('/#/publish');
+    await requireEngine(page, test);
+
+    const streamName = uniqueStream('rungs');
+    await waitForCamera(page);
+    await openTab(page, 'Source');
+    await page.locator('#publishUseSimulcast').check();
+    await openTab(page, 'Connection');
+    await startPublishing(page, { streamName });
+    await expectLive(page);
+
+    const table = page.locator('#simulcast-layers');
+    await expect(table).toBeVisible({ timeout: 20_000 });
+
+    // One row per configured rendition, named by its rid.
+    for (const rid of ['h', 'm', 'l']) {
+      await expect(table.getByRole('rowheader', { name: rid, exact: true })).toBeVisible();
+    }
+
+    // Each row says either that it is sending or why it is not; neither may be blank.
+    const states = await table.locator('tbody tr td:last-child').allTextContents();
+    expect(states).toHaveLength(3);
+    for (const state of states) {
+      expect(state.trim()).toMatch(/^(sending|idle)/);
+    }
+
+    await expect(table.locator('.wz-layers__summary')).toContainText(/of 3 sending/);
+    await page.close();
+  });
+
+  test('an ordinary publish shows no layer table at all', async ({ page }) => {
+    await requireEngine(page, test);
+    await page.goto('/#/publish');
+    await startPublishing(page, { streamName: uniqueStream('plain') });
+    await expectLive(page);
+    await page.waitForTimeout(3000);
+    await expect(page.locator('#simulcast-layers')).toHaveCount(0);
   });
 });
 
