@@ -1,0 +1,32 @@
+/*
+ * The settings panel on the right of the shell.
+ *
+ * The forms still carry the Bootstrap grid markup the examples shipped with, so every
+ * element id stays where a reader of the source expects it. Inside a 340px panel that
+ * grid is wrong: half-width columns collapse into wrapped labels and stub inputs, which
+ * is the old page squeezed sideways. So the grid is neutralised here and the controls
+ * take the console's own field spec instead of Bootstrap's defaults.
+ */
+
+/* The form is the panel now, so it drops the panel chrome it used to draw for itself. */
+.wz-inspector #publish-settings,
+.wz-inspector #play-settings {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+/* Everything stacks. Rows that genuinely belong side by side opt back in below. */
+.wz-inspector .row {
+  display: block;
+  margin: 0;
+}
+
+.wz-inspector [class*="col-"] {
+  flex: none;
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+}

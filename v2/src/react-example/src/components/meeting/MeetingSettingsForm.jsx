@@ -94,7 +94,7 @@ const MeetingSettingsForm = () => {
       <form id="meeting-settings-form">
         <div className="row">
           <div className="col-12">
-            <div className="form-group">
+            <div className="mb-3">
               <label htmlFor="signalingURL">Signaling URL</label>
               <input type="text"
                 className="form-control"
@@ -110,7 +110,7 @@ const MeetingSettingsForm = () => {
         </div>
         <div className="row">
           <div className="col-6">
-            <div className="form-group">
+            <div className="mb-3">
               <label htmlFor="applicationName">Application Name</label>
               <input type="text"
                 className="form-control"
@@ -123,7 +123,7 @@ const MeetingSettingsForm = () => {
             </div>
           </div>
           <div className="col-6">
-            <div className="form-group">
+            <div className="mb-3">
               <label htmlFor="meetingStreamName">Stream Name</label>
               <input type="text"
                 className="form-control"
@@ -138,7 +138,7 @@ const MeetingSettingsForm = () => {
         </div>
         <div className="row">
           <div className="col-10">
-            <div className="form-group">
+            <div className="mb-3">
               <label htmlFor="camera-list-select">
                 Input Camera
               </label>
@@ -162,7 +162,7 @@ const MeetingSettingsForm = () => {
         </div>
         <div className="row">
           <div className="col-10">
-            <div className="form-group">
+            <div className="mb-3">
               <label htmlFor="mic-list-select">
                 Input Microphone
               </label>

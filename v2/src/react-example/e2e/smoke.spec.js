@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { failOnPageErrors } from './helpers';
+import {
+  failOnPageErrors,
+} from './helpers.js';
 
-/* Needs no Engine: these cover only that the app boots under the new toolchain. */
+/* Needs no Engine: these cover the app shell itself. */
 
-test.describe('app boot', () => {
+test.describe('app shell', () => {
   test('every route renders without a page error', async ({ page }) => {
     const errors = [];
     failOnPageErrors(page, errors);
@@ -16,9 +18,9 @@ test.describe('app boot', () => {
     expect(errors, errors.join('\n')).toEqual([]);
   });
 
-  test('the root path redirects to the publish page', async ({ page }) => {
-    await page.goto('/');
-    await expect(page).toHaveURL(/#\/publish$/);
-    await expect(page.locator('#top-nav')).toBeVisible();
+  test('the nav links reach the play page', async ({ page }) => {
+    await page.goto('/#/publish');
+    await page.getByRole('link', { name: 'Play', exact: true }).click();
+    await expect(page.locator('#play-settings')).toBeVisible();
   });
 });
