@@ -43,6 +43,7 @@ const publishUrlParametersMap = {
   authToken: "publishAuthToken",
   useSimulcast: "publishUseSimulcast",
   simulcastRenditions: "publishSimulcastRenditions",
+  latencyProbe: "publishLatencyProbe",
   burnedClock: "publishBurnedClock",
   chatEnabled: "publishChatEnabled",
   captionsEnabled: "publishCaptionsEnabled",
@@ -92,11 +93,14 @@ const PublishSettingsForm = ({ tab = 'connection' }) => {
       authToken: PublishSettingsActions.SET_PUBLISH_AUTH_TOKEN,
       useSimulcast: PublishSettingsActions.SET_PUBLISH_USE_SIMULCAST,
       simulcastRenditions: PublishSettingsActions.SET_PUBLISH_SIMULCAST_RENDITIONS,
+      latencyProbe: PublishSettingsActions.SET_PUBLISH_LATENCY_PROBE,
       burnedClock: PublishSettingsActions.SET_PUBLISH_BURNED_CLOCK,
       chatEnabled: PublishSettingsActions.SET_PUBLISH_CHAT_ENABLED,
       captionsEnabled: PublishSettingsActions.SET_PUBLISH_CAPTIONS_ENABLED,
     };
 
+    // Carried in the share link on purpose: testing across two machines means handing the
+    // other machine a URL, and a probe that is on here and off there measures nothing.
     const booleanKeys = new Set(['useWhip', 'useSimulcast', 'latencyProbe', 'burnedClock', 'chatEnabled', 'captionsEnabled']);
 
     Object.entries(publishUrlParametersMap).forEach(([stateKey, cookieKey]) => {

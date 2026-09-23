@@ -12,7 +12,9 @@ import {
 } from './helpers.js';
 import {
   expectLive,
+  expectPlaying,
   openTab,
+  startPlaying,
   startPublishing,
   waitForCamera,
 } from './ui-helpers.js';
@@ -966,6 +968,186 @@ test.describe('same-machine clock modes agree', () => {
   });
 });
 
+/* ========================================== the feature, when it is in the build ========== */
+
+// These test the feature (toggle, panel, wiring) rather than the instrument, and skip with a
+// named reason when the probe is not in the build.
+const requireProbeUi = async (page, testRef) => {
+  await page.goto('/#/play');
+  const present = await page.locator('#playLatencyProbe').count();
+  testRef.skip(present === 0,
+    'The Latency Probe toggle is not in this build. src/diagnostics/latencyProbe.js and '
+    + 'src/components/diagnostics/LatencyGroup.jsx have to be placed and the pages wired '
+    + 'before these can run.');
+};
+
+test.describe('the latency probe feature', () => {
+  test('the probe off renders no latency group', async ({ page }) => {
+    await requireProbeUi(page, test);
+    await requireEngine(page, test);
+    const streamName = uniqueStream('uioff');
+
+    await page.goto('/#/loopback');
+    await startPublishing(page, { streamName, codec: 'H264' });
+    await expectLive(page);
+    await page.getByRole('button', { name: 'Player', exact: true }).click();
+    await fillPlayForm(page, { streamName });
+    await playWithRetry(page);
+    await page.waitForTimeout(4_000);
+
+    await expect(page.locator('#latency-group')).toHaveCount(0);
+  });
+
+  test('with the probe on at both ends the panel reports a figure', async ({ page }) => {
+    test.setTimeout(150_000);
+    await requireProbeUi(page, test);
+    await requireEngine(page, test);
+    const streamName = uniqueStream('uion');
+
+    await page.goto('/#/loopback');
+    await waitForCamera(page);
+    await openTab(page, 'Advanced');
+    await page.locator('#publishLatencyProbe').check();
+    await openTab(page, 'Connection');
+    await startPublishing(page, { streamName, codec: 'H264' });
+    await expectLive(page);
+
+    await page.getByRole('button', { name: 'Player', exact: true }).click();
+    await openTab(page, 'Advanced');
+    await page.locator('#playLatencyProbe').check();
+    await openTab(page, 'Connection');
+    await fillPlayForm(page, { streamName });
+    await playWithRetry(page);
+
+    const group = page.locator('#latency-group');
+    await expect(group).toBeVisible({ timeout: 20_000 });
+    // Both arms are in one JS context, so the clock is the same one and the panel has to say
+    // so rather than quote an uncertainty it does not have.
+    await expect(group).toContainText(/exact/i, { timeout: 30_000 });
+    await expect(group).toContainText(/\d+\s*ms/, { timeout: 30_000 });
+    console.log(`latency panel text:\n${await group.innerText()}`);
+  });
+});
+
+// A stopped session must release its timers, its emit interval, the connection and the
+// publisher's "stamping" flag.
+test.describe('a stopped session lets go', () => {
+
+  const countTimers = (page) => page.evaluate(() => ({
+    timeouts: window.__wzTimers.timeouts.size,
+    intervals: window.__wzTimers.intervals.size,
+  }));
+
+  const watchTimers = (page) => page.addInitScript(() => {
+    window.__wzTimers = { timeouts: new Set(), intervals: new Set() };
+    const { setTimeout: st, clearTimeout: ct, setInterval: si, clearInterval: ci } = window;
+    window.setTimeout = (...a) => {
+      const id = st(...a);
+      window.__wzTimers.timeouts.add(id);
+      return id;
+    };
+    window.clearTimeout = (id) => { window.__wzTimers.timeouts.delete(id); return ct(id); };
+    window.setInterval = (...a) => {
+      const id = si(...a);
+      window.__wzTimers.intervals.add(id);
+      return id;
+    };
+    window.clearInterval = (id) => { window.__wzTimers.intervals.delete(id); return ci(id); };
+  });
+
+  test('the probe stops emitting and stops holding the connection', async ({ browser }) => {
+    const publisher = await browser.newPage();
+    await publisher.goto('/#/publish');
+    await requireEngine(publisher, test);
+
+    const streamName = uniqueStream('letgo');
+    await waitForCamera(publisher);
+    await openTab(publisher, 'Advanced');
+    await publisher.locator('#publishLatencyProbe').check();
+    await openTab(publisher, 'Connection');
+    await startPublishing(publisher, { streamName });
+    await expectLive(publisher);
+
+    const viewer = await browser.newPage();
+    await watchTimers(viewer);
+    await viewer.goto('/#/play');
+    await openTab(viewer, 'Advanced');
+    await viewer.locator('#playLatencyProbe').check();
+    await openTab(viewer, 'Connection');
+    await startPlaying(viewer, { streamName });
+    await expectPlaying(viewer);
+    await viewer.waitForTimeout(3000);
+
+    const running = await countTimers(viewer);
+    expect(running.intervals, 'the probe should be emitting while it plays')
+      .toBeGreaterThan(0);
+
+    await viewer.locator('#play-toggle').click();
+    await viewer.waitForTimeout(2000);
+
+    const stopped = await countTimers(viewer);
+    expect(stopped.intervals, 'the probe kept its emit interval after the stop')
+      .toBeLessThan(running.intervals);
+
+
+    await publisher.close();
+    await viewer.close();
+  });
+
+  /*
+   * The stamping flag lets the panel call two clocks identical and skip the uncertainty gate.
+   * Left set after a stop, a later play-only session in the same page would claim one browser.
+   * A reload would reset the flag and pass for the wrong reason.
+   */
+  test('a stopped publisher does not make the next playback claim one clock', async ({ browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto('/#/publish');
+    await requireEngine(page, test);
+
+    // Publish with the probe, then stop.
+    await waitForCamera(page);
+    await openTab(page, 'Advanced');
+    await page.locator('#publishLatencyProbe').check();
+    await openTab(page, 'Connection');
+    await startPublishing(page, { streamName: uniqueStream('stale') });
+    await expectLive(page);
+    await page.waitForTimeout(1500);
+    await page.locator('#publish-toggle').click();
+    await expect(page.locator('#video-live-indicator-live')).toBeHidden();
+
+    // Somebody else's stream, from its own page, so the frames carry another context's clock.
+    const other = await browser.newPage();
+    await other.goto('/#/publish');
+    const theirStream = uniqueStream('theirs');
+    await waitForCamera(other);
+    await openTab(other, 'Advanced');
+    await other.locator('#publishLatencyProbe').check();
+    await openTab(other, 'Connection');
+    await startPublishing(other, { streamName: theirStream });
+    await expectLive(other);
+
+    // Same page, no reload: the hash route keeps the module state the flag lives in.
+    await page.getByRole('link', { name: 'Play', exact: true }).click();
+    await openTab(page, 'Advanced');
+    await page.locator('#playLatencyProbe').check();
+    await openTab(page, 'Connection');
+    await startPlaying(page, { streamName: theirStream });
+    await expectPlaying(page);
+    await page.waitForTimeout(4000);
+
+    const clockRow = page.locator('.wz-latency__table tr').filter({ hasText: 'Clock' }).first();
+    // Two contexts on one machine do share a clock, so "one clock" is the honest reading here.
+    // "one browser" is the claim only a stale stamping flag can produce.
+    await expect(clockRow, 'a stale stamping flag claimed one browser across two of them')
+      .not.toContainText('one browser');
+    await expect(clockRow).toContainText('exact');
+
+    await other.close();
+    await context.close();
+  });
+});
+
 // The time drawn onto every frame before encode, replacing the published video track.
 test.describe('burned-in clock', () => {
 
@@ -1070,5 +1252,254 @@ test.describe('burned-in clock', () => {
       const track = stream && stream.getVideoTracks()[0];
       return track ? track.readyState : null;
     }), { timeout: 10_000 }).toBe('live');
+  });
+});
+
+// Both ends share one Date.now, so the offset is exact even though the clock samples' round
+// trip to the Engine exceeds the trusted bound.
+test.describe('the combined page clock', () => {
+
+  test('measures a latency rather than refusing over the sample round trip', async ({ page }) => {
+    await requireEngine(page, test);
+    await page.goto('/#/loopback');
+    await waitForCamera(page);
+
+    const streamName = uniqueStream('loopClock');
+    await openTab(page, 'Advanced');
+    await page.locator('#publishLatencyProbe').check();
+    await openTab(page, 'Connection');
+    await page.fill('#signalingURL', SIGNALING_URL);
+    await page.fill('#applicationName', APPLICATION);
+    await page.fill('#streamName', streamName);
+    await page.click('#publish-toggle');
+    await expectLive(page);
+
+    await page.getByRole('button', { name: 'Player', exact: true }).click();
+    await openTab(page, 'Advanced');
+    await page.locator('#playLatencyProbe').check();
+    await openTab(page, 'Connection');
+    await page.fill('#playSignalingURL', SIGNALING_URL);
+    await page.fill('#playApplicationName', APPLICATION);
+    await page.fill('#playStreamName', streamName);
+    await page.click('#play-toggle');
+    await expectPlaying(page);
+
+    const rows = page.locator('.wz-latency__table tr');
+    const row = (name) => rows.filter({ hasText: name }).first();
+
+    await expect(row('Clock')).toContainText('exact', { timeout: 20_000 });
+    await expect(row('Clock')).toContainText('one browser');
+
+    // And the figures are figures, not dashes.
+    for (const name of ['Publisher to player', 'Player decode and display', 'Total']) {
+      await expect(row(name)).toContainText(/\d+\s*ms/, { timeout: 20_000 });
+    }
+  });
+});
+
+test.describe('a stream that cannot carry a stamp', () => {
+
+  test('the publisher says so before publishing, while Auto is selected', async ({ page }) => {
+    await page.goto('/#/publish');
+    await openTab(page, 'Advanced');
+
+    // Nothing to say until the probe is actually on.
+    await expect(page.locator('#publishLatencyProbe-codec-risk')).toHaveCount(0);
+
+    await page.locator('#publishLatencyProbe').check();
+    await expect(page.locator('#publishLatencyProbe-codec-risk')).toContainText('Auto');
+
+    // Choosing H.264 settles it, so the warning goes.
+    await openTab(page, 'Source');
+    await page.selectOption('#videoCodec', 'H264');
+    await openTab(page, 'Advanced');
+    await expect(page.locator('#publishLatencyProbe-codec-risk')).toHaveCount(0);
+  });
+
+  test('the player names the codec instead of listing what it might be', async ({ browser }) => {
+    const publisher = await browser.newPage();
+    await publisher.goto('/#/publish');
+    await requireEngine(publisher, test);
+
+    const streamName = uniqueStream('vp8');
+    await waitForCamera(publisher);
+    await openTab(publisher, 'Source');
+    await publisher.selectOption('#videoCodec', 'VP8');
+    await openTab(publisher, 'Connection');
+    await startPublishing(publisher, { streamName });
+    await expectLive(publisher);
+
+    const viewer = await browser.newPage();
+    await viewer.goto('/#/play');
+    await openTab(viewer, 'Advanced');
+    await viewer.locator('#playLatencyProbe').check();
+    await openTab(viewer, 'Connection');
+    await startPlaying(viewer, { streamName });
+    await expectPlaying(viewer);
+    await viewer.waitForTimeout(3000);
+
+    const panel = viewer.locator('.wz-latency__caveat');
+    await expect(panel).toContainText('VP8');
+    await expect(panel).toContainText('H.264 SEI NAL');
+    await expect(panel).toContainText('Set Video Codec to H.264');
+
+    await publisher.close();
+    await viewer.close();
+  });
+});
+
+// encodedInsertableStreams applies to the whole connection, so audio frames stop too unless
+// script pipes them back.
+test.describe('the probe and the rest of the media', () => {
+
+  const hookConnections = (page) => page.addInitScript(() => {
+    const Original = window.RTCPeerConnection;
+    window.__pcs = [];
+    window.RTCPeerConnection = class extends Original {
+      constructor(...args) { super(...args); window.__pcs.push(this); }
+    };
+  });
+
+  const rtp = (page, type) => page.evaluate(async (wanted) => {
+    const pc = (window.__pcs || []).filter((c) => c.connectionState === 'connected').pop();
+    if (!pc) return null;
+    let found = null;
+    (await pc.getStats()).forEach((r) => {
+      if (r.type === wanted && r.kind === 'audio') {
+        found = { bytes: r.bytesSent ?? r.bytesReceived ?? 0,
+                  packets: r.packetsSent ?? r.packetsReceived ?? 0 };
+      }
+    });
+    return found;
+  }, type);
+
+  test('a publish with the probe on still sends audio', async ({ page }) => {
+    await hookConnections(page);
+    await requireEngine(page, test);
+    await page.goto('/#/publish');
+    await waitForCamera(page);
+    await openTab(page, 'Advanced');
+    await page.locator('#publishLatencyProbe').check();
+    await openTab(page, 'Connection');
+    await startPublishing(page, { streamName: uniqueStream('probeAudio') });
+    await expectLive(page);
+    await page.waitForTimeout(3000);
+
+    const audio = await rtp(page, 'outbound-rtp');
+    expect(audio, 'no outbound audio stream at all').not.toBeNull();
+    expect(audio.packets, 'the probe stopped the audio going out').toBeGreaterThan(0);
+    expect(audio.bytes).toBeGreaterThan(0);
+  });
+
+  test('a playback with the probe on still receives audio', async ({ browser }) => {
+    const publisher = await browser.newPage();
+    await publisher.goto('/#/publish');
+    await requireEngine(publisher, test);
+    const streamName = uniqueStream('probeAudioIn');
+    await startPublishing(publisher, { streamName });
+    await expectLive(publisher);
+
+    const viewer = await browser.newPage();
+    await hookConnections(viewer);
+    await viewer.goto('/#/play');
+    await openTab(viewer, 'Advanced');
+    await viewer.locator('#playLatencyProbe').check();
+    await openTab(viewer, 'Connection');
+    await startPlaying(viewer, { streamName });
+    await expectPlaying(viewer);
+    await viewer.waitForTimeout(3000);
+
+    const audio = await rtp(viewer, 'inbound-rtp');
+    expect(audio, 'no inbound audio stream at all').not.toBeNull();
+    expect(audio.packets, 'the probe stopped the audio arriving').toBeGreaterThan(0);
+
+    await publisher.close();
+    await viewer.close();
+  });
+});
+
+test.describe('regressions from real use', () => {
+  // Guards the per-rung sequence key: rungs sharing one counter show false missed frames.
+  test('a simulcast publish reports no missed frames', async ({ browser }) => {
+    const publisher = await browser.newPage();
+    await publisher.goto('/#/publish');
+    await requireEngine(publisher, test);
+
+    const streamName = uniqueStream('rgsim');
+    await waitForCamera(publisher);
+    await openTab(publisher, 'Source');
+    await publisher.locator('#publishUseSimulcast').check();
+    await openTab(publisher, 'Advanced');
+    await publisher.locator('#publishLatencyProbe').check();
+    await openTab(publisher, 'Connection');
+    await startPublishing(publisher, { streamName });
+    await expectLive(publisher);
+
+    const viewer = await browser.newPage();
+    await viewer.goto('/#/play');
+    await openTab(viewer, 'Advanced');
+    await viewer.locator('#playLatencyProbe').check();
+    await openTab(viewer, 'Connection');
+    await startPlaying(viewer, { streamName });
+    await expectPlaying(viewer);
+    await viewer.waitForTimeout(10000);
+
+    const missed = await viewer.evaluate(() => {
+      const rows = [...document.querySelectorAll('.wz-latency__table tr')];
+      const row = rows.find((r) => /frames missed/i.test(r.textContent));
+      return row ? row.textContent.replace(/[^0-9]/g, '') : null;
+    });
+    expect(missed, 'frames missed on a healthy simulcast session').toBe('0');
+
+    await publisher.close();
+    await viewer.close();
+  });
+
+  // The player leg and total need attachProbeVideoElement, the video-element half of the join;
+  // the encoded half attaches to the receiver in startPlay.
+  test('the panel reports all three figures, not just the transport leg', async ({ browser }) => {
+    const publisher = await browser.newPage();
+    await publisher.goto('/#/publish');
+    await requireEngine(publisher, test);
+
+    const streamName = uniqueStream('rgjoin');
+    await waitForCamera(publisher);
+    await openTab(publisher, 'Advanced');
+    await publisher.locator('#publishLatencyProbe').check();
+    await openTab(publisher, 'Connection');
+    await startPublishing(publisher, { streamName });
+    await expectLive(publisher);
+
+    const viewer = await browser.newPage();
+    await viewer.goto('/#/play');
+    await openTab(viewer, 'Advanced');
+    await viewer.locator('#playLatencyProbe').check();
+    await openTab(viewer, 'Connection');
+    await startPlaying(viewer, { streamName });
+    await expectPlaying(viewer);
+    await viewer.waitForTimeout(8000);
+
+    const figures = await viewer.evaluate(() => {
+      const rows = [...document.querySelectorAll('.wz-latency__table tr')];
+      const read = (pattern) => {
+        const row = rows.find((r) => pattern.test(r.textContent));
+        if (!row) return null;
+        const match = row.textContent.match(/(\d+)\s*ms/);
+        return match ? Number(match[1]) : null;
+      };
+      return {
+        transport: read(/publisher to player/i),
+        player: read(/decode and display/i),
+        total: read(/^\s*Total/i) ?? read(/Total/i),
+      };
+    });
+
+    expect(figures.transport, 'the Engine leg').toBeGreaterThan(0);
+    expect(figures.player, 'the player decode and display leg').not.toBeNull();
+    expect(figures.total, 'the total').not.toBeNull();
+    expect(figures.total).toBeGreaterThanOrEqual(figures.transport);
+
+    await publisher.close();
+    await viewer.close();
   });
 });

@@ -27,12 +27,19 @@ import {
   getAnswerTimeoutMessage,
   getWhipWhepFailureMessage
 } from "../utils/NegotiationFailureUtils";
+import {
+  attachClockResponder,
+  configureEncodedStreams,
+  passThroughEncodedFrames,
+  probeUnavailableReason,
+  startSenderStamp
+} from "../diagnostics/latencyProbe";
 
 // Bring up the enabled publisher data channels: the full-duplex chat channel and/or the one-way
 // captions broadcast, each gated by its own setting. `onCaption` (if provided) mirrors each sent
 // caption line to the UI. Returns a handle to shut them down if the server refuses the SCTP section.
 const attachPublishDataChannels = (peerConnection, callbacks, publishSettings) => {
-  if (!publishSettings.chatEnabled && !publishSettings.captionsEnabled)
+  if (!publishSettings.chatEnabled && !publishSettings.captionsEnabled && !publishSettings.latencyProbe)
     return null;
   const stops = [];
   if (publishSettings.chatEnabled) {
@@ -43,6 +50,11 @@ const attachPublishDataChannels = (peerConnection, callbacks, publishSettings) =
     stops.push(startCaptionBroadcast(peerConnection, (text) => {
       if (callbacks.onCaption) callbacks.onCaption({ text });
     }));
+  // The probe's clock channel; the publisher only answers pings on it.
+  if (publishSettings.latencyProbe) {
+    const clock = attachClockResponder(peerConnection);
+    stops.push(() => clock.close());
+  }
   return { close: () => stops.forEach((stop) => stop()) };
 };
 
@@ -90,6 +102,14 @@ const reportRejectedVideo = (answerSdp, publishSettings, callbacks, session) => 
   }
 };
 
+// encodedInsertableStreams can only be set at RTCPeerConnection construction, so this runs
+// before one exists, and logs why if the probe cannot run.
+const armEncodedStreams = (session, publishSettings) => {
+  if (!publishSettings.latencyProbe) return;
+  if (!configureEncodedStreams(session.peerConnectionConfig, true))
+    logEvent('error', 'pc', 'latency probe unavailable', probeUnavailableReason());
+};
+
 const addVideoSender = (peerConnection, videoTrack, publishSettings) => {
   // A publish with no video still reaches "connected" and shows LIVE, so say so here.
   // Error only when a camera was chosen and no track came out; "None" is a choice.
@@ -130,6 +150,11 @@ const addVideoSender = (peerConnection, videoTrack, publishSettings) => {
         : `publish codec preference NOT applied (wanted ${publishSettings.videoCodec})`),
     { requested: publishSettings.videoCodec, applied }
   );
+
+  // The stamp is written after encode, on the sender; the track is never touched.
+  if (publishSettings.latencyProbe)
+    keepUntilStopped(peerConnection,
+      startSenderStamp(sender, { videoCodec: publishSettings.videoCodec }));
 
   return sender;
 };
@@ -241,6 +266,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
   try {
 
     addIceServers(publishSettings, session);
+    armEncodedStreams(session, publishSettings);
     peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
     instrumentPeerConnection(peerConnection, 'publish');
 
@@ -311,6 +337,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
 
     // The data channels must be created before the first offer (we never renegotiate). The
     // publisher opens whichever of chat / captions are enabled up front.
+    // The clock responder rides in here, so closing this is what releases its channel.
     session.dataChannels = keepUntilStopped(
       peerConnection, attachPublishDataChannels(peerConnection, callbacks, publishSettings));
 
@@ -321,6 +348,11 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
       audioSender = peerConnection.addTrack(publishSettings.audioTrack);
     }
     videoSender = addVideoSender(peerConnection, publishSettings.videoTrack, publishSettings);
+
+
+    // encodedInsertableStreams covers the whole connection, so audio frames must be passed on.
+    if (publishSettings.latencyProbe && audioSender)
+      passThroughEncodedFrames(audioSender, 'publish audio sender');
 
     if (callbacks.onSetSenders)
       callbacks.onSetSenders({ audioSender: audioSender, videoSender: videoSender });
@@ -494,6 +526,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
   try {
 
     addIceServers(publishSettings, session);
+    armEncodedStreams(session, publishSettings);
     peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
     instrumentPeerConnection(peerConnection, 'publish');
 
@@ -546,6 +579,10 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
       keepUntilStopped(peerConnection, instrumentTrack(publishSettings.audioTrack, 'publish', 'outbound'));
       audioSender = peerConnection.addTrack(publishSettings.audioTrack);
     }
+
+    // See the WebSocket path above: with the probe on, an untouched encoded stream sends nothing.
+    if (publishSettings.latencyProbe && audioSender)
+      passThroughEncodedFrames(audioSender, 'publish audio sender');
 
     videoSender = addVideoSender(peerConnection, publishSettings.videoTrack, publishSettings);
 

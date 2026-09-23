@@ -13,6 +13,7 @@ import CaptionOverlay from '../shared/CaptionOverlay';
 
 import StatsBar from '../diagnostics/StatsBar';
 import SimulcastLayers from '../diagnostics/SimulcastLayers';
+import LatencyGroup from '../diagnostics/LatencyGroup';
 import GlassToGlassReader from '../play/GlassToGlassReader';
 import CopyFromPublisher from './CopyFromPublisher';
 import DebugPanel from '../diagnostics/DebugPanel';
@@ -92,6 +93,11 @@ const Loopback = () => {
                 <GlassToGlassReader connected={play.connectionState === 'connected'} />
               </div>
             </div>
+            {/* Above the strip: e2e/ui.spec.js asserts the strip is last in each pane. */}
+            <LatencyGroup
+              connected={play.connectionState === 'connected'}
+              videoCodec={play.stats?.codec}
+            />
             <StatsBar stats={play.stats} history={play.history} connectionState={play.connectionState} role="play" />
           </section>
         </div>
