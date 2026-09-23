@@ -196,6 +196,43 @@
   flex-direction: column;
 }
 
+.wz-inspector__switch {
+  flex-shrink: 0;
+  height: 48px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--wz-border);
+}
+
+.wz-inspector__switch .wz-segment { width: 100%; }
+
+.wz-segment {
+  display: flex;
+  border: 1px solid var(--wz-border-strong);
+  border-radius: var(--wz-radius-sm);
+  overflow: hidden;
+}
+
+.wz-segment button {
+  flex-grow: 1;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: var(--wz-text-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wz-segment button:hover:not([aria-pressed="true"]) { color: var(--wz-text); background: var(--wz-hover); }
+
+.wz-segment button[aria-pressed="true"] {
+  background: var(--wz-accent);
+  color: var(--wz-accent-contrast);
+  font-weight: 700;
+}
+
 /* 48px, the same as the stage's topbar, so the rule under both runs unbroken across the
    shell. They are one line as far as the eye is concerned, and 2px out reads as a mistake. */
 .wz-tabs {
@@ -212,7 +249,8 @@
  * copy of the label, so the row is laid out for the widest state it will ever be in and
  * nothing moves when the selection changes.
  */
-.wz-tabs button::before {
+.wz-tabs button::before,
+.wz-segment button::before {
   content: attr(data-label);
   display: block;
   height: 0;

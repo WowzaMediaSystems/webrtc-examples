@@ -81,7 +81,8 @@ test.describe('shell alignment', () => {
           const el = document.querySelector(sel);
           return el ? Math.round(el.getBoundingClientRect().bottom) : null;
         };
-        return { topbar: bottom('.wz-topbar'), panel: bottom('.wz-tabs') };
+        // On the combined page the Publisher/Player switch stands where the tabs otherwise do.
+        return { topbar: bottom('.wz-topbar'), panel: bottom('.wz-inspector__switch') ?? bottom('.wz-tabs') };
       });
       expect(rules.panel, `${route}: topbar ${rules.topbar} vs panel ${rules.panel}`)
         .toBe(rules.topbar);

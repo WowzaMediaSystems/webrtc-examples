@@ -1,16 +1,21 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 
 import ExternalLinks from '../../constants/ExternalLinks';
 import Resizer from './Resizer';
 import { useResizable } from '../../hooks/useResizable';
 
 /*
- * The right-hand settings panel. `tabs` is [{ id, label, render }]; `actions` is the sticky
- * footer for the primary control. Resizable from its left edge, capped so the stage always
- * keeps room.
+ * The right-hand settings panel. `tabs` is [{ id, label, render }]; optional `sides` adds a
+ * switch above the tabs (combined page); `actions` is the sticky footer for the primary
+ * control. Resizable from its left edge, capped so the stage always keeps room.
  */
-const Inspector = ({ tabs, actions, legacyHref = null }) => {
+const Inspector = ({ tabs, actions, legacyHref = null, sides = null, side = null, onSideChange = null }) => {
   const [active, setActive] = useState(tabs[0].id);
+
+  // The combined page swaps tab arrays, so the selected tab can vanish: fall back to the first.
+  useEffect(() => {
+    if (!tabs.some((t) => t.id === active)) setActive(tabs[0].id);
+  }, [tabs, active]);
 
   const current = tabs.find((t) => t.id === active) || tabs[0];
 
@@ -28,6 +33,24 @@ const Inspector = ({ tabs, actions, legacyHref = null }) => {
     <>
     <Resizer label="Resize the settings panel" {...handleProps} />
     <aside ref={targetRef} className="wz-inspector" aria-label="Settings" style={{ width: size }}>
+      {sides ? (
+        <div className="wz-inspector__switch">
+          <div className="wz-segment" role="group" aria-label="Which connection these settings apply to">
+            {sides.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                aria-pressed={side === s.id}
+                onClick={() => onSideChange && onSideChange(s.id)}
+                data-label={s.label}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div className="wz-tabs" role="tablist">
         {tabs.map((t) => (
           <button
