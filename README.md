@@ -13,6 +13,7 @@ Welcome to the official Wowza Media Systems Web Real-time Communication (WebRTC)
   - [Prerequisites](#prerequisites)
   - [Set up WebRTC](#set-up-webrtc)
   - [What's new in v2](#whats-new-in-v2)
+  - [Diagnostics in the v2 example](#diagnostics-in-the-v2-example)
   - [Running the tests](#running-the-tests)
   - [Directory Structure](#directory-structure)
   - [Run the example code](#run-the-example-code)
@@ -40,6 +41,22 @@ You'll need to set up WebRTC for Wowza Streaming Engine to run the examples. For
 - **SecureToken support** — Wowza Secure Token hash generation is now available in the React example. The token is computed client-side using the Web Crypto API (SHA-256) and sent with the publish/play request. See `v2/src/react-example/src/webrtc/SecureToken.js` for usage notes.
 - **Form validation** — Required fields (application name and stream name) are validated before a connection is attempted, surfacing errors early instead of failing silently.
 - **Current build toolchain** — v2 builds with [Vite](https://vite.dev/) on React 19, Redux Toolkit and Bootstrap 5.3. `npm install` reports no known vulnerabilities, `npm run build` produces no warnings, and no `--openssl-legacy-provider` workaround is needed. Bootstrap is installed from npm and bundled, and the handful of icons are inline SVG, so the built page loads nothing from a third-party CDN at runtime and waits on no icon font.
+
+### Diagnostics in the v2 example
+
+The publish and play pages each carry two diagnostic tools.
+
+**Connection statistics** sit under the video. `RTT` is measured: it is
+`currentRoundTripTime` on the active ICE candidate pair. `Latency` is an **estimate**,
+calculated as half the round trip time plus the jitter buffer delay over the last second, and it is
+labelled as such on screen. It covers the network leg and the jitter buffer only. It does
+**not** include capture, encode, processing inside Wowza Streaming Engine, decode, or the
+display pipeline, so true glass-to-glass latency is higher than the figure shown.
+
+**Server communication** is a collapsible log of the exchange with the Engine: signaling
+frames in both directions, the WHIP/WHEP HTTP calls, ICE candidates and peer-connection
+state changes. It is collapsed by default, can be filtered by channel, and has a Copy
+button for attaching to a support ticket.
 
 ### Running the tests
 
