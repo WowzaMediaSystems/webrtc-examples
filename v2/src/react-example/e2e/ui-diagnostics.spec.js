@@ -160,6 +160,37 @@ test.describe('player picture', () => {
     await publisher.close();
     await viewer.close();
   });
+
+  /*
+   * Both sides live, so each tile is at its narrowest. Swept across widths because the grid
+   * reflows: at 1440 it fits another column and every tile narrows.
+   */
+  test('no stat value is cut off on the combined page, at any width', async ({ page }) => {
+    await requireEngine(page, test);
+    const streamName = uniqueStream('both');
+
+    await page.goto('/#/loopback');
+    await startPublishing(page, { streamName });
+    await expectLive(page);
+
+    await page.getByRole('button', { name: 'Player', exact: true }).click();
+    await startPlaying(page, { streamName });
+    await expectPlaying(page);
+
+    // Let the counters grow to their full width before measuring.
+    await page.waitForTimeout(5000);
+
+    for (const width of [1280, 1366, 1440, 1600, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.waitForTimeout(400);
+
+      const clipped = await page.$$eval('.wz-loopback .wz-stat__value', (els) =>
+        els.filter((e) => e.scrollWidth > e.clientWidth + 1)
+          .map((e) => `${e.closest('.wz-stat').querySelector('.wz-stat__label').textContent}="${e.textContent}"`));
+
+      expect(clipped, `at ${width}px, ellipsised: ${clipped.join(', ')}`).toEqual([]);
+    }
+  });
 });
 
 

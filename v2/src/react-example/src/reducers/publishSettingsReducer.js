@@ -23,6 +23,7 @@ const initialState = {
   useWhip: false,
   authToken: '',
   useSimulcast: false,
+  burnedClock: false,
   simulcastRenditions: DEFAULT_SIMULCAST_RENDITIONS,
   chatEnabled: false,
   captionsEnabled: false,
@@ -76,6 +77,9 @@ const publishSettingsReducer = (state = initialState, action) => {
       return { ...state, authToken: action.authToken };
     case PublishSettingsActions.SET_PUBLISH_USE_SIMULCAST:
       return { ...state, useSimulcast: action.useSimulcast };
+
+    case PublishSettingsActions.SET_PUBLISH_BURNED_CLOCK:
+      return { ...state, burnedClock: action.burnedClock };
     case PublishSettingsActions.SET_PUBLISH_SIMULCAST_RENDITIONS:
       return { ...state, simulcastRenditions: action.simulcastRenditions };
     case PublishSettingsActions.SET_PUBLISH_CHAT_ENABLED:

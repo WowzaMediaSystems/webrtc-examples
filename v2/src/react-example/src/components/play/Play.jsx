@@ -2,6 +2,7 @@ import React from 'react';
 import { useSelector } from 'react-redux';
 
 import Player from './Player';
+import GlassToGlassReader from './GlassToGlassReader';
 import PlaySettingsForm from './PlaySettingsForm';
 import DataChannelPanel from '../shared/DataChannelPanel';
 import CaptionOverlay from '../shared/CaptionOverlay';
@@ -14,6 +15,7 @@ import useConnectionStats from '../../hooks/useConnectionStats';
 
 const Play = () => {
   const { stats, history, connectionState } = useConnectionStats('play');
+  const playing = connectionState === 'connected';
   const { applicationName, streamName, chatEnabled } = useSelector((state) => state.playSettings);
 
   const target = applicationName || streamName
@@ -33,6 +35,7 @@ const Play = () => {
             <div id="play-video-container">
               <Player />
               <CaptionOverlay context="play" />
+              <GlassToGlassReader connected={playing} />
             </div>
           </div>
           {chatEnabled ? (

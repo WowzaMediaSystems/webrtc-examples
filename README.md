@@ -14,6 +14,7 @@ Welcome to the official Wowza Media Systems Web Real-time Communication (WebRTC)
   - [Set up WebRTC](#set-up-webrtc)
   - [What's new in v2](#whats-new-in-v2)
   - [Diagnostics in the v2 example](#diagnostics-in-the-v2-example)
+  - [Combined publisher and player](#combined-publisher-and-player)
   - [Running the tests](#running-the-tests)
   - [Directory Structure](#directory-structure)
   - [Run the example code](#run-the-example-code)
@@ -44,7 +45,8 @@ You'll need to set up WebRTC for Wowza Streaming Engine to run the examples. For
 
 ### Diagnostics in the v2 example
 
-The publish and play pages each carry two diagnostic tools.
+The publish and play pages each carry two diagnostic tools. The combined page carries both
+sets, one per side.
 
 **Connection statistics** sit under the video. `RTT` is measured: it is
 `currentRoundTripTime` on the active ICE candidate pair. `Latency` is an **estimate**,
@@ -57,6 +59,12 @@ display pipeline, so true glass-to-glass latency is higher than the figure shown
 frames in both directions, the WHIP/WHEP HTTP calls, ICE candidates and peer-connection
 state changes. It is collapsed by default, can be filtered by channel, and has a Copy
 button for attaching to a support ticket.
+
+### Combined publisher and player
+
+`Publish + Play` runs a publisher and a player side by side against the same Engine, each
+with its own settings and its own statistics. The two are independent peer connections, so
+their figures are per side and do not sum to a round-trip measurement.
 
 ### Running the tests
 
