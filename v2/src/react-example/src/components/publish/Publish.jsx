@@ -8,6 +8,7 @@ import Devices from '../media/Devices';
 import Publisher from './Publisher';
 import DataChannelPanel from '../shared/DataChannelPanel';
 import PublishCaptionBox from './PublishCaptionBox';
+import DebugPanel from '../diagnostics/DebugPanel';
 import Stage from '../shell/Stage';
 import Inspector from '../shell/Inspector';
 import ExternalLinks from '../../constants/ExternalLinks';
@@ -43,6 +44,8 @@ const Publish = () => {
             </div>
           ) : null}
         </div>
+
+        <DebugPanel />
       </Stage>
 
       <Inspector tabs={tabs} legacyHref={ExternalLinks.legacyPublish} />

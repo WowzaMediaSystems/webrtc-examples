@@ -1,4 +1,6 @@
 import stopPlay from './stopPlay';
+import { keepUntilStopped } from './sessionHandles';
+import { describeSignalingError, instrumentPeerConnection, instrumentWebSocket, isWebSocketClosing, logEvent, loggedFetch } from '../diagnostics/signalLog';
 import getSecureToken from './SecureToken';
 import { validateParams } from '../utils/ValidationUtils';
 import { addIceServers } from '../utils/IceServersUtils';
@@ -23,7 +25,8 @@ import attachDataChannel, {
 // SCTP transport is negotiated in the offer and WSE can open the mirrored channels. Returns a handle
 // to close them if the server refuses the SCTP section.
 const attachPlayDataChannels = (peerConnection, callbacks, playSettings) => {
-  if (!playSettings.chatEnabled && !playSettings.captionsEnabled) return null;
+  if (!playSettings.chatEnabled && !playSettings.captionsEnabled)
+    return null;
   const channels = [createSctpBootstrap(peerConnection)];
   if (playSettings.chatEnabled)
     channels.push(attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL, create: false }));
@@ -81,10 +84,11 @@ const getSecureTokenData = (playSettings) => {
 // PeerConnection Functions
 
 const peerConnectionOnError = (error, callbacks) => {
-  console.log('peerConnectionOnError');
-  console.log(error);
+  // Not console.log(error); see websocketOnError. An Event carries no message.
+  const message = describeSignalingError(error);
+  logEvent('error', 'pc', 'play peer connection failed', message);
   if (callbacks.onError)
-    callbacks.onError({message:'PeerConnection Error: '+error.message});
+    callbacks.onError({message:'PeerConnection Error: '+message});
 }
 
 
@@ -100,6 +104,7 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
   try {
     addIceServers(playSettings, session);
     peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
+    instrumentPeerConnection(peerConnection, 'play');
     peerConnection.addTransceiver('video', { direction: 'recvonly' });
     peerConnection.addTransceiver('audio', { direction: 'recvonly' });
     peerConnection.ontrack = (event) => {
@@ -170,7 +175,8 @@ const websocketOnOpen = async (playSettings, websocket, callbacks, session) => {
 
     // The data channels must be listened for before the first offer (we never renegotiate). WSE
     // opens the mirrored channels toward the player; the player writes back on chat.
-    session.dataChannels = attachPlayDataChannels(peerConnection, callbacks, playSettings);
+    session.dataChannels = keepUntilStopped(
+      peerConnection, attachPlayDataChannels(peerConnection, callbacks, playSettings));
 
     websocket.addEventListener("message", (event) => { websocketOnMessage(event, playSettings, peerConnection, websocket, callbacks, session, pendingCandidates); });
 
@@ -250,10 +256,14 @@ const websocketOnMessage = (event, playSettings, peerConnection, websocket, call
 }
 
 const websocketOnError = (error, callbacks) => {
-  console.log('Websocket Error');
-  console.log(error);
+  /*
+   * Not console.log(error): the event references the socket and window, and the console keeps
+   * that whole graph alive for expansion. The event also has no .message.
+   */
+  const message = describeSignalingError(error);
+  logEvent('error', 'ws', 'play signalling failed', message);
   if (callbacks.onError)
-    callbacks.onError({message:'Websocket Error: '+error.message});
+    callbacks.onError({message:'Websocket Error: '+message});
 }
 
 const createOfferPayload = (playSettings, session, secureToken = null) => {
@@ -339,7 +349,7 @@ const startPlay = (playSettings, callbacks) =>
       startPlayWhep(playSettings, session, callbacks);
     } else {
       
-      const websocket = new WebSocket (playSettings.signalingURL + "?webrtcImplementation=v2");
+      const websocket = instrumentWebSocket(new WebSocket (playSettings.signalingURL + "?webrtcImplementation=v2"), 'play');
 
       if (websocket != null)
       {
@@ -349,6 +359,8 @@ const startPlay = (playSettings, callbacks) =>
         websocket.addEventListener ("open", () => { websocketOnOpen(playSettings, websocket, callbacks, session); });
         websocket.addEventListener ("error", (error) => {
           clearAnswerTimeout(session);
+          // Errors that arrive because we are shutting down are not failures to report.
+          if (isWebSocketClosing(websocket)) return;
           websocketOnError(error, callbacks);
         });
 
@@ -374,6 +386,7 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
   try {
     addIceServers(playSettings, session);
     peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
+    instrumentPeerConnection(peerConnection, 'play');
 
     // Hand it over immediately, as the WebSocket path does: stopPlay can only close what it was given.
     if (callbacks.onSetPeerConnection)
@@ -425,7 +438,7 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
         return;
       }
 
-      await fetch(sessionUrl, {
+      await loggedFetch(sessionUrl, {
         method: "PATCH",
         headers: { "Content-Type": "application/trickle-ice-sdpfrag", ...getAuthHeaders(playSettings.authToken) },
         body: candidate
@@ -433,14 +446,15 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
     };
 
     // Same as the WebSocket path: listen for the channels before the offer (we never renegotiate).
-    const dataChannels = attachPlayDataChannels(peerConnection, callbacks, playSettings);
+    const dataChannels = keepUntilStopped(
+      peerConnection, attachPlayDataChannels(peerConnection, callbacks, playSettings));
 
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 
     const whepUrl = `${playSettings.signalingURL}/${playSettings.applicationName}/${playSettings.streamName}/whep`;
 
-    const response = await fetch(whepUrl, {
+    const response = await loggedFetch(whepUrl, {
       method: "POST",
       headers: { "Content-Type": "application/sdp", ...getAuthHeaders(playSettings.authToken) },
       body: peerConnection.localDescription.sdp
@@ -457,7 +471,7 @@ const startPlayWhep = async (playSettings, session, callbacks) => {
       playSettings._whepSessionUrl = sessionUrl;
 
       for (const candidate of pendingCandidates) {
-        await fetch(sessionUrl, {
+        await loggedFetch(sessionUrl, {
           method: "PATCH",
           headers: { "Content-Type": "application/trickle-ice-sdpfrag", ...getAuthHeaders(playSettings.authToken) },
           body: candidate

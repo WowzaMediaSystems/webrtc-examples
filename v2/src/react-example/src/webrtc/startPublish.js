@@ -1,7 +1,12 @@
 // Utilities
 
 import { addIceServers } from "../utils/IceServersUtils";
+import { applyVideoCodecPreference, isVideoCodecOfferable } from "../utils/CodecUtils";
+import { describeRejectedVideo, videoWasRejected } from "../utils/SdpAnswerUtils";
+import { describeSignalingError, instrumentPeerConnection, instrumentTrack, instrumentWebSocket, isWebSocketClosing, logEvent, loggedFetch } from "../diagnostics/signalLog";
 import { validateParams } from "../utils/ValidationUtils";
+import { keepUntilStopped, releaseSessionHandles } from "./sessionHandles";
+import { releasePeerConnection } from "../diagnostics/connections";
 import {
   SIMULCAST_REJECTED_MESSAGE,
   addSimulcastVideoSender,
@@ -10,8 +15,6 @@ import {
 } from "../utils/SimulcastUtils";
 import { attachIceRestartRecovery, consumeIceRestartOffer } from "../utils/IceRestartUtils";
 import { sendWhipWhepIceRestart } from "../utils/SdpFragUtils";
-import { applyVideoCodecPreference, isVideoCodecOfferable } from "../utils/CodecUtils";
-import { describeRejectedVideo, videoWasRejected } from "../utils/SdpAnswerUtils";
 import attachDataChannel, {
   CHAT_CHANNEL_LABEL,
   dataChannelsAcceptedInAnswer,
@@ -29,7 +32,8 @@ import {
 // captions broadcast, each gated by its own setting. `onCaption` (if provided) mirrors each sent
 // caption line to the UI. Returns a handle to shut them down if the server refuses the SCTP section.
 const attachPublishDataChannels = (peerConnection, callbacks, publishSettings) => {
-  if (!publishSettings.chatEnabled && !publishSettings.captionsEnabled) return null;
+  if (!publishSettings.chatEnabled && !publishSettings.captionsEnabled)
+    return null;
   const stops = [];
   if (publishSettings.chatEnabled) {
     const chat = attachDataChannel(peerConnection, callbacks, { label: CHAT_CHANNEL_LABEL, create: true });
@@ -70,19 +74,39 @@ const reportRejectedVideo = (answerSdp, publishSettings, callbacks, session) => 
   // that arrives on a later one.
   if (session.videoRejectionReported) return;
   session.videoRejectionReported = true;
+  logEvent('error', 'pc', 'server rejected the video m-line', {
+    videoCodec: publishSettings.videoCodec,
+    browserCanOfferCodec: offerable,
+  });
   // Deliberately not onError: that tears the publish down, and audio is still flowing.
   // This is a degraded publish, not a failed one. The callback gets its own try here so
   // a throw in a warning handler reads the same on the WebSocket and WHIP paths and
   // never surfaces as a connection failure.
   try {
     if (callbacks && callbacks.onWarning) callbacks.onWarning({ message });
-  } catch { /* reported best-effort; never a session failure */ }
+  } catch (error) {
+    logEvent('error', 'pc', 'could not deliver the rejected-video warning',
+      error?.message ?? String(error));
+  }
 };
 
-// Orchestration dispatcher: simulcast vs. single-track is a publish-flow
-// decision, so it lives here. The simulcast mechanics live in SimulcastUtils.
 const addVideoSender = (peerConnection, videoTrack, publishSettings) => {
+  // A publish with no video still reaches "connected" and shows LIVE, so say so here.
+  // Error only when a camera was chosen and no track came out; "None" is a choice.
+  const cameraChosen = Boolean(publishSettings.videoTrack1DeviceId);
+  logEvent(
+    videoTrack == null && cameraChosen ? 'error' : 'info',
+    'pc',
+    videoTrack == null
+      ? (cameraChosen ? 'publish has NO video track - audio only' : 'publish is audio only: no camera selected')
+      : 'publish video track attached: ' + (videoTrack.label || videoTrack.kind) + ' (' + videoTrack.readyState + ')',
+    { hasVideoTrack: videoTrack != null, hasAudioTrack: publishSettings.audioTrack != null }
+  );
+
   if (videoTrack == null) return undefined;
+
+  // A muted or ended capture track is the usual cause of a quiet publish; see instrumentTrack.
+  keepUntilStopped(peerConnection, instrumentTrack(videoTrack, 'publish', 'outbound'));
 
   const sender = publishSettings.useSimulcast
     ? addSimulcastVideoSender(peerConnection, videoTrack, publishSettings.simulcastRenditions)
@@ -90,7 +114,22 @@ const addVideoSender = (peerConnection, videoTrack, publishSettings) => {
 
   // Filter the offer down to the wanted codec. Engine picks from the offer rather than
   // honoring its order, so reordering alone does not make the choice stick.
-  applyVideoCodecPreference(peerConnection, sender, publishSettings.videoCodec);
+  // The outcome is logged so a surprising negotiated codec can be traced.
+  const applied = applyVideoCodecPreference(peerConnection, sender, publishSettings.videoCodec);
+
+  // "auto" is no preference, so leaving the order to the browser is not an error.
+  const noPreferenceAsked = !publishSettings.videoCodec || publishSettings.videoCodec === 'auto';
+  logEvent(
+    (applied || noPreferenceAsked) ? 'info' : 'error',
+    'pc',
+    // eslint-disable-next-line no-nested-ternary
+    applied
+      ? `publish codec preference applied: ${applied}`
+      : (noPreferenceAsked
+        ? 'publish codec order left to the browser'
+        : `publish codec preference NOT applied (wanted ${publishSettings.videoCodec})`),
+    { requested: publishSettings.videoCodec, applied }
+  );
 
   return sender;
 };
@@ -98,6 +137,9 @@ const addVideoSender = (peerConnection, videoTrack, publishSettings) => {
 // Detach handlers before closing so the stale PC/WS don't fire "closed" /
 // error events into the next attempt's callbacks
 const tearDownConnection = (peerConnection, websocket) => {
+  // Release only this attempt's connection, so a late failure cannot deregister a newer one.
+  releasePeerConnection('publish', peerConnection);
+  releaseSessionHandles(peerConnection);
   if (peerConnection) {
     peerConnection.onicecandidate = null;
     peerConnection.onnegotiationneeded = null;
@@ -117,7 +159,7 @@ const reportSimulcastRejection = ({
 }) => {
   tearDownConnection(peerConnection, websocket);
   if (whipSessionUrl) {
-    fetch(whipSessionUrl, { method: "DELETE" }).catch(() => {});
+    loggedFetch(whipSessionUrl, { method: "DELETE" }).catch(() => {});
   }
   if (callbacks.onError) {
     callbacks.onError({ message: SIMULCAST_REJECTED_MESSAGE });
@@ -182,10 +224,11 @@ const peerConnectionCreateOfferSuccess = (description, publishSettings, websocke
 }
 
 const peerConnectionOnError = (error, callbacks) => {
-  console.log('peerConnectionOnError');
-  console.log(error);
+  // Not console.log(error); see websocketOnError.
+  const message = describeSignalingError(error);
+  logEvent('error', 'pc', 'publish peer connection failed', message);
   if (callbacks.onError)
-    callbacks.onError({ message: 'PeerConnection Error: ' + error.message });
+    callbacks.onError({ message: 'PeerConnection Error: ' + message });
 }
 
 // Websocket Functions
@@ -199,6 +242,7 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
 
     addIceServers(publishSettings, session);
     peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
+    instrumentPeerConnection(peerConnection, 'publish');
 
     peerConnection.onicecandidate = (event) => {
       if (websocket.readyState !== WebSocket.OPEN) return;
@@ -267,12 +311,15 @@ const websocketOnOpen = (publishSettings, websocket, callbacks, session) => {
 
     // The data channels must be created before the first offer (we never renegotiate). The
     // publisher opens whichever of chat / captions are enabled up front.
-    session.dataChannels = attachPublishDataChannels(peerConnection, callbacks, publishSettings);
+    session.dataChannels = keepUntilStopped(
+      peerConnection, attachPublishDataChannels(peerConnection, callbacks, publishSettings));
 
     let audioSender = undefined;
     let videoSender = undefined;
-    if (publishSettings.audioTrack != null)
+    if (publishSettings.audioTrack != null) {
+      keepUntilStopped(peerConnection, instrumentTrack(publishSettings.audioTrack, 'publish', 'outbound'));
       audioSender = peerConnection.addTrack(publishSettings.audioTrack);
+    }
     videoSender = addVideoSender(peerConnection, publishSettings.videoTrack, publishSettings);
 
     if (callbacks.onSetSenders)
@@ -357,10 +404,14 @@ const websocketOnMessage = (event, publishSettings, websocket, peerConnection, c
 }
 
 const websocketOnError = (error, callbacks) => {
-  console.log('Websocket Error');
-  console.log(error);
+  /*
+   * Not console.log(error): the event references the socket and window, and the console keeps
+   * that whole graph alive for expansion. The log panel takes a string.
+   */
+  const message = describeSignalingError(error);
+  logEvent('error', 'ws', 'publish signalling failed', message);
   if (callbacks.onError)
-    callbacks.onError({ message: 'Websocket Error: ' + error.message });
+    callbacks.onError({ message: 'Websocket Error: ' + message });
 }
 
 // startPublish
@@ -397,11 +448,10 @@ const startPublish = (publishSettings, websocket, callbacks) =>
     else {
       
       if (websocket == null) {
-        websocket = new WebSocket(publishSettings.signalingURL + "?webrtcImplementation=v2");
+        websocket = instrumentWebSocket(new WebSocket(publishSettings.signalingURL + "?webrtcImplementation=v2"), 'publish');
       }
 
       if (websocket != null) {
-        console.log(publishSettings);
         websocket.binaryType = 'arraybuffer';
 
         
@@ -419,6 +469,8 @@ const startPublish = (publishSettings, websocket, callbacks) =>
         websocket.addEventListener("error", (error) => {
           clearTimeout(connectionTimeout);
           clearAnswerTimeout(session);
+          // Errors that arrive because we are shutting down are not failures to report.
+          if (isWebSocketClosing(websocket)) return;
           websocketOnError(error, callbacks);
         });
 
@@ -443,6 +495,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
 
     addIceServers(publishSettings, session);
     peerConnection = new RTCPeerConnection(session.peerConnectionConfig);
+    instrumentPeerConnection(peerConnection, 'publish');
 
     peerConnection.onconnectionstatechange = (event) => {
       const connected = event.currentTarget.connectionState === "connected";
@@ -479,7 +532,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
         return;
       }
 
-      await fetch(sessionUrl, {
+      await loggedFetch(sessionUrl, {
         method: "PATCH",
         headers: { "Content-Type": "application/trickle-ice-sdpfrag", ...getAuthHeaders(publishSettings.authToken) },
         body: candidate
@@ -489,8 +542,10 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     let audioSender;
     let videoSender;
 
-    if (publishSettings.audioTrack != null)
+    if (publishSettings.audioTrack != null) {
+      keepUntilStopped(peerConnection, instrumentTrack(publishSettings.audioTrack, 'publish', 'outbound'));
       audioSender = peerConnection.addTrack(publishSettings.audioTrack);
+    }
 
     videoSender = addVideoSender(peerConnection, publishSettings.videoTrack, publishSettings);
 
@@ -514,7 +569,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
 
     const whipUrl = `${publishSettings.signalingURL}/${publishSettings.applicationName}/${publishSettings.streamName}/whip`;
 
-    const response = await fetch(whipUrl, {
+    const response = await loggedFetch(whipUrl, {
       method: "POST",
       headers: { "Content-Type": "application/sdp", ...getAuthHeaders(publishSettings.authToken) },
       body: offerSdp
@@ -528,7 +583,7 @@ const startPublishWhip = async (publishSettings, session, callbacks) => {
     sessionUrl = new URL(locationHeader, publishSettings.signalingURL).toString();
 
     for (const candidate of pendingCandidates) {
-      await fetch(sessionUrl, {
+      await loggedFetch(sessionUrl, {
         method: "PATCH",
         headers: { "Content-Type": "application/trickle-ice-sdpfrag", ...getAuthHeaders(publishSettings.authToken) },
         body: candidate
