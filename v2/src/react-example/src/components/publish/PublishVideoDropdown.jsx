@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
 import * as PublishSettingsActions from '../../actions/publishSettingsActions';
@@ -6,6 +6,8 @@ import * as PublishSettingsActions from '../../actions/publishSettingsActions';
 import { SET_MEDIA_STREAM } from '../../actions/mediaActions';
 import { SET_PUBLISH_VIDEO_TRACK } from '../../actions/publishSettingsActions';
 import useMediaStream from '../../hooks/useMediaStream';
+import { selectPublishVideoTrack } from '../../utils/VideoTrackUtils';
+import { logEvent } from '../../diagnostics/signalLog';
 
 
 
@@ -18,17 +20,37 @@ const PublishVideoDropdown = () => {
 
   // Handle videoTrack1 changes
   const streamRef = useMediaStream();
+  const loggedFallbackFor = useRef(null);
+
+  // One decision, shared with the preview, so what is shown is what is sent.
+  const selection = useMemo(
+    () => selectPublishVideoTrack(videoTracksMap, videoTrack1DeviceId, displayScreenTrack),
+    [videoTracksMap, videoTrack1DeviceId, displayScreenTrack]
+  );
+  const fallbackLabel = selection.usedFallback && selection.track
+    ? (selection.track.label || 'another camera')
+    : null;
+
 
   useEffect(() => {
     let newStream = new MediaStream();
-    let videoTrack = undefined;
-    if (videoTrack1DeviceId === 'screen' && displayScreenTrack != null) {
-      newStream.addTrack(displayScreenTrack);
-      videoTrack = displayScreenTrack;
-    } else if (videoTrack1DeviceId !== '' && videoTrack1DeviceId !== 'screen' && videoTracksMap[videoTrack1DeviceId] != null) {
-      newStream.addTrack(videoTracksMap[videoTrack1DeviceId]);
-      videoTrack = videoTracksMap[videoTrack1DeviceId];
+
+    // One decision, shared with the preview, so what is shown is what is sent. The exact
+    // lookup used to be the only path, which meant a selected device with no open track
+    // produced a working preview and a publish with no video at all.
+    const { track, usedFallback } = selection;
+    let videoTrack = track || undefined;
+
+    if (videoTrack) newStream.addTrack(videoTrack);
+    // The effect re-runs on unrelated identity changes; log once per selection.
+    if (usedFallback && loggedFallbackFor.current !== videoTrack1DeviceId) {
+      loggedFallbackFor.current = videoTrack1DeviceId;
+      logEvent('info', 'pc', 'publish camera fallback: selected device had no open track', {
+        requestedDeviceId: videoTrack1DeviceId,
+        openDeviceIds: Object.keys(videoTracksMap || {}),
+      });
     }
+    if (!usedFallback) loggedFallbackFor.current = null;
     if (streamRef.current != null) {
       let audioTracks = streamRef.current.getAudioTracks();
       if (audioTracks.length > 0)
@@ -36,7 +58,8 @@ const PublishVideoDropdown = () => {
     }
     dispatch({ type: SET_MEDIA_STREAM, stream: newStream });
     dispatch({ type: SET_PUBLISH_VIDEO_TRACK, videoTrack: videoTrack });
-  }, [dispatch, videoTracksMap, displayScreenTrack, videoTrack1DeviceId, streamRef]);
+
+  }, [dispatch, selection, videoTracksMap, videoTrack1DeviceId, streamRef]);
 
   return(
     <div className="mb-3">
@@ -53,6 +76,11 @@ const PublishVideoDropdown = () => {
         })}
         <option value='screen'>Screen Share</option>
       </select>
+      {fallbackLabel && (
+        <small className="form-text text-muted" id="camera-fallback-note" role="status">
+          The selected camera has no open track, so {fallbackLabel} is being sent instead.
+        </small>
+      )}
     </div>
   )
 }
