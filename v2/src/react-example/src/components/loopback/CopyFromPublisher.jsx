@@ -41,6 +41,11 @@ const CopyFromPublisher = () => {
       type: PlaySettingsActions.SET_PLAY_CAPTIONS_ENABLED,
       captionsEnabled: Boolean(publishSettings.captionsEnabled),
     });
+    // Without the probe flag the player cannot measure the publisher it just copied.
+    dispatch({
+      type: PlaySettingsActions.SET_PLAY_LATENCY_PROBE,
+      latencyProbe: Boolean(publishSettings.latencyProbe),
+    });
 
     setCopied(true);
     confirmTimer.current = window.setTimeout(() => setCopied(false), 2000);

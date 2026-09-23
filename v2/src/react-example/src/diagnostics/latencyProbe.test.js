@@ -13,12 +13,15 @@ import {
   decideStamping,
   describeClock,
   frameLatency,
+  getSample,
   isProbeAvailable,
   median,
   nextSequenceFor,
   parseClockMessage,
   probeUnavailableReason,
+  resetProbe,
   stampFrameBytes,
+  subscribe,
   summarizeProbe,
 } from './latencyProbe';
 
@@ -415,6 +418,34 @@ describe('availability', () => {
     const config = { iceServers: [] };
     expect(configureEncodedStreams(config, false)).toBe(false);
     expect(config).toEqual({ iceServers: [] });
+  });
+});
+
+describe('the subscription', () => {
+  // Null, not a sample of nulls, so "never measured" cannot be mistaken for a latency.
+  it('publishes null while nothing has been measured', () => {
+    resetProbe();
+    let seen = 'untouched';
+    const unsubscribe = subscribe((next) => { seen = next; });
+    expect(seen).toBe(null);
+    unsubscribe();
+  });
+
+  it('still describes why there is no figure, for a caller that asks', () => {
+    resetProbe();
+    const current = getSample();
+    expect(current.status).toBe('off');
+    expect(current.transportMs).toBe(null);
+    expect(current.clock.exact).toBe(false);
+  });
+
+  it('stops delivering once unsubscribed', () => {
+    let count = 0;
+    const unsubscribe = subscribe(() => { count += 1; });
+    expect(count).toBe(1);
+    unsubscribe();
+    resetProbe();
+    expect(count).toBe(1);
   });
 });
 

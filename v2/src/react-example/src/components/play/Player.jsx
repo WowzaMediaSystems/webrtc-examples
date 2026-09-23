@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import * as PlaySettingsActions from '../../actions/playSettingsActions';
+import { attachProbeVideoElement } from '../../diagnostics/latencyProbe';
 import * as WebRTCPlayActions from '../../actions/webrtcPlayActions';
 import * as ErrorsActions from '../../actions/errorsActions';
 import * as DataChannelActions from '../../actions/dataChannelActions';
@@ -192,6 +193,21 @@ const Player = () => {
   // No picture until both dimensions are known. The video is never display:none (WebKit may
   // not paint a video that started playing hidden); the placeholder covers it until then.
   const hasPicture = connected && videoSize.width > 0 && videoSize.height > 0;
+
+  /*
+   * The probe's decode-and-display leg is measured from this element, because
+   * requestVideoFrameCallback is the only thing that reports when a frame was actually put on
+   * screen. The encoded side of the probe attaches to the receiver in startPlay; this is the
+   * other half of the join, and without it the panel has a transport figure and dashes for the
+   * player leg and the total.
+   */
+  useEffect(() => {
+    if (!hasPicture || !playSettings.latencyProbe) return undefined;
+    const element = videoElement.current;
+    if (!element) return undefined;
+    const joined = attachProbeVideoElement(element);
+    return () => joined.stop();
+  }, [hasPicture, playSettings.latencyProbe]);
 
   return (
   <>

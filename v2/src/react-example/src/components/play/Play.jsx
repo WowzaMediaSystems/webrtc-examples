@@ -7,6 +7,7 @@ import PlaySettingsForm from './PlaySettingsForm';
 import DataChannelPanel from '../shared/DataChannelPanel';
 import CaptionOverlay from '../shared/CaptionOverlay';
 import StatsBar from '../diagnostics/StatsBar';
+import LatencyGroup from '../diagnostics/LatencyGroup';
 import DebugPanel from '../diagnostics/DebugPanel';
 import Stage from '../shell/Stage';
 import Inspector from '../shell/Inspector';
@@ -46,6 +47,9 @@ const Play = () => {
         </div>
 
         <div className="wz-stage__stats">
+          {/* Above the strip, matching the combined page, so the two pages put the same
+              reading in the same place. */}
+          <LatencyGroup connected={playing} videoCodec={stats?.codec} />
           <StatsBar stats={stats} history={history} connectionState={connectionState} role="play" />
         </div>
 

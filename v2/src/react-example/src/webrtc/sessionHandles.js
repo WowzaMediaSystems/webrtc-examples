@@ -1,6 +1,7 @@
 /*
- * Everything a session opened that has to be shut when the session ends: the data channels
- * and the capture-track listeners. Each call site hands its handle to keepUntilStopped().
+ * Everything a session opened that has to be shut when the session ends: the data channels,
+ * the capture-track listeners and, with the latency probe on, its frame transforms and the
+ * clock channel. Each call site hands its handle to keepUntilStopped().
  *
  * The handles hang off the RTCPeerConnection because that is the one object the stop paths
  * receive. A handle is a function, or anything with stop() or close().

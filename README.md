@@ -14,6 +14,7 @@ Welcome to the official Wowza Media Systems Web Real-time Communication (WebRTC)
   - [Set up WebRTC](#set-up-webrtc)
   - [What's new in v2](#whats-new-in-v2)
   - [Diagnostics in the v2 example](#diagnostics-in-the-v2-example)
+  - [Glass-to-glass latency probe](#glass-to-glass-latency-probe)
   - [Combined publisher and player](#combined-publisher-and-player)
   - [Running the tests](#running-the-tests)
   - [Directory Structure](#directory-structure)
@@ -53,12 +54,67 @@ sets, one per side.
 calculated as half the round trip time plus the jitter buffer delay over the last second, and it is
 labelled as such on screen. It covers the network leg and the jitter buffer only. It does
 **not** include capture, encode, processing inside Wowza Streaming Engine, decode, or the
-display pipeline, so true glass-to-glass latency is higher than the figure shown.
+display pipeline, so true glass-to-glass latency is higher than the figure shown. To
+measure the Engine's own contribution instead of estimating around it, use the
+[glass-to-glass latency probe](#glass-to-glass-latency-probe) below.
 
 **Server communication** is a collapsible log of the exchange with the Engine: signaling
 frames in both directions, the WHIP/WHEP HTTP calls, ICE candidates and peer-connection
 state changes. It is collapsed by default, can be filtered by channel, and has a Copy
 button for attaching to a support ticket.
+
+### Glass-to-glass latency probe
+
+The connection statistics above estimate the network leg from RTCP counters. The latency
+probe measures something different: how long one specific frame took to get from the
+publisher's encoder to the player's screen, and how much of that time Wowza Streaming
+Engine accounted for.
+
+**It is a diagnostic, not a production metric.** It is off by default, it needs Chromium
+and H.264, it installs a per-frame transform at both ends, and it reports nothing at all
+when it cannot stand behind the number. Use it to answer "where is the latency going" on a
+particular stream on a particular day. Do not put it on a dashboard and do not quote it as
+a product specification.
+
+Passthrough only. If the application transcodes, the frame is re-encoded and the marker is
+gone, so the player reads "no frame stamp". That is the correct outcome, but it looks like
+a broken probe if you are not expecting it.
+
+#### Turning it on
+
+**Both ends need it on.** The publisher writes the marker, the player reads it. A player
+with the probe on, watching a stream from a publisher without it, shows "No frame stamp in
+this stream" rather than a number.
+
+- **Publish page**, Advanced tab, `Latency Probe (frame stamp)`.
+- **Play page**, Advanced tab, the same toggle.
+- **Publish + Play page**, the Advanced tab of each side, since that page carries its own
+  publisher and player settings.
+
+The Latency group then appears in the **player's** statistics, under the video. There is
+nothing to see on the publisher side; the publisher only stamps.
+
+Two things to know:
+
+- **The toggle takes effect on the next connect**, not immediately. The peer connection
+  needs `encodedInsertableStreams` set when it is constructed, and the clock data channel
+  needs its m-line in the first offer. Toggle it, then connect.
+- **The setting travels in the share link.** That is how you set up a two-machine test:
+  turn it on, copy the link, open it on the second machine.
+
+#### Browser and codec support, today
+
+- **Chromium only.** The probe uses `RTCRtpSender.createEncodedStreams()` and its receiver
+  twin, which are Chrome specific. The standards path is `RTCRtpScriptTransform` and is a
+  follow-up, not implemented here. In a browser without insertable streams the toggle is
+  disabled and gives the reason, rather than failing at connect time.
+- **H.264 only.** SEI NAL units are an H.264 construct. VP8 and VP9 have no equivalent, so
+  there is nowhere to put the marker and prepending one would corrupt the frame. The
+  publisher's video codec setting defaults to `auto`, where the Engine chooses from the
+  offer, so the codec is not known until the session is up: `auto` leaves the toggle
+  enabled, and if the negotiated codec turns out not to be H.264 the player reports "no
+  frame stamp" instead of a number. Selecting an explicit non-H.264 codec disables the
+  toggle with the reason.
 
 ### Combined publisher and player
 
