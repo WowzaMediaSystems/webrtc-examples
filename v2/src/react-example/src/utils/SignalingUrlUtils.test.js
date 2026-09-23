@@ -79,13 +79,30 @@ describe('convertTo', () => {
       .toBe('ws://localhost:1935/webrtc-session.json');
   });
 
-  it('drops a path that the other transport cannot use', () => {
-    // The WHIP and WHEP request path is built from the application and stream, so the
-    // origin is all that can be carried.
+  it('drops the path each transport builds itself', () => {
+    // The WHIP and WHEP request path is built from the application and stream.
     expect(convertTo('wss://engine.example/webrtc-session.json', HTTP))
       .toBe('https://engine.example');
     expect(convertTo('https://engine.example/webrtc/myStream/whep', WSS))
       .toBe('wss://engine.example/webrtc-session.json');
+  });
+
+  // An Engine behind a reverse proxy mounted under a path.
+  it('keeps a path prefix in both directions', () => {
+    expect(convertTo('https://proxy.example.com/wowza', WSS))
+      .toBe('wss://proxy.example.com/wowza/webrtc-session.json');
+    expect(convertTo('wss://proxy.example.com/wowza/webrtc-session.json', HTTP))
+      .toBe('https://proxy.example.com/wowza');
+    expect(convertTo('https://proxy.example.com/wowza/live/myStream/whip', WSS))
+      .toBe('wss://proxy.example.com/wowza/webrtc-session.json');
+    const start = 'https://proxy.example.com/wowza';
+    expect(convertTo(convertTo(start, WSS), HTTP)).toBe(start);
+  });
+
+  it('leaves text it cannot read as a web URL unchanged', () => {
+    expect(convertTo('not a url', WSS)).toBe('not a url');
+    expect(convertTo('myserver:8443', HTTP)).toBe('myserver:8443');
+    expect(convertTo('myserver.com/webrtc-session.json', HTTP)).toBe('myserver.com/webrtc-session.json');
   });
 
   // An empty field shows its placeholder, which is the hint for the transport now chosen.
@@ -94,7 +111,6 @@ describe('convertTo', () => {
     expect(convertTo('wss://', HTTP)).toBe('');
     expect(convertTo('wss:///webrtc-session.json', HTTP)).toBe('');
     expect(convertTo('https://', WSS)).toBe('');
-    expect(convertTo('not a url', WSS)).toBe('');
     expect(convertTo(null, WSS)).toBe('');
   });
 });

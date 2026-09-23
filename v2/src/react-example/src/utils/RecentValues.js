@@ -9,11 +9,6 @@ import { HTTP, WSS, transportOf } from './SignalingUrlUtils';
 const PREFIX = 'wz.recent.';
 const LIMIT = 8;
 
-export const RECENT_FIELDS = ['signalingURL', 'applicationName', 'streamName'];
-
-/** The fields kept separately per transport. */
-export const SCOPED_FIELDS = ['signalingURL'];
-
 const key = (field, scope) => `${PREFIX}${field}${scope ? `.${scope}` : ''}`;
 
 const read = (storageKey) => {
@@ -99,10 +94,3 @@ export const forgetValue = (field, value, scope = null) => {
   return next;
 };
 
-export const forgetRecent = (field, scope = null) => {
-  try {
-    window.localStorage.removeItem(key(field, scope));
-  } catch {
-    // Nothing to do.
-  }
-};

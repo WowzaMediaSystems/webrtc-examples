@@ -48,10 +48,14 @@ export const mismatched = (value, transport) => {
   return found !== null && found !== transport;
 };
 
+// A pasted WHIP/WHEP endpoint; the page builds this part itself from the form.
+const ENDPOINT_TAIL = /\/[^/]+\/[^/]+\/(whip|whep)$/i;
+
 /**
- * The same server written for the other transport: host and port kept, scheme and path
- * rewritten. Security level carries over (http:// becomes ws://, not wss://). Returns ''
- * when there is no host to carry, so the placeholder shows through.
+ * The same server written for the other transport: host, port and any path prefix (a reverse
+ * proxy mount) kept; scheme and the transport's own path rewritten. Security level carries
+ * over (http:// becomes ws://, not wss://). Returns '' when there is no host to carry, and
+ * the text unchanged when it cannot be read as a web URL, so nothing typed is lost.
  */
 export const convertTo = (value, transport) => {
   const text = String(value ?? '').trim();
@@ -61,12 +65,17 @@ export const convertTo = (value, transport) => {
   try {
     parsed = new URL(text);
   } catch {
-    return '';
+    return text;
   }
-  if (!parsed.host) return '';
+  const web = ['ws:', 'wss:', 'http:', 'https:'].includes(parsed.protocol);
+  if (!web || !parsed.host) return text;
+
+  let prefix = parsed.pathname;
+  if (prefix.endsWith(SIGNALING_PATH)) prefix = prefix.slice(0, -SIGNALING_PATH.length);
+  prefix = prefix.replace(ENDPOINT_TAIL, '').replace(/\/+$/, '');
 
   const secure = parsed.protocol === 'wss:' || parsed.protocol === 'https:';
   return transport === HTTP
-    ? `${secure ? 'https' : 'http'}://${parsed.host}`
-    : `${secure ? 'wss' : 'ws'}://${parsed.host}${SIGNALING_PATH}`;
+    ? `${secure ? 'https' : 'http'}://${parsed.host}${prefix}`
+    : `${secure ? 'wss' : 'ws'}://${parsed.host}${prefix}${SIGNALING_PATH}`;
 };

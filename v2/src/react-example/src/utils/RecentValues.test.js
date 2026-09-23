@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { forgetRecent, forgetValue, readRecent, rememberValue } from './RecentValues';
+import { forgetValue, readRecent, rememberValue } from './RecentValues';
 
 describe('recent values', () => {
   beforeEach(() => window.localStorage.clear());
@@ -43,12 +43,6 @@ describe('recent values', () => {
     ['a', 'b', 'c'].forEach((v) => rememberValue('streamName', v));
     expect(forgetValue('streamName', 'b')).toEqual(['c', 'a']);
     expect(readRecent('streamName')).toEqual(['c', 'a']);
-  });
-
-  it('forgets on request', () => {
-    rememberValue('streamName', 'gone');
-    forgetRecent('streamName');
-    expect(readRecent('streamName')).toEqual([]);
   });
 
   // A private window throws on every storage call; the page must survive it.
