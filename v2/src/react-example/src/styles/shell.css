@@ -357,3 +357,15 @@
 /* While dragging, the pointer owns the gesture: no text selection anywhere on the page. */
 .wz-resizer--dragging { cursor: inherit; }
 body:has(.wz-resizer--dragging) { user-select: none; }
+
+/*
+ * Inline icons. Sized in em so they track the button's font size, and aligned on the text
+ * baseline rather than sitting on it, which is what the icon font used to do for free.
+ */
+.wz-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  flex-shrink: 0;
+}

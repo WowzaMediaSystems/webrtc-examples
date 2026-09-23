@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
 
+import {
+  openTab,
+  waitForCamera,
+} from './ui-helpers.js';
+
 /*
  * The shell before any media flows: settings panel, transport choice, remembered
  * values, theme, and layout stability.
@@ -77,6 +82,305 @@ test.describe('theme', () => {
 });
 
 
+test.describe('remembered values', () => {
+  test('a published stream name comes back as a suggestion', async ({ page }) => {
+    await page.goto('/#/publish');
+    await page.fill('#signalingURL', 'wss://engine.example/webrtc-session.json');
+    await page.fill('#applicationName', 'webrtc');
+    await page.fill('#streamName', 'rememberMe');
+    await page.click('#publish-toggle');
+
+    await page.reload();
+    await page.locator('#streamName-recent-toggle').click();
+    await expect(page.locator('#streamName-recent .wz-recent__value')).toHaveText(['rememberMe']);
+
+    // The field is still a field: the suggestions do not close it off.
+    await page.fill('#streamName', 'somethingElse');
+    await expect(page.locator('#streamName')).toHaveValue('somethingElse');
+  });
+
+  // Offering a credential back in a dropdown is not a convenience worth having.
+  test('no secret is remembered', async ({ page }) => {
+    await page.goto('/#/publish');
+    await page.locator('#publishUseWhip').check();
+    await page.fill('#publishAuthToken', 'super-secret');
+    await page.fill('#signalingURL', 'https://engine.example');
+    await page.fill('#applicationName', 'webrtc');
+    await page.fill('#streamName', 'tokenTest');
+    await page.click('#publish-toggle');
+
+    const stored = await page.evaluate(() => JSON.stringify(window.localStorage));
+    expect(stored).not.toContain('super-secret');
+  });
+});
+
+// A custom dropdown sized to the panel (a native <datalist> popup is not), over a text field.
+test.describe('remembered values dropdown', () => {
+
+  const remember = (page, key, values) =>
+    page.evaluate(([k, v]) => window.localStorage.setItem(k, JSON.stringify(v)), [key, values]);
+
+  test('opens on the chevron and fills the field when a row is picked', async ({ page }) => {
+    await page.goto('/#/publish');
+    await remember(page, 'wz.recent.streamName', ['alpha', 'beta']);
+    await page.reload();
+
+    await expect(page.locator('#streamName-recent')).toHaveCount(0);
+    await page.locator('#streamName-recent-toggle').click();
+    await expect(page.locator('#streamName-recent .wz-recent__value')).toHaveText(['alpha', 'beta']);
+
+    await page.locator('#streamName-recent .wz-recent__value', { hasText: 'beta' }).click();
+    await expect(page.locator('#streamName')).toHaveValue('beta');
+    await expect(page.locator('#streamName-recent')).toHaveCount(0);
+  });
+
+  test('a row is no taller than the control it belongs to', async ({ page }) => {
+    await page.goto('/#/publish');
+    await remember(page, 'wz.recent.streamName', ['alpha']);
+    await page.reload();
+    await page.locator('#streamName-recent-toggle').click();
+
+    const heights = await page.evaluate(() => ({
+      row: document.querySelector('#streamName-recent .wz-recent__value').getBoundingClientRect().height,
+      control: document.getElementById('streamName').getBoundingClientRect().height,
+    }));
+    expect(heights.row).toBeLessThan(heights.control);
+  });
+
+  test('a value can be dropped from the list', async ({ page }) => {
+    await page.goto('/#/publish');
+    await remember(page, 'wz.recent.streamName', ['keep', 'drop']);
+    await page.reload();
+
+    await page.locator('#streamName-recent-toggle').click();
+    await page.getByRole('button', { name: 'Forget drop' }).click();
+    await expect(page.locator('#streamName-recent .wz-recent__value')).toHaveText(['keep']);
+
+    await page.reload();
+    await page.locator('#streamName-recent-toggle').click();
+    await expect(page.locator('#streamName-recent .wz-recent__value')).toHaveText(['keep']);
+  });
+
+  test('typing filters, and a new value is still typed straight over them', async ({ page }) => {
+    await page.goto('/#/publish');
+    await remember(page, 'wz.recent.streamName', ['alpha', 'beta']);
+    await page.reload();
+
+    await page.fill('#streamName', 'al');
+    await expect(page.locator('#streamName-recent .wz-recent__value')).toHaveText(['alpha']);
+
+    await page.fill('#streamName', 'brandNew');
+    await expect(page.locator('#streamName-recent')).toHaveCount(0);
+    await expect(page.locator('#streamName')).toHaveValue('brandNew');
+  });
+
+  // A wss:// URL cannot work where an https:// origin is wanted.
+  test('the URL list is kept per transport', async ({ page }) => {
+    await page.goto('/#/publish');
+    await remember(page, 'wz.recent.signalingURL.wss', ['wss://engine.example/webrtc-session.json']);
+    await remember(page, 'wz.recent.signalingURL.http', ['https://engine.example']);
+    await page.reload();
+
+    await page.locator('#signalingURL-recent-toggle').click();
+    await expect(page.locator('#signalingURL-recent .wz-recent__value'))
+      .toHaveText(['wss://engine.example/webrtc-session.json']);
+
+    await page.locator('#publishUseWhip').check();
+    await page.locator('#signalingURL-recent-toggle').click();
+    await expect(page.locator('#signalingURL-recent .wz-recent__value'))
+      .toHaveText(['https://engine.example']);
+  });
+
+  // A list stored under the old single key must survive the split.
+  test('a list kept before the split is sorted into the two transports', async ({ page }) => {
+    await page.goto('/#/publish');
+    await remember(page, 'wz.recent.signalingURL',
+      ['wss://engine.example/webrtc-session.json', 'https://engine.example']);
+    await page.reload();
+
+    await page.locator('#signalingURL-recent-toggle').click();
+    await expect(page.locator('#signalingURL-recent .wz-recent__value'))
+      .toHaveText(['wss://engine.example/webrtc-session.json']);
+
+    await page.locator('#publishUseWhip').check();
+    await page.locator('#signalingURL-recent-toggle').click();
+    await expect(page.locator('#signalingURL-recent .wz-recent__value'))
+      .toHaveText(['https://engine.example']);
+  });
+});
+
+/*
+ * The toggles render from MediaStreamTrack.enabled, not a copy in component state, so a
+ * remount cannot show a live microphone over a muted track.
+ */
+test.describe('camera and microphone toggles', () => {
+
+  const trackState = (page) => page.evaluate(() => ({
+    audio: window.__audioTrack ? window.__audioTrack.enabled : null,
+    video: window.__videoTrack ? window.__videoTrack.enabled : null,
+  }));
+
+  // The tracks are reached through the preview element rather than through the store.
+  const captureTracks = (page) => page.evaluate(() => {
+    const video = document.getElementById('publisher-video');
+    const stream = video && video.srcObject;
+    window.__audioTrack = stream ? stream.getAudioTracks()[0] : null;
+    window.__videoTrack = stream ? stream.getVideoTracks()[0] : null;
+    return Boolean(window.__audioTrack && window.__videoTrack);
+  });
+
+  test('the button says what the track is actually doing', async ({ page }) => {
+    await page.goto('/#/publish');
+    await waitForCamera(page);
+    await openTab(page, 'Source');
+    expect(await captureTracks(page)).toBe(true);
+
+    const mute = page.locator('#mute-toggle');
+    await expect(mute).toHaveAttribute('aria-pressed', 'false');
+    expect((await trackState(page)).audio).toBe(true);
+
+    await mute.click();
+    await expect(mute).toHaveAttribute('aria-pressed', 'true');
+    expect((await trackState(page)).audio).toBe(false);
+  });
+
+  test('the camera toggle behaves the same way', async ({ page }) => {
+    await page.goto('/#/publish');
+    await waitForCamera(page);
+    await openTab(page, 'Source');
+    expect(await captureTracks(page)).toBe(true);
+
+    await page.locator('#camera-toggle').click();
+    expect((await trackState(page)).video).toBe(false);
+    await expect(page.locator('#camera-toggle')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  // Pressing either with no device would throw inside the reducer.
+  test('neither can be pressed before there is a track to switch', async ({ page }) => {
+    await page.goto('/#/play');
+    await expect(page.locator('#mute-toggle')).toHaveCount(0);
+  });
+});
+
+// A setting's hint needs space before the next setting, or the two read as one paragraph.
+test.describe('settings that explain themselves', () => {
+
+  const spacing = (page) => page.evaluate(() => {
+    const box = (el) => el.getBoundingClientRect();
+    const settings = [...document.querySelectorAll('.wz-inspector .wz-setting')];
+    const first = settings[0];
+    const second = settings[1];
+    const control = first.querySelector('.form-check-inline');
+    const hint = first.querySelector('.form-text, .wz-field-error');
+    const nextLabel = second.querySelector('.form-check-label');
+    return {
+      settings: settings.length,
+      controlToOwnHint: Math.round(box(hint).top - box(control).bottom),
+      hintToNextSetting: Math.round(box(nextLabel).top - box(hint).bottom),
+    };
+  });
+});
+
+/*
+ * Each theme needs its own label color: one shared gray is too faint on white for a disabled
+ * label (60 percent opacity) to look any different.
+ */
+test.describe('enabled and disabled fields are told apart', () => {
+
+  const contrasts = (page) => page.evaluate(() => {
+    const luminance = (colour) => {
+      const [r, g, b] = colour.match(/[\d.]+/g).slice(0, 3).map(Number).map((v) => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const panel = luminance(
+      getComputedStyle(document.querySelector('.wz-inspector')).backgroundColor);
+
+    // Text drawn at an opacity sits between its own color and what is behind it.
+    const effective = (id) => {
+      const label = document.querySelector(`label[for="${id}"]`);
+      const cs = getComputedStyle(label);
+      const alpha = Number(cs.opacity);
+      return luminance(cs.color) * alpha + panel * (1 - alpha);
+    };
+    const ratio = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+
+    const enabled = effective('applicationName');
+    const disabled = effective('publishAuthToken');
+    return {
+      enabledVsPanel: ratio(enabled, panel),
+      enabledVsDisabled: ratio(enabled, disabled),
+    };
+  });
+
+  for (const theme of ['light', 'dark']) {
+    test(`in ${theme} mode`, async ({ page }) => {
+      await page.addInitScript((t) => window.localStorage.setItem('wz.theme', t), theme);
+      await page.goto('/#/publish');
+      await expect(page.locator('#publishAuthToken')).toBeDisabled();
+
+      const { enabledVsPanel, enabledVsDisabled } = await contrasts(page);
+
+      // A label someone is expected to read, against the panel it sits on.
+      expect(enabledVsPanel, 'the enabled label is too faint to read').toBeGreaterThan(4.5);
+      // And enough between the two that one plainly looks switched off.
+      expect(enabledVsDisabled, 'enabled and disabled look the same').toBeGreaterThan(1.4);
+    });
+  }
+});
+
+
+test.describe('field layout', () => {
+  test('frame rate and frame size share a line', async ({ page }) => {
+    await page.goto('/#/publish');
+    await openTab(page, 'Source');
+
+    const tops = await page.evaluate(() => {
+      const box = (id) => Math.round(document.getElementById(id).getBoundingClientRect().top);
+      return { rate: box('videoFrameRate'), size: box('frameSize') };
+    });
+    expect(tops.rate).toBe(tops.size);
+  });
+
+  test('a field and the control beside it share one ground colour', async ({ page }) => {
+    await page.goto('/#/publish');
+    await page.evaluate(() => document.documentElement.setAttribute('data-bs-theme', 'light'));
+    await openTab(page, 'Source');
+
+    const colours = await page.evaluate(() => {
+      const bg = (el) => getComputedStyle(el).backgroundColor;
+      return {
+        select: bg(document.querySelector('#videoCodec')),
+        rung: bg(document.querySelector('#simulcast-renditions input')),
+      };
+    });
+    // Every field in the panel must agree with every other field.
+    expect(colours.rung).toBe(colours.select);
+  });
+});
+
+// The selected tab is bold, and bold is wider. Held to the pixel: the labels must not move.
+test.describe('tab stability', () => {
+  test('the tab labels do not move when the selection changes', async ({ page }) => {
+    await page.goto('/#/publish');
+
+    const positions = async () => page.evaluate(() =>
+      [...document.querySelectorAll('.wz-tabs button')].map((b) => {
+        const r = b.getBoundingClientRect();
+        return { label: b.textContent.trim(), left: Math.round(r.left), width: Math.round(r.width) };
+      }));
+
+    const start = await positions();
+    for (const label of ['Source', 'Advanced', 'Connection']) {
+      await openTab(page, label);
+      expect(await positions(), `after selecting ${label}`).toEqual(start);
+    }
+  });
+});
+
+
 test.describe('theme on first paint', () => {
   // The inline script in index.html sets the theme before the bundle mounts, so a
   // remembered choice never flashes the other theme.
@@ -106,6 +410,25 @@ test.describe('theme on first paint', () => {
 
 // Two player tabs, flat sections instead of drawers, a permanent legacy-Engine note. Engine-free.
 test.describe('panel structure', () => {
+  test('the publisher keeps three tabs, and the middle one is Source', async ({ page }) => {
+    await page.goto('/#/publish');
+    const labels = await page.locator('.wz-tabs button').allTextContents();
+    expect(labels.map((l) => l.trim())).toEqual(['Connection', 'Source', 'Advanced']);
+  });
+
+  // The guard against someone quietly re-nesting these behind a click later.
+  test('simulcast and ICE servers are laid out, not hidden in a drawer', async ({ page }) => {
+    await page.goto('/#/publish');
+
+    await openTab(page, 'Source');
+    await expect(page.locator('#publishUseSimulcast')).toBeVisible();
+    await expect(page.locator('#simulcast-renditions')).toBeVisible();
+
+    await openTab(page, 'Advanced');
+    await expect(page.locator('#stunServer')).toBeVisible();
+    await expect(page.locator('#turnServer')).toBeVisible();
+  });
+
   test('the legacy Engine note is on the panel without opening anything', async ({ page }) => {
     await page.goto('/#/publish');
     const foot = page.locator('.wz-inspector__foot');
