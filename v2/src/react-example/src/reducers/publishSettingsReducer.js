@@ -14,6 +14,8 @@ const initialState = {
   audioTrack: {},
   audioTrackDeviceId: '',
   videoTrack: {},
+  videoEnabled: true,
+  audioEnabled: true,
   videoTrack1DeviceId: '',
   videoTrack2DeviceId: '',
   videoFrameRate: '30',
@@ -90,16 +92,13 @@ const publishSettingsReducer = (state = initialState, action) => {
       if (action.publishStopping != null) publishFlagsState.publishStopping = action.publishStopping;
       return publishFlagsState;
     }
-    case PublishSettingsActions.TOGGLE_VIDEO_ENABLED: {
-      let videoTrackState = { ...state }
-      videoTrackState.videoTrack.enabled = !videoTrackState.videoTrack.enabled
-      return videoTrackState
-    }
-    case PublishSettingsActions.TOGGLE_AUDIO_ENABLED: {
-      let audioTrackState = { ...state }
-      audioTrackState.audioTrack.enabled = !audioTrackState.audioTrack.enabled
-      return audioTrackState
-    }
+    // Plain flags; TrackEnabledSync applies them to whatever tracks are current.
+    case PublishSettingsActions.TOGGLE_VIDEO_ENABLED:
+      if (!state.videoTrack) return state
+      return { ...state, videoEnabled: !state.videoEnabled }
+    case PublishSettingsActions.TOGGLE_AUDIO_ENABLED:
+      if (!state.audioTrack) return state
+      return { ...state, audioEnabled: !state.audioEnabled }
     default:
       return state
   }

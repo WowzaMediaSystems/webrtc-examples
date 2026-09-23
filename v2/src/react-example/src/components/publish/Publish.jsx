@@ -23,6 +23,8 @@ const Publish = () => {
 
   const tabs = [
     { id: 'connection', label: 'Connection', render: () => <PublishSettingsForm tab="connection" /> },
+    { id: 'source', label: 'Source', render: () => <PublishSettingsForm tab="source" /> },
+    { id: 'advanced', label: 'Advanced', render: () => <PublishSettingsForm tab="advanced" /> },
   ];
 
   return (
