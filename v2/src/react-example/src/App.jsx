@@ -17,6 +17,7 @@ import Meeting from './components/meeting/Meeting';
 import 'bootstrap/dist/css/bootstrap.css';
 import './styles/shell.css';
 import './styles/inspector.css';
+import './styles/header.css';
 import './App.css';
 
 const App = () => {

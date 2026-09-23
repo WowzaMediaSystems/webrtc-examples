@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import * as PlaySettingsActions from '../../actions/playSettingsActions';
@@ -115,7 +115,10 @@ const Player = () => {
 
   }, [dispatch,videoElement,playSettings,peerConnection,websocket,connected]);
 
-  // Watch the <video> element's dimensions
+  /*
+   * Watch the video's dimensions on loadedmetadata as well as resize: the element is hidden
+   * until it has a picture, and a display:none video never fires resize.
+   */
   useEffect(() => {
     const video = videoElement.current;
     if (!video) return;
@@ -127,9 +130,15 @@ const Player = () => {
       setVideoSize({ width, height });
     };
 
+    video.addEventListener('loadedmetadata', updateSize);
+    video.addEventListener('loadeddata', updateSize);
     video.addEventListener('resize', updateSize);
     updateSize();
-    return () => video.removeEventListener('resize', updateSize);
+    return () => {
+      video.removeEventListener('loadedmetadata', updateSize);
+      video.removeEventListener('loadeddata', updateSize);
+      video.removeEventListener('resize', updateSize);
+    };
   }, [connected]);
 
   // Reset the "max width seen" baseline between sessions so a new connection
@@ -141,20 +150,85 @@ const Player = () => {
     }
   }, [connected]);
 
-  const showBadge = connected && videoSize.width > 0;
+  /*
+   * Sound starts on: the Play click unmutes the element while it is still a user gesture. If
+   * the browser refuses sound anyway, playback would stop with no picture, so the first
+   * metadata retries silent and offers "Click to unmute". The toggle below keeps sound
+   * controllable whenever there is a picture.
+   */
+  const [muted, setMuted] = useState(false);
+  const [needsGesture, setNeedsGesture] = useState(false);
+
+  useEffect(() => {
+    const video = videoElement.current;
+    if (!video) return undefined;
+    const sync = () => setMuted(video.muted);
+    const ensurePlaying = async () => {
+      if (!video.paused) return;
+      try {
+        await video.play();
+      } catch {
+        video.muted = true;
+        try { await video.play(); } catch { /* nothing more to try without a gesture */ }
+        setNeedsGesture(true);
+      }
+    };
+    video.addEventListener('volumechange', sync);
+    video.addEventListener('loadedmetadata', ensurePlaying);
+    return () => {
+      video.removeEventListener('volumechange', sync);
+      video.removeEventListener('loadedmetadata', ensurePlaying);
+    };
+  }, []);
+
+  const setSound = useCallback((on) => {
+    const video = videoElement.current;
+    if (!video) return;
+    video.muted = !on;
+    if (on) video.play().catch(() => {});
+    setNeedsGesture(false);
+  }, []);
+
+  // A connection that has not yet produced a frame has no dimensions, so the element would
+  // sit at its default 300x150. The placeholder holds the stage until there is a picture.
+  const hasPicture = connected && videoSize.width > 0;
 
   return (
   <>
+    {!hasPicture && <div className="wz-video-placeholder">Not playing</div>}
     <video
       id="player-video"
       ref={videoElement}
       autoPlay
       playsInline
-      muted
       controls
-      style={{ display: connected ? 'block' : 'none' }}
+      style={{
+        display: hasPicture ? 'block' : 'none',
+        ...(hasPicture ? { '--wz-video-ar': videoSize.width / videoSize.height } : {}),
+      }}
     />
-    {showBadge && (
+    {hasPicture && needsGesture && muted && (
+      <button
+        type="button"
+        id="player-unmute"
+        className="wz-unmute"
+        onClick={() => setSound(true)}
+      >
+        Click to unmute
+      </button>
+    )}
+    {hasPicture && (
+      <button
+        type="button"
+        id="player-mute-toggle"
+        className="wz-mute-toggle"
+        aria-pressed={muted}
+        onClick={() => setSound(muted)}
+      >
+        {muted ? 'Unmute' : 'Mute'}
+      </button>
+    )}
+    {hasPicture && (
       <div id="rendition-badge">
         {videoSize.width}&times;{videoSize.height}
       </div>
