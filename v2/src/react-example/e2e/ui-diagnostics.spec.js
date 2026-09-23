@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 import {
+  APPLICATION,
+  SIGNALING_URL,
+  httpOrigin,
   requireEngine,
   uniqueStream,
 } from './helpers.js';
@@ -76,6 +79,56 @@ test.describe('resizable panels', () => {
 });
 
 /*
+ * The Engine republishes a simulcast ingest as one stream per rendition, so the rendition
+ * list is a list of stream names. Fails if the Engine stops naming them this way.
+ */
+test.describe('simulcast renditions', () => {
+
+  test('the player lists the renditions the Engine is carrying', async ({ browser }) => {
+    // Two pages: leaving the publish route tears the publish down. Every page opened here is
+    // closed at the end, or leftover pages exhaust the fake capture device for later suites.
+    const publisher = await browser.newPage();
+    const viewer = await browser.newPage();
+
+    await publisher.goto('/#/publish');
+    await requireEngine(publisher, test);
+
+    const streamName = uniqueStream('rend');
+    await waitForCamera(publisher);
+    await openTab(publisher, 'Source');
+    await publisher.locator('#publishUseSimulcast').check();
+    await openTab(publisher, 'Connection');
+    await startPublishing(publisher, { streamName });
+    await expectLive(publisher);
+
+    await viewer.goto('/#/play');
+    await viewer.fill('#playSignalingURL', SIGNALING_URL);
+    await viewer.fill('#playApplicationName', APPLICATION);
+    await viewer.fill('#playStreamName', streamName);
+
+    const select = viewer.locator('#playRendition');
+
+    // The lower renditions appear a moment after the ingest is live, so retry the lookup.
+    await expect(async () => {
+      await viewer.click('#play-find-renditions');
+      await expect(select).toBeEnabled({ timeout: 3_000 });
+    }).toPass({ timeout: 30_000 });
+
+    const labels = await select.locator('option').allTextContents();
+    expect(labels[0]).toMatch(/source/i);
+    expect(labels.join(' ')).toMatch(/"m"/);
+    expect(labels.join(' ')).toMatch(/"l"/);
+
+    // Choosing a rendition is choosing the stream it plays.
+    await select.selectOption(`${streamName}_m`);
+    await expect(viewer.locator('#playStreamName')).toHaveValue(`${streamName}_m`);
+
+    await publisher.close();
+    await viewer.close();
+  });
+});
+
+/*
  * A display:none video never fires resize, so the element must not wait on resize to be
  * shown or the two conditions deadlock and the placeholder stays up.
  */
@@ -109,6 +162,58 @@ test.describe('player picture', () => {
   });
 });
 
+
+/*
+ * Under WHEP the field holds an https origin; the same host serves the signaling endpoint,
+ * so the socket URL is derived from it.
+ */
+test.describe('renditions over WHEP', () => {
+  test('the renditions are found from a WHEP origin', async ({ browser }) => {
+    const publisher = await browser.newPage();
+    const viewer = await browser.newPage();
+
+    await publisher.goto('/#/publish');
+    await requireEngine(publisher, test);
+
+    const streamName = uniqueStream('whep');
+    await waitForCamera(publisher);
+    await openTab(publisher, 'Source');
+    await publisher.locator('#publishUseSimulcast').check();
+    await openTab(publisher, 'Connection');
+    await startPublishing(publisher, { streamName, useWhip: true });
+    await expectLive(publisher);
+
+    await viewer.goto('/#/play');
+    await viewer.locator('#playUseWhep').check();
+    await viewer.fill('#playSignalingURL', httpOrigin());
+    await viewer.fill('#playApplicationName', APPLICATION);
+    await viewer.fill('#playStreamName', streamName);
+
+    const find = viewer.locator('#play-find-renditions');
+    await expect(find).toBeEnabled();
+
+    const select = viewer.locator('#playRendition');
+    await expect(async () => {
+      await find.click();
+      await expect(select).toBeEnabled({ timeout: 3_000 });
+    }).toPass({ timeout: 30_000 });
+
+    const labels = (await select.locator('option').allTextContents()).join(' ');
+    expect(labels).toMatch(/source/i);
+    expect(labels).toMatch(/"m"/);
+
+    // The chosen rendition plays back over WHEP.
+    await select.selectOption(`${streamName}_m`);
+    await viewer.click('#play-toggle');
+    await expectPlaying(viewer);
+    await viewer.waitForFunction(
+      () => { const v = document.querySelector('#player-video'); return v && v.videoWidth > 0; },
+      null, { timeout: 20_000 });
+
+    await publisher.close();
+    await viewer.close();
+  });
+});
 
 /*
  * The browser reports one outbound-rtp per simulcast encoding; every one must be shown, or a
@@ -215,6 +320,31 @@ test.describe('stat groups', () => {
   });
 });
 
+
+test.describe('rendition hint', () => {
+
+  test('reads the same under either transport', async ({ page }) => {
+    await page.goto('/#/play');
+    const hint = page.locator('#playRendition-hint');
+
+    const wss = await hint.textContent();
+    await page.locator('#playUseWhep').check();
+    expect(await hint.textContent()).toBe(wss);
+  });
+
+  test('asks for a server before offering a lookup, and the button waits too', async ({ page }) => {
+    await page.goto('/#/play');
+    const hint = page.locator('#playRendition-hint');
+
+    await expect(hint).toContainText('Enter the server URL first');
+    await expect(page.locator('#play-find-renditions')).toBeDisabled();
+
+    await page.fill('#playSignalingURL', 'wss://engine.example/webrtc-session.json');
+    await page.fill('#playStreamName', 'someStream');
+    await expect(hint).toContainText('which renditions of this stream are live');
+    await expect(page.locator('#play-find-renditions')).toBeEnabled();
+  });
+});
 
 /*
  * RTCPeerConnection.close() fires no connectionstatechange, so the State tile must not rely
