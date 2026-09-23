@@ -13,12 +13,14 @@ import Rail from './components/shell/Rail';
 import TrackEnabledSync from './components/shared/TrackEnabledSync';
 import Play from './components/play/Play';
 import Publish from './components/publish/Publish';
+import Loopback from './components/loopback/Loopback';
 import 'bootstrap/dist/css/bootstrap.css';
 import './styles/shell.css';
 import './styles/inspector.css';
 import './styles/header.css';
 import './styles/diagnostics.css';
 import './styles/sparkline.css';
+import './styles/loopback.css';
 import './App.css';
 
 const App = () => {
@@ -32,6 +34,7 @@ const App = () => {
           <Routes>
             <Route path="/play" element={<Play />} />
             <Route path="/publish" element={<Publish />} />
+            <Route path="/loopback" element={<Loopback />} />
             <Route path="/" element={<Navigate to="/publish" replace />} />
           </Routes>
         </div>

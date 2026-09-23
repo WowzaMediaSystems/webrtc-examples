@@ -8,6 +8,7 @@ import { SET_PUBLISH_VIDEO_TRACK } from '../../actions/publishSettingsActions';
 import useMediaStream from '../../hooks/useMediaStream';
 import { selectPublishVideoTrack } from '../../utils/VideoTrackUtils';
 import { logEvent } from '../../diagnostics/signalLog';
+import { clockedTrackFor, releaseClockedTrack } from '../../diagnostics/burnedClock';
 
 
 
@@ -16,7 +17,7 @@ const PublishVideoDropdown = () => {
   const dispatch = useDispatch();
   const publishSettings = useSelector ((state) => state.publishSettings);
   const { cameras, videoTracksMap, displayScreenTrack } = useSelector ((state) => state.media);
-  const { videoTrack1DeviceId } = useSelector ((state) => state.publishSettings);
+  const { videoTrack1DeviceId, burnedClock } = useSelector ((state) => state.publishSettings);
 
   // Handle videoTrack1 changes
   const streamRef = useMediaStream();
@@ -32,6 +33,7 @@ const PublishVideoDropdown = () => {
     : null;
 
 
+  // The clock wrap lives here: this effect alone decides which track is previewed and published.
   useEffect(() => {
     let newStream = new MediaStream();
 
@@ -40,6 +42,9 @@ const PublishVideoDropdown = () => {
     // produced a working preview and a publish with no video at all.
     const { track, usedFallback } = selection;
     let videoTrack = track || undefined;
+
+     if (burnedClock) videoTrack = clockedTrackFor(videoTrack);
+     else releaseClockedTrack();
 
     if (videoTrack) newStream.addTrack(videoTrack);
     // The effect re-runs on unrelated identity changes; log once per selection.
@@ -59,7 +64,8 @@ const PublishVideoDropdown = () => {
     dispatch({ type: SET_MEDIA_STREAM, stream: newStream });
     dispatch({ type: SET_PUBLISH_VIDEO_TRACK, videoTrack: videoTrack });
 
-  }, [dispatch, selection, videoTracksMap, videoTrack1DeviceId, streamRef]);
+    // No cleanup: the derived track's lifetime is owned by clockedTrackFor.
+  }, [dispatch, selection, videoTracksMap, videoTrack1DeviceId, streamRef, burnedClock]);
 
   return(
     <div className="mb-3">

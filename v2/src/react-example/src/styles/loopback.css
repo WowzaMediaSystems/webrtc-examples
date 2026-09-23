@@ -1,0 +1,72 @@
+/* The combined publisher + player page, inside the app shell. */
+
+.wz-loopback { gap: 14px; }
+
+.wz-loopback__pane {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.wz-loopback__heading {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--wz-text);
+  margin: 0;
+}
+
+.wz-loopback__hint {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--wz-text-subtle);
+}
+
+/*
+ * The picture sits at the top of its area and the stats at the bottom of the pane, so the
+ * two panes line up with each other whatever size each side happens to be carrying. Letting
+ * the video centre in the space meant a 640x360 publisher and a 1280x720 player started and
+ * ended at different heights, and the two stat strips did the same.
+ */
+.wz-loopback__video {
+  flex-grow: 1;
+  min-height: 0;
+  position: relative;
+  /* The flex-start alignment itself is in App.css, next to the rule it overrides. */
+}
+
+/* The strip is the last thing in a pane and sits at its foot, so the two panes agree on
+   where the figures start however tall each picture is. */
+.wz-loopback__pane > .wz-statgroups { margin-top: auto; }
+
+/*
+ * Each pane is about half the stage, so the tiles are wider here and wrap to more rows
+ * instead. At four to a row a figure like "2500 kbps" lost its tail to an ellipsis beside
+ * the trend line, which is the one thing a stat tile may never do.
+ */
+.wz-loopback .wz-stats { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+
+/*
+ * The video box on this page, which App.css used to describe alongside the single-page stage.
+ *
+ * The properties the two share are repeated here rather than left in a shared rule: one
+ * selector in one file beats a rule in another file that has to be read to understand this one.
+ * The pictures anchor to the top so the two panes line up whatever size each side carries.
+ */
+.wz-loopback__video {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+}
+
+/* The picture sizes against the box, so the frame hugs it and scales both ways. */
+@supports (width: 1cqw) {
+  .wz-loopback__video { container-type: size; }
+}

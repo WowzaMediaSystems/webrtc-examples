@@ -26,6 +26,13 @@ const PlayIcon = () => (
   </svg>
 );
 
+const BothIcon = () => (
+  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="5" width="8" height="14" rx="1" /><rect x="13" y="5" width="8" height="14" rx="1" />
+  </svg>
+);
+
 const DocsIcon = () => (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -72,6 +79,7 @@ const Chevron = ({ open }) => (
 const PAGES = [
   { to: '/publish', label: 'Publish', Icon: PublishIcon },
   { to: '/play', label: 'Play', Icon: PlayIcon },
+  { to: '/loopback', label: 'Publish + Play', Icon: BothIcon },
 ];
 
 const UTILITIES = [

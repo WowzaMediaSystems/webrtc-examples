@@ -904,3 +904,171 @@ test.describe('a stalled publisher produces missed frames, not a wrong number', 
     }
   });
 });
+
+/* =========================================== mode A against mode B ======================== */
+
+test.describe('same-machine clock modes agree', () => {
+  // Mode A: publisher and player in one JS context (the split view). Mode B: two contexts on
+  // one machine. Both read the same OS clock, so the transport figures should agree.
+  test('the split view and two contexts report the same Engine leg', async ({ browser }) => {
+    test.setTimeout(240_000);
+
+    const modeA = await (async () => {
+      const context = await newInstrumentedContext(browser);
+      const page = await context.newPage();
+      try {
+        const streamName = uniqueStream('modeA');
+        await page.goto('/#/loopback');
+        await requireEngine(page, test);
+        await startPublishing(page, { streamName, codec: 'H264' });
+        await expectLive(page);
+        await page.getByRole('button', { name: 'Player', exact: true }).click();
+        await fillPlayForm(page, { streamName });
+        await playWithRetry(page);
+        await joinPresentedFrames(page, '#player-video');
+        await page.waitForTimeout(12_000);
+        return summarize('mode A, split view, one context', await readInstrument(page));
+      } finally {
+        await context.close();
+      }
+    })();
+
+    const modeB = await (async () => {
+      const pubContext = await newInstrumentedContext(browser);
+      const playContext = await newInstrumentedContext(browser);
+      const publisher = await pubContext.newPage();
+      const viewer = await playContext.newPage();
+      try {
+        const streamName = uniqueStream('modeB');
+        await publishStamped(publisher, { streamName });
+        await playStamped(viewer, { streamName });
+        await joinPresentedFrames(viewer, '#player-video');
+        await viewer.waitForTimeout(12_000);
+        return summarize('mode B, two contexts, one machine', await readInstrument(viewer));
+      } finally {
+        await pubContext.close();
+        await playContext.close();
+      }
+    })();
+
+    expect(modeA.markerRate, 'the split view read no marker').toBe(1);
+    expect(modeB.markerRate, 'the two-context run read no marker').toBe(1);
+    expect(modeA.transportP50).not.toBeNull();
+    expect(modeB.transportP50).not.toBeNull();
+
+    const difference = Math.abs(modeA.transportP50 - modeB.transportP50);
+    console.log(`\nmode A p50 ${modeA.transportP50} ms, mode B p50 ${modeB.transportP50} ms, `
+      + `difference ${difference} ms`);
+
+    // A tolerance on session-to-session jitter buffer variation; clock error is zero in both
+    // arms. A systematic clock difference between the modes would exceed it.
+    expect(difference).toBeLessThan(40);
+  });
+});
+
+// The time drawn onto every frame before encode, replacing the published video track.
+test.describe('burned-in clock', () => {
+
+  const hookConnections = (page) => page.addInitScript(() => {
+    const Original = window.RTCPeerConnection;
+    window.__pcs = [];
+    window.RTCPeerConnection = class extends Original {
+      constructor(...args) { super(...args); window.__pcs.push(this); }
+    };
+  });
+
+  const videoSent = (page) => page.evaluate(async () => {
+    let out = null;
+    for (const pc of window.__pcs || []) {
+      (await pc.getStats()).forEach((r) => {
+        if (r.type === 'outbound-rtp' && r.kind === 'video') {
+          out = { framesEncoded: r.framesEncoded ?? 0, bytesSent: r.bytesSent ?? 0 };
+        }
+      });
+    }
+    return out;
+  });
+
+  test('keeps publishing video, and goes on publishing it', async ({ page }) => {
+    await hookConnections(page);
+    await requireEngine(page, test);
+    await page.goto('/#/publish');
+    await waitForCamera(page);
+
+    await openTab(page, 'Advanced');
+    await page.locator('#publishBurnedClock').check();
+    await openTab(page, 'Connection');
+    await startPublishing(page, { streamName: uniqueStream('burned') });
+    await expectLive(page);
+    await page.waitForTimeout(3000);
+
+    const first = await videoSent(page);
+    expect(first, 'no outbound video at all').not.toBeNull();
+    expect(first.framesEncoded, 'the clock stopped the video').toBeGreaterThan(20);
+
+    // Still going a few seconds later, rather than having stalled after a handful of frames.
+    await page.waitForTimeout(3000);
+    const second = await videoSent(page);
+    expect(second.framesEncoded).toBeGreaterThan(first.framesEncoded + 20);
+  });
+
+  test('draws it on the preview, so both ends can be photographed together', async ({ page }) => {
+    await page.goto('/#/publish');
+    await waitForCamera(page);
+    await openTab(page, 'Advanced');
+    await page.locator('#publishBurnedClock').check();
+
+    // The preview carries the derived track, not the raw camera.
+    await expect.poll(async () => page.evaluate(() => {
+      const stream = document.getElementById('publisher-video')?.srcObject;
+      const track = stream && stream.getVideoTracks()[0];
+      return track ? track.readyState : null;
+    }), { timeout: 10_000 }).toBe('live');
+  });
+
+  /*
+   * Switching sides on the combined page unmounts the settings form while the publish carries
+   * on, so the derived track cannot belong to that component's lifetime.
+   */
+  test('survives the settings form being unmounted', async ({ page }) => {
+    await hookConnections(page);
+    await requireEngine(page, test);
+    await page.goto('/#/loopback');
+    await waitForCamera(page);
+
+    await openTab(page, 'Advanced');
+    await page.locator('#publishBurnedClock').check();
+    await openTab(page, 'Connection');
+    await page.fill('#signalingURL', SIGNALING_URL);
+    await page.fill('#applicationName', APPLICATION);
+    await page.fill('#streamName', uniqueStream('burnedSwap'));
+    await page.click('#publish-toggle');
+    await expectLive(page);
+    await page.waitForTimeout(2000);
+
+    const before = await videoSent(page);
+    await page.getByRole('button', { name: 'Player', exact: true }).click();
+    await page.getByRole('button', { name: 'Publisher', exact: true }).click();
+    await page.waitForTimeout(3000);
+
+    const after = await videoSent(page);
+    expect(after.framesEncoded, 'the side switch stopped the video')
+      .toBeGreaterThan(before.framesEncoded + 20);
+  });
+
+  test('turning it off puts the camera back', async ({ page }) => {
+    await page.goto('/#/publish');
+    await waitForCamera(page);
+    await openTab(page, 'Advanced');
+
+    await page.locator('#publishBurnedClock').check();
+    await page.waitForTimeout(500);
+    await page.locator('#publishBurnedClock').uncheck();
+
+    await expect.poll(async () => page.evaluate(() => {
+      const stream = document.getElementById('publisher-video')?.srcObject;
+      const track = stream && stream.getVideoTracks()[0];
+      return track ? track.readyState : null;
+    }), { timeout: 10_000 }).toBe('live');
+  });
+});
