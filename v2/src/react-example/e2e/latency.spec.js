@@ -1255,6 +1255,100 @@ test.describe('burned-in clock', () => {
   });
 });
 
+test.describe('how these numbers are measured', () => {
+
+  const openPanel = async (page) => {
+    await requireEngine(page, test);
+    await page.goto('/#/loopback');
+    await waitForCamera(page);
+
+    const streamName = uniqueStream('help');
+    await openTab(page, 'Advanced');
+    await page.locator('#publishLatencyProbe').check();
+    await openTab(page, 'Connection');
+    await page.fill('#signalingURL', SIGNALING_URL);
+    await page.fill('#applicationName', APPLICATION);
+    await page.fill('#streamName', streamName);
+    await page.click('#publish-toggle');
+    await expectLive(page);
+
+    await page.getByRole('button', { name: 'Player', exact: true }).click();
+    await openTab(page, 'Advanced');
+    await page.locator('#playLatencyProbe').check();
+    await openTab(page, 'Connection');
+    await page.fill('#playSignalingURL', SIGNALING_URL);
+    await page.fill('#playApplicationName', APPLICATION);
+    await page.fill('#playStreamName', streamName);
+    await page.click('#play-toggle');
+    await expectPlaying(page);
+  };
+
+  test('opens from the panel head and closes every way it should', async ({ page }) => {
+    await openPanel(page);
+
+    const dialog = page.locator('#measurement-help');
+    await expect(dialog).toBeHidden();
+
+    await page.locator('#measurement-help-open').click();
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('do not add up');
+
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+
+    await page.locator('#measurement-help-open').click();
+    await page.locator('#measurement-help-close').click();
+    await expect(dialog).toBeHidden();
+  });
+
+  test('answers the three questions it exists for', async ({ page }) => {
+    await openPanel(page);
+    await page.locator('#measurement-help-open').click();
+    const dialog = page.locator('#measurement-help');
+
+    // Why a round trip is not the delay a frame experiences.
+    await expect(dialog).toContainText('Round trip is not latency');
+    // Why the player's estimate is smaller than the probe.
+    await expect(dialog).toContainText('Latency covers the last hop only');
+    // Why a packet loss figure of zero on one side is an answer, not a missing reading.
+    await expect(dialog).toContainText('Packet loss is per direction');
+  });
+
+  // The sentence that has to survive on the panel itself, because it qualifies every figure.
+  test('leaves the short caveat on the panel', async ({ page }) => {
+    await openPanel(page);
+    await expect(page.locator('.wz-latency__caveat'))
+      .toContainText('larger than this');
+  });
+
+  test('is readable in both themes', async ({ page }) => {
+    await openPanel(page);
+    await page.locator('#measurement-help-open').click();
+
+    const contrast = () => page.evaluate(() => {
+      const luminance = (colour) => {
+        const [r, g, b] = colour.match(/\d+/g).map(Number).map((v) => {
+          const c = v / 255;
+          return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const style = getComputedStyle(document.getElementById('measurement-help'));
+      const text = luminance(style.color);
+      const behind = luminance(style.backgroundColor);
+      return (Math.max(text, behind) + 0.05) / (Math.min(text, behind) + 0.05);
+    });
+
+    expect(await contrast()).toBeGreaterThan(7);
+
+    await page.evaluate(() => window.localStorage.setItem('wz.theme', 'light'));
+    await page.reload();
+    await openPanel(page);
+    await page.locator('#measurement-help-open').click();
+    expect(await contrast()).toBeGreaterThan(7);
+  });
+});
+
 // Both ends share one Date.now, so the offset is exact even though the clock samples' round
 // trip to the Engine exceeds the trusted bound.
 test.describe('the combined page clock', () => {
