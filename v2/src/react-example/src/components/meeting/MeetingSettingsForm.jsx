@@ -7,7 +7,7 @@ import ShareLink from '../shared/ShareLink'
 import * as PublishSettingsActions from '../../actions/publishSettingsActions';
 import { getCookieValues } from '../../utils/CookieUtils';
 import CookieName from '../../constants/CookieName';
-import QueryString from 'query-string';
+import { readQueryParams } from '../../utils/QueryParams';
 import muteImage from '../../images/mic-32px.svg'
 import unmuteImage from '../../images/mic-off-32px.svg'
 import videoImage from '../../images/videocam-32px.svg'
@@ -27,7 +27,7 @@ const MeetingSettingsForm = () => {
   useEffect(() => {
 
     let cookieValues = getCookieValues(CookieName);
-    let qs = QueryString.parse(window.location.search);
+    let qs = readQueryParams();
     let savedValues = { ...cookieValues, ...qs };
 
     for (let param in savedValues)

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import QueryString from 'query-string';
+import { readQueryParams } from '../../utils/QueryParams';
 
 import * as compositeSettingsActions from '../../actions/compositeSettingsActions';
 import { compositePublishUrlParameters, compositePublishUrlParametersPrefix } from '../../constants/CompositeOptions';
@@ -17,7 +17,7 @@ const CompositePublishSettingsForm = () => {
   useEffect(() => {
 
     let cookieValues = getCookieValues(CookieName);
-    let qs = QueryString.parse(window.location.search);
+    let qs = readQueryParams();
     let savedValues = { ...cookieValues, ...qs };
 
     for (let param in savedValues)
