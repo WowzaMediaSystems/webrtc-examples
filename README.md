@@ -74,9 +74,7 @@ The examples are organized into two versions:
 #### v2
 
 - `v2/src/react-example` — React example with the latest features and fixes
-    - `v2/src/react-example/src/components` — React components for the publish, play, meeting, and composite examples
-        - `composite` — Components for compositing a WebRTC stream with multiple video and audio tracks
-        - `meeting` — Components for publishing a WebRTC stream with multiple participants
+    - `v2/src/react-example/src/components` — React components for the publish and play examples
         - `play` — Components for playing back a WebRTC stream
         - `publish` — Components for publishing a WebRTC stream
     - `v2/src/react-example/src/hooks`
