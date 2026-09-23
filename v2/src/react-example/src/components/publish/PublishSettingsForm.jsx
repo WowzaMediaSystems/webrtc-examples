@@ -300,14 +300,14 @@ const PublishSettingsForm = ({ tab = 'connection' }) => {
   // Test aid: trigger an ICE restart on the active publish peer connection. See IceRestartUtils.
   const handleRestartIce = () => triggerIceRestart(webrtcPublish.peerConnection);
 
-  if (!initialized) return null;
-
   // null means the question could not be answered here, which is not a reason to warn.
   // Memoized: getCapabilities is not free and this form re-renders on every keystroke.
   const codecUnavailable = useMemo(
     () => isVideoCodecOfferable(publishSettings.videoCodec) === false,
     [publishSettings.videoCodec]
   );
+
+  if (!initialized) return null;
 
   return (
     <div id="publish-settings">
