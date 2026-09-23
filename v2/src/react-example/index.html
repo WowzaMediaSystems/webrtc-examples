@@ -2,16 +2,8 @@
 <html lang="en" data-bs-theme="dark">
   <head>
     <meta charset="utf-8" />
-    <!--
-      The theme is applied here, before anything paints.
-
-      React sets the same attribute, but it can only do so after the bundle has loaded and
-      mounted, by which time the page has already drawn one frame in whatever this element
-      says. With "dark" hardcoded, a reader who had chosen light saw the page flash dark on
-      every single load, which looks exactly like the choice not being remembered.
-
-      The key is shared with src/hooks/useTheme.js; keep the two the same.
-    -->
+    <!-- Applies the saved theme before the first paint, so a light choice does not flash dark.
+         The storage key is shared with src/hooks/useTheme.js. -->
     <script>
       (function () {
         try {
@@ -31,8 +23,7 @@
     </script>
     <meta name="robots" content="noindex, nofollow" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- The only colour outside tokens.css, and it has to track --wz-bg in both themes or
-         the browser chrome disagrees with the page. -->
+    <!-- The only color outside tokens.css; it tracks --wz-bg so the browser chrome matches. -->
     <meta name="theme-color" content="#0b141d" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#f4f7fa" media="(prefers-color-scheme: light)" />
     <meta name="description" content="Wowza WebRTC publish and playback example pages" />

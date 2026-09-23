@@ -20,7 +20,7 @@ const Inspector = ({ tabs, actions, legacyHref = null, sides = null, side = null
   const current = tabs.find((t) => t.id === active) || tabs[0];
 
   const maxWidth = useCallback(() => Math.max(300, window.innerWidth - 520), []);
-  const { size, handleProps } = useResizable({
+  const { size, handleProps, targetRef } = useResizable({
     axis: 'x',
     initial: 340,
     min: 280,
@@ -32,7 +32,7 @@ const Inspector = ({ tabs, actions, legacyHref = null, sides = null, side = null
   return (
     <>
     <Resizer label="Resize the settings panel" {...handleProps} />
-    <aside className="wz-inspector" aria-label="Settings" style={{ width: size }}>
+    <aside ref={targetRef} className="wz-inspector" aria-label="Settings" style={{ width: size }}>
       {sides ? (
         <div className="wz-inspector__switch">
           <div className="wz-segment" role="group" aria-label="Which connection these settings apply to">

@@ -37,6 +37,11 @@ export const useResizable = ({ axis, initial, min, max, invert = false, storageK
   const [dragging, setDragging] = useState(false);
   const origin = useRef(null);
 
+  // The element being resized. During a drag its size is written to it directly and state is
+  // committed on release, so what it contains does not re-render on every pointer move.
+  const targetRef = useRef(null);
+  const property = axis === 'x' ? 'width' : 'height';
+
   // Size as of the last move: a release in the same frame would otherwise save the old value.
   const latest = useRef(size);
 
@@ -70,13 +75,21 @@ export const useResizable = ({ axis, initial, min, max, invert = false, storageK
     if (origin.current === null) return;
     const now = axis === 'x' ? event.clientX : event.clientY;
     const delta = (now - origin.current.at) * (invert ? -1 : 1);
-    apply(origin.current.size + delta);
+    if (!targetRef.current) {
+      apply(origin.current.size + delta);
+      return;
+    }
+    const bounded = clamp(origin.current.size + delta, min, max());
+    latest.current = bounded;
+    targetRef.current.style[property] = `${bounded}px`;
+    event.currentTarget.setAttribute('aria-valuenow', String(Math.round(bounded)));
   };
 
   const finish = (event) => {
     if (origin.current === null) return;
     origin.current = null;
     setDragging(false);
+    setSize(latest.current);
     try {
       event.currentTarget.releasePointerCapture(event.pointerId);
     } catch {
@@ -120,5 +133,5 @@ export const useResizable = ({ axis, initial, min, max, invert = false, storageK
     onKeyDown,
   };
 
-  return { size, handleProps };
+  return { size, handleProps, targetRef };
 };
