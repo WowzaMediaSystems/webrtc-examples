@@ -18,6 +18,7 @@ const Play = () => {
 
   const tabs = [
     { id: 'connection', label: 'Connection', render: () => <PlaySettingsForm tab="connection" /> },
+    { id: 'advanced', label: 'Advanced', render: () => <PlaySettingsForm tab="advanced" /> },
   ];
 
   return (
