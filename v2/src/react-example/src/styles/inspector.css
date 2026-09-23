@@ -30,3 +30,513 @@
   max-width: 100%;
   padding: 0;
 }
+
+/* ------------------------------------------------------------------ one field */
+
+.wz-inspector .mb-3 { margin-bottom: 14px !important; }
+
+.wz-inspector label,
+.wz-inspector .col-form-label {
+  display: block;
+  width: auto;
+  margin: 0 0 5px;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--wz-text-subtle);
+}
+
+.wz-inspector .form-control,
+.wz-inspector .form-select {
+  box-sizing: border-box;
+  width: 100%;
+  height: 34px;
+  padding: 0 9px;
+  border: 1px solid var(--wz-border-strong);
+  border-radius: var(--wz-radius-sm);
+  background-color: var(--wz-surface-sunken);
+  color: var(--wz-text);
+  font-size: 12px;
+}
+
+/* URLs, stream names and tokens are read character by character, so they get the mono face. */
+.wz-inspector input.form-control { font-family: var(--wz-font-mono); }
+
+.wz-inspector .form-control:focus,
+.wz-inspector .form-select:focus {
+  border-color: var(--wz-accent);
+  background-color: var(--wz-surface-sunken);
+  color: var(--wz-text);
+  box-shadow: none;
+}
+
+.wz-inspector .form-control::placeholder {
+  color: var(--wz-text-subtle);
+  opacity: 1;
+}
+
+.wz-inspector .form-control:disabled,
+.wz-inspector .form-select:disabled {
+  background-color: var(--wz-surface-sunken);
+  opacity: 0.55;
+}
+
+/*
+ * The control dimmed but its label did not, so a disabled field read as half switched off:
+ * a full strength "WHIP Auth Token" over a faint box. The label goes with it.
+ *
+ * The hint below is deliberately left at full strength, because on the auth token it is the
+ * line that says why the field is disabled and how to enable it.
+ */
+.wz-inspector .mb-3:has(> .form-control:disabled) > label,
+.wz-inspector .mb-3:has(> .form-select:disabled) > label {
+  opacity: 0.6;
+}
+
+.wz-inspector .input-group { flex-wrap: nowrap; }
+
+.wz-inspector .input-group-text {
+  height: 34px;
+  padding: 0 9px;
+  border: 1px solid var(--wz-border-strong);
+  border-left: 0;
+  border-radius: 0 var(--wz-radius-sm) var(--wz-radius-sm) 0;
+  background: var(--wz-surface-raised);
+  color: var(--wz-text-subtle);
+  font-size: 11px;
+}
+
+.wz-inspector .form-text,
+.wz-inspector small {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--wz-text-subtle);
+}
+
+/* ------------------------------------------------------------------ toggles */
+
+/*
+ * A switch reads as a row: what it does on the left, the control on the right. The
+ * pill shape Bootstrap draws for .form-switch is dropped for a square box, which is
+ * what the layout asks for and what sits better beside a 11px label.
+ */
+.wz-inspector .form-check-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin: 0 0 12px !important;
+  padding: 0;
+}
+
+.wz-inspector .form-check-inline .form-check-label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--wz-text);
+}
+
+/*
+ * One setting: the switch, the line that explains it, and room before the next one.
+ *
+ * Without the grouping these ran together. A switch carries 12px under it and its own
+ * explanation sat outside that margin, so the explanation drifted away from the control it
+ * belonged to while the next setting's label butted straight against it. Two settings read as
+ * one paragraph with a switch in the middle. The spacing now says what belongs to what: tight
+ * to its own control, loose between items.
+ */
+.wz-inspector .wz-setting { margin-bottom: 20px; }
+.wz-inspector .wz-setting:last-child { margin-bottom: 0; }
+.wz-inspector .wz-setting .form-check-inline { margin-bottom: 5px !important; }
+.wz-inspector .wz-setting .form-text { margin-top: 0; }
+.wz-inspector .wz-setting .wz-field-error { margin-top: 0; }
+
+/*
+ * Every one of these is a feature being turned on or off, so they are switches: a track
+ * with a knob that slides. A tick box reads as "is this true", which is the wrong question
+ * for "Enable Simulcast". The knob is drawn rather than inherited so its colour holds in
+ * both states.
+ */
+.wz-inspector input.form-check-input,
+.wz-inspector .form-switch input.form-check-input {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 36px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border-radius: var(--wz-radius-pill);
+  background-color: var(--wz-surface-sunken);
+  border: 1px solid var(--wz-border-strong);
+  background-position: left center;
+  background-size: 14px 14px;
+  background-repeat: no-repeat;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3ccircle r='7' cx='8' cy='8' fill='%23909090'/%3e%3c/svg%3e");
+  transition: background-color var(--wz-transition), background-position var(--wz-transition), border-color var(--wz-transition);
+}
+
+.wz-inspector input.form-check-input:checked,
+.wz-inspector .form-switch input.form-check-input:checked {
+  background-color: var(--wz-accent);
+  border-color: var(--wz-accent);
+  background-position: right center;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3ccircle r='7' cx='8' cy='8' fill='%23000b2f'/%3e%3c/svg%3e");
+}
+
+.wz-inspector input.form-check-input:focus-visible {
+  border-color: var(--wz-accent);
+  outline: 2px solid var(--wz-accent);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.wz-inspector input.form-check-input:focus { box-shadow: none; }
+.wz-inspector input.form-check-input:disabled { opacity: 0.5; }
+
+/* ------------------------------------------------------------------ inline rows */
+
+/* A control and its button belong on one line; this opts back out of the stacking above. */
+.wz-inspector .wz-inline-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.wz-inspector .wz-inline-row > [class*="col-"]:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.wz-inspector .wz-inline-row > [class*="col-"]:last-child {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+/*
+ * The field in an inline row carries its own bottom margin, which pushed the control up by
+ * exactly that much and left it sitting above the button beside it. The margin moves to the
+ * row, so both children share one baseline.
+ */
+.wz-inspector .wz-inline-row { margin-bottom: 14px; }
+.wz-inspector .wz-inline-row [class*="col-"] > .mb-3 { margin-bottom: 0 !important; }
+.wz-inspector .wz-actions-dock .wz-inline-row { margin-bottom: 0; }
+
+/* Two fields of equal weight, side by side. Frame rate and frame size are read together
+   and are both short, so a row each was two rows of mostly empty space. */
+.wz-inspector .wz-split-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.wz-inspector .wz-split-row > [class*="col-"] {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+}
+
+.wz-inspector .control-button {
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--wz-radius-sm);
+}
+
+.wz-inspector .control-button img { width: 18px; height: 18px; }
+
+/* A rule between logical groups of fields. */
+.wz-inspector .wz-rule {
+  height: 1px;
+  margin: 16px 0;
+  background: var(--wz-border);
+}
+
+/* ------------------------------------------------------------------ drawers */
+
+/* A drawer is a container, not an action, so it is not painted like the primary button. */
+.wz-inspector .btn-drawer-toggle,
+.wz-inspector .btn-drawer-toggle:hover,
+.wz-inspector .btn-drawer-toggle:active:focus {
+  height: 34px;
+  padding: 0 10px;
+  font-size: 12px;
+  border-radius: var(--wz-radius-sm) !important;
+  background-color: var(--wz-surface-raised) !important;
+  border: 1px solid var(--wz-border-strong) !important;
+  color: var(--wz-text) !important;
+}
+
+.wz-inspector .btn-drawer-toggle:hover { border-color: var(--wz-accent) !important; }
+
+/* The simulcast rungs are a table of small fields; they keep their own scale. */
+.wz-inspector table .form-control {
+  height: 28px;
+  padding: 0 6px;
+  font-size: 11px;
+}
+
+.wz-inspector table th {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--wz-text-subtle);
+}
+
+/* ------------------------------------------------------------------ action dock */
+
+.wz-actions-dock .wz-inline-row { align-items: stretch; }
+
+.wz-inspector #publish-toggle,
+.wz-inspector #play-toggle {
+  height: 40px;
+  border-radius: var(--wz-radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.wz-inspector .wz-actions-dock .control-button {
+  width: 40px;
+  height: 40px;
+}
+
+/* ------------------------------------------------------------------ validation */
+
+/*
+ * An invalid field says so where it is, not only when the primary action is pressed. The
+ * border alone never carries it: the message below states what is wrong and what is wanted.
+ */
+.wz-inspector .form-control.is-invalid,
+.wz-inspector .form-select.is-invalid {
+  border-color: var(--wz-danger);
+  background-image: none;
+  padding-right: 9px;
+}
+
+.wz-inspector .form-control.is-invalid:focus { border-color: var(--wz-danger); box-shadow: none; }
+
+.wz-inspector .wz-field-error {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--wz-danger);
+}
+
+/* A second-rank button: the Find beside the rendition list, not a primary action. */
+.wz-inspector .wz-secondary-button {
+  height: 34px;
+  padding: 0 12px;
+  font-size: 12px;
+  white-space: nowrap;
+  border: 1px solid var(--wz-border-strong);
+  border-radius: var(--wz-radius-sm);
+  background: var(--wz-surface-raised);
+  color: var(--wz-text);
+}
+
+.wz-inspector .wz-secondary-button:hover:not(:disabled) { border-color: var(--wz-accent); color: var(--wz-text); }
+.wz-inspector .wz-secondary-button:disabled { opacity: 0.5; }
+
+/* ------------------------------------------------------------------ tables */
+
+/*
+ * The simulcast rungs are a Bootstrap table, which paints its own #212529 ground and grey
+ * rules. Inside this panel that reads as a different product, so the table takes the shell's
+ * colours: the fields sit on the panel, not on a grey slab.
+ */
+.wz-inspector .table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--wz-text);
+  --bs-table-border-color: var(--wz-border);
+  margin-bottom: 8px;
+}
+
+.wz-inspector .table > :not(caption) > * > * {
+  background-color: transparent;
+  box-shadow: none;
+  padding: 4px;
+}
+
+.wz-inspector .table th { border-bottom-color: var(--wz-border); }
+.wz-inspector .table td { border-color: var(--wz-border); }
+
+/* The drawer's own body, which Bootstrap's border utilities leave on the default grey. */
+.wz-inspector .border {
+  border-color: var(--wz-border) !important;
+  background: var(--wz-surface-raised);
+}
+
+/* ------------------------------------------------------------------ autofill */
+
+/*
+ * A browser that autofills a field paints it with its own near-white ground, which on a dark
+ * panel looks like the theme has come apart. There is no property to turn that off, so the
+ * fill is pushed behind an inset shadow of the colour the field should be, and the text
+ * colour is locked with it.
+ */
+.wz-inspector input:-webkit-autofill,
+.wz-inspector input:-webkit-autofill:hover,
+.wz-inspector input:-webkit-autofill:focus,
+.wz-inspector input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--wz-surface-sunken) inset;
+  box-shadow: 0 0 0 1000px var(--wz-surface-sunken) inset;
+  -webkit-text-fill-color: var(--wz-text);
+  caret-color: var(--wz-text);
+  transition: background-color 8000s;
+}
+
+/* ------------------------------------------------------------------ toggle as a selector */
+
+/*
+ * One switch presented as a choice between two named transports. The switch itself is the
+ * ordinary .form-check-input above; this only lays a word out on either side of it and
+ * marks which one is in force. See FormToggleSelect.jsx for why the words are not controls.
+ */
+.wz-inspector .wz-toggle-select__caption {
+  display: block;
+  margin: 0 0 5px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--wz-text-subtle);
+}
+
+.wz-inspector .wz-toggle-select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+}
+
+.wz-inspector .wz-toggle-select__side {
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--wz-text-subtle);
+  transition: color var(--wz-transition);
+}
+
+.wz-inspector .wz-toggle-select__side[data-active='true'] {
+  font-weight: 700;
+  color: var(--wz-text);
+}
+
+/* The chosen side is bold, and bold is wider, so the width is reserved up front: without
+   this the words slide sideways every time the switch is thrown. */
+.wz-inspector .wz-toggle-select__side::before {
+  content: attr(data-label);
+  display: block;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------------ recent values */
+
+/*
+ * The suggestion list, drawn rather than left to the browser. A native <datalist> popup
+ * cannot be styled at all: its rows came out around three times the height of a control in
+ * this panel, in the browser's own colours. See RecentInput.jsx.
+ */
+.wz-recent { position: relative; }
+
+.wz-recent__control { position: relative; }
+
+/* Room for the chevron, so a long URL does not run under it. */
+.wz-recent__control .form-control { padding-right: 26px; }
+
+.wz-recent__toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 24px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--wz-text-subtle);
+  cursor: pointer;
+}
+
+.wz-recent__toggle:hover { color: var(--wz-text); }
+
+/*
+ * Absolute, so opening the list does not push the rest of the panel down a row. The panel
+ * body scrolls, which clips it: the max-height below keeps it short enough that this is
+ * only reachable at the very bottom of a scrolled panel.
+ */
+.wz-recent__list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  max-height: 168px;
+  margin: 0;
+  padding: 3px 0;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--wz-surface-raised);
+  border: 1px solid var(--wz-border-strong);
+  border-radius: var(--wz-radius-sm);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+.wz-recent__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px 0 9px;
+}
+
+.wz-recent__row.is-active { background: var(--wz-hover); }
+
+/* 24px, against the 34px of the control it belongs to: a suggestion is not a field. */
+.wz-recent__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--wz-font-mono);
+  font-size: 12px;
+  color: var(--wz-text);
+  cursor: pointer;
+}
+
+.wz-recent__forget {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--wz-radius-sm);
+  background: none;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--wz-text-subtle);
+  cursor: pointer;
+  /* Shown on the row being pointed at, so eight rows are eight values and not eight buttons. */
+  opacity: 0;
+}
+
+.wz-recent__row:hover .wz-recent__forget,
+.wz-recent__row.is-active .wz-recent__forget { opacity: 1; }
+
+.wz-recent__forget:hover { color: var(--wz-text); background: var(--wz-hover); }

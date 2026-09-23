@@ -2,6 +2,9 @@ import { expect, test } from '@playwright/test';
 import {
   failOnPageErrors,
 } from './helpers.js';
+import {
+  openTab,
+} from './ui-helpers.js';
 
 /* Needs no Engine: these cover the app shell itself. */
 
@@ -22,5 +25,23 @@ test.describe('app shell', () => {
     await page.goto('/#/publish');
     await page.getByRole('link', { name: 'Play', exact: true }).click();
     await expect(page.locator('#play-settings')).toBeVisible();
+  });
+
+  test('the default frame size does not raise an overconstrained error', async ({ page }) => {
+    // Regression: "default" used to impose min 640x360, which failed on cameras that
+    // could not reach it, the moment the page loaded.
+    await page.goto('/#/publish');
+    await openTab(page, 'Source');
+    await expect(page.locator('#frameSize')).toHaveValue('default');
+    await page.waitForTimeout(3000);
+    await expect(page.locator('#error-panel')).toHaveCount(0);
+  });
+
+  // Auto by default: an explicit codec filters the offer, and a server that will not accept
+  // it rejects the video line outright rather than falling back.
+  test('the video codec defaults to Auto', async ({ page }) => {
+    await page.goto('/#/publish');
+    await openTab(page, 'Source');
+    await expect(page.locator('#videoCodec')).toHaveValue('auto');
   });
 });

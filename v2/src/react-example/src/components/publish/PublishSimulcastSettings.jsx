@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import * as PublishSettingsActions from '../../actions/publishSettingsActions';
 import { MAX_SIMULCAST_RENDITIONS, MAX_RID_LENGTH, createSimulcastRendition, sortSimulcastRenditions } from '../../utils/SimulcastUtils';
-import CollapsibleSection from '../shared/CollapsibleSection';
+import Icon from '../shared/Icon';
 
-// Collapsible Simulcast drawer: the on/off toggle plus a table to configure
+// Simulcast: the on/off toggle plus a table to configure
 // each rendition. Rows are kept in SDP preference order, derived from scale
 // down (highest last); they re-sort when a scale down edit is finished.
 // RID, max bitrate and the number of renditions are negotiated in the offer,
@@ -65,7 +65,7 @@ const SimulcastRenditionRow = ({ rendition, setupLocked, simulcastDisabled, remo
           disabled={setupLocked || !removable}
           onClick={onRemove}
         >
-          <i className="bi bi-x-lg"></i>
+          <Icon name="close" />
         </button>
       </td>
     </tr>
@@ -112,9 +112,12 @@ const PublishSimulcastSettings = () => {
   };
 
   return (
-    <CollapsibleSection title="Simulcast">
+    <>
+      {/* Laid out rather than hidden in a drawer: a toggle and a table behind a click, in
+          a panel that already scrolls, cost a click and bought nothing. */}
+      <div className="wz-group">Simulcast</div>
       <div className="form-check form-switch form-check-inline mb-3">
-        <label className='form-check-label mr-3' htmlFor="publishUseSimulcast">
+        <label className='form-check-label me-3' htmlFor="publishUseSimulcast">
           Enable Simulcast
         </label>
         <input
@@ -162,9 +165,9 @@ const PublishSimulcastSettings = () => {
         disabled={setupLocked || renditions.length >= MAX_SIMULCAST_RENDITIONS}
         onClick={addRendition}
       >
-        <i className="bi bi-plus-lg me-1"></i>Add rendition
+        <Icon name="plus" className="me-1" />Add rendition
       </button>
-    </CollapsibleSection>
+    </>
   );
 }
 
