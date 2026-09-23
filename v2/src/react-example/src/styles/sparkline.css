@@ -1,0 +1,49 @@
+/* Trend line beside each stat value. One series, so no legend: the tile label names it. */
+
+/*
+ * The trend line gives way before the figure does. In a narrow tile something has to lose
+ * width, and an ellipsised number is useless where a shorter sparkline is merely coarser.
+ */
+.wz-spark {
+  position: relative;
+  width: 62px;
+  min-width: 36px;
+  height: 18px;
+  flex-shrink: 1;
+}
+
+.wz-spark--empty { visibility: hidden; }
+
+.wz-spark svg { display: block; width: 100%; height: 18px; overflow: visible; }
+
+/* History is context, so it wears the de-emphasis hue. */
+.wz-spark__line {
+  fill: none;
+  stroke: var(--wz-text-subtle);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Only "now" carries the accent. */
+.wz-spark__now { fill: var(--wz-accent); stroke: var(--wz-surface); stroke-width: 1; }
+
+.wz-spark__crosshair { stroke: var(--wz-border-strong); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.wz-spark__hover { fill: var(--wz-text); stroke: var(--wz-surface); stroke-width: 1; }
+
+.wz-spark__tip {
+  position: absolute;
+  bottom: 22px;
+  right: 0;
+  background: var(--wz-navy-900);
+  border: 1px solid var(--wz-border-strong);
+  color: var(--wz-text);
+  font-family: var(--wz-font-mono);
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: var(--wz-radius-sm);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
