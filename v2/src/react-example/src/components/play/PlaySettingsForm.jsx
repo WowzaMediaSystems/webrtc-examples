@@ -10,6 +10,7 @@ import CookieName from '../../constants/CookieName';
 import { isValidStunUrl, isValidTurnUrl, STUN_SERVER_PLACEHOLDER, TURN_SERVER_PLACEHOLDER } from '../../utils/IceServersUtils';
 import { isValidIpAddress, IP_ADDRESS_PLACEHOLDER } from '../../utils/IpAddressUtils';
 import RecentInput from '../shared/RecentInput';
+import PlayRenditionSelect from './PlayRenditionSelect';
 import useRecent from '../../hooks/useRecent';
 import FormCheckbox from '../shared/FormCheckbox';
 import FormToggleSelect from '../shared/FormToggleSelect';
@@ -336,6 +337,9 @@ const PlaySettingsForm = ({ tab = 'connection' }) => {
               disabled={connected}
               onChange={(streamName) => dispatch({ type: PlaySettingsActions.SET_PLAY_STREAM_NAME, streamName })}
             />
+          </div>
+          <div className="col-12">
+            <PlayRenditionSelect />
           </div>
         </div>
 
