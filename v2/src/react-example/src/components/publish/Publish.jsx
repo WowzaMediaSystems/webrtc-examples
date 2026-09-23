@@ -2,7 +2,6 @@ import React from 'react';
 import { useSelector } from 'react-redux';
 
 import PublishVideoElement from './PublishVideoElement';
-import PublishLiveIndicator from './PublishLiveIndicator';
 import PublishSettingsForm from './PublishSettingsForm';
 import CompositorUserMedia from '../media/CompositorUserMedia';
 import Devices from '../media/Devices';
@@ -36,7 +35,6 @@ const Publish = () => {
         <div className="wz-stage__body" id="publish-content">
           <div className="wz-stage__video" id="publish-video-container">
             <PublishVideoElement />
-            <PublishLiveIndicator />
           </div>
           {chatEnabled || captionsEnabled ? (
             <div className="wz-stage__aside">

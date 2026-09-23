@@ -3,9 +3,15 @@ import { test, expect } from '@playwright/test';
 import {
   APPLICATION,
   SIGNALING_URL,
+  requireEngine,
+  uniqueStream,
 } from './helpers.js';
 import {
+  expectLive,
+  expectPlaying,
   openTab,
+  startPlaying,
+  startPublishing,
   waitForCamera,
 } from './ui-helpers.js';
 
@@ -69,6 +75,91 @@ test.describe('shell alignment', () => {
   });
 });
 
+
+test.describe('status badges', () => {
+  test('LIVE appears at the right end of the topbar, not in the rail', async ({ page }) => {
+    await page.goto('/#/publish');
+    await requireEngine(page, test);
+
+    await startPublishing(page, { streamName: uniqueStream('badge') });
+    await expectLive(page);
+
+    const badge = page.locator('#video-live-indicator-live');
+    await expect(badge).toBeVisible();
+
+    const where = await page.evaluate(() => {
+      const b = document.querySelector('#video-live-indicator-live').getBoundingClientRect();
+      const topbar = document.querySelector('.wz-topbar').getBoundingClientRect();
+      const inRail = !!document.querySelector('.wz-rail #video-live-indicator-live');
+      const status = document.querySelector('.wz-topbar .wz-status').getBoundingClientRect();
+      return {
+        inTopbar: b.top >= topbar.top && b.bottom <= topbar.bottom,
+        // The whole group, not just one badge: a column of two overflowed the bar.
+        fitsInBar: status.top >= topbar.top && status.bottom <= topbar.bottom,
+        gapToRightEdge: Math.round(topbar.right - b.right),
+        pastHalfway: b.left > topbar.left + topbar.width / 2,
+        inRail,
+      };
+    });
+
+    expect(where.inTopbar).toBe(true);
+    expect(where.inRail).toBe(false);
+    expect(where.fitsInBar).toBe(true);
+    expect(where.pastHalfway).toBe(true);
+    // Against the edge, but not jammed into it.
+    expect(where.gapToRightEdge).toBeGreaterThan(0);
+    expect(where.gapToRightEdge).toBeLessThan(40);
+  });
+});
+
+/*
+ * The rendition badge and caption overlay are positioned against their container, which
+ * must be the picture, not the pane around it.
+ */
+test.describe('video overlays', () => {
+  for (const route of ['#/play']) {
+    test(`the rendition badge sits on the picture (${route})`, async ({ browser }) => {
+      const publisher = await browser.newPage();
+      await publisher.goto('/#/publish');
+      await requireEngine(publisher, test);
+
+      const streamName = uniqueStream('ovl');
+      await startPublishing(publisher, { streamName });
+      await expectLive(publisher);
+
+      const viewer = await browser.newPage();
+      await viewer.setViewportSize({ width: 1440, height: 900 });
+      await viewer.goto(`/${route}`);
+      await startPlaying(viewer, { streamName });
+      await expectPlaying(viewer);
+      await viewer.waitForFunction(
+        () => { const v = document.querySelector('#player-video'); return v && v.videoWidth > 0; },
+        null, { timeout: 20_000 });
+
+      const badge = viewer.locator('#rendition-badge');
+      await expect(badge).toBeVisible();
+
+      const within = await viewer.evaluate(() => {
+        const b = document.querySelector('#rendition-badge').getBoundingClientRect();
+        const v = document.querySelector('#player-video').getBoundingClientRect();
+        return b.top >= v.top && b.bottom <= v.bottom && b.left >= v.left && b.right <= v.right;
+      });
+      expect(within).toBe(true);
+
+      // Sound is controllable whenever there is a picture.
+      const toggle = viewer.locator('#player-mute-toggle');
+      await expect(toggle).toBeVisible();
+      const before = await viewer.evaluate(() => document.querySelector('#player-video').muted);
+      await toggle.click();
+      await expect.poll(() => viewer.evaluate(() => document.querySelector('#player-video').muted))
+        .toBe(!before);
+      await expect(toggle).toHaveAttribute('aria-pressed', String(!before));
+
+      await publisher.close();
+      await viewer.close();
+    });
+  }
+});
 
 test.describe('theme', () => {
   test('switches between dark and light, and remembers the choice', async ({ page }) => {

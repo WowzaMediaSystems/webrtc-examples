@@ -1,0 +1,123 @@
+/* Live status badges and the error banner. Both live inside the app shell. */
+
+.wz-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * A row, because the badges now live in the topbar and a column overflowed it. The column
+ * was for the rail, where they used to sit.
+ */
+.wz-status {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+}
+
+/* The rail's legacy nav still stacks them. */
+.wz-status--compact { flex-direction: column; gap: 6px; }
+
+.wz-status--compact { align-items: center; padding: 0; }
+
+
+.wz-status__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: var(--wz-radius-sm);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.wz-status__badge--compact { padding: 4px; }
+
+.wz-status__badge--live {
+  background: color-mix(in srgb, var(--wz-danger) 18%, transparent);
+  border-color: var(--wz-danger);
+  color: var(--wz-danger);
+}
+
+.wz-status__badge--playing {
+  background: color-mix(in srgb, var(--wz-success) 16%, transparent);
+  border-color: var(--wz-success);
+  color: var(--wz-success);
+}
+
+.wz-status__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: wz-pulse 1.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes wz-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wz-status__dot { animation: none; }
+}
+
+/* ---- error banner, docked under the stage title bar ---- */
+
+.wz-error {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 18px;
+  background: color-mix(in srgb, var(--wz-danger) 14%, var(--wz-surface));
+  border-bottom: 1px solid color-mix(in srgb, var(--wz-danger) 45%, transparent);
+  color: var(--wz-text);
+}
+
+.wz-error__icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--wz-danger);
+  color: var(--wz-navy-900);
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.wz-error__message {
+  flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.5;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.wz-error__close {
+  flex: none;
+  background: transparent;
+  border: 0;
+  color: var(--wz-text-muted);
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.wz-error__close:hover { color: var(--wz-text); }

@@ -358,6 +358,21 @@
 .wz-resizer--dragging { cursor: inherit; }
 body:has(.wz-resizer--dragging) { user-select: none; }
 
+/* ------------------------------------------------------------------ topbar status */
+
+/*
+ * LIVE and PLAYING sit at the right end of the topbar, against the same edge as the tab
+ * strip beside them. In the rail they were a long way from the video they described and
+ * competed with the page links for the same reading position.
+ */
+.wz-topbar .wz-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding-right: 4px;
+}
+
 /*
  * Inline icons. Sized in em so they track the button's font size, and aligned on the text
  * baseline rather than sitting on it, which is what the icon font used to do for free.
@@ -368,4 +383,15 @@ body:has(.wz-resizer--dragging) { user-select: none; }
   height: 1em;
   vertical-align: -0.125em;
   flex-shrink: 0;
+}
+
+/* Holds the stage while a lazily loaded route arrives. Centred on the space the route
+   will occupy, so the shell does not jump when it does. */
+.wz-route-loading {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--wz-text-subtle);
+  font-size: 13px;
 }
