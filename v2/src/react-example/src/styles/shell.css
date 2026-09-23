@@ -1,0 +1,359 @@
+/*
+ * App shell: icon rail, centre stage, right inspector.
+ *
+ * The rail collapses to icons and expands to labels; utility links sit at its foot so they
+ * never compete with the page links. The centre column owns the video, the stat strip and
+ * the docked signalling log. The inspector holds the settings, tabbed.
+ */
+
+.wz-app {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  /* Split rather than a shorthand, so the gradient is a layer over the flat colour and a
+     theme with no wash falls back to the colour alone. See --wz-bg-wash in tokens.css. */
+  background-color: var(--wz-bg);
+  background-image: var(--wz-bg-wash);
+}
+
+/* ------------------------------------------------------------------ rail */
+
+.wz-rail {
+  flex-shrink: 0;
+  width: 60px;
+  box-sizing: border-box;
+  background: var(--wz-surface-sunken);
+  border-right: 1px solid var(--wz-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 0 12px;
+  transition: width var(--wz-transition);
+}
+
+.wz-rail--open {
+  width: 216px;
+  align-items: stretch;
+  padding: 14px 10px 12px;
+}
+
+.wz-rail__brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 16px;
+  padding: 0 6px;
+  min-height: 26px;
+}
+
+.wz-rail:not(.wz-rail--open) .wz-rail__brand { padding: 0; justify-content: center; }
+
+.wz-rail__logo { height: 22px; width: auto; display: block; }
+.wz-rail__mark { width: 26px; height: 26px; display: block; flex-shrink: 0; }
+
+/*
+ * Shared by the links and by the theme button. A <button> brings the platform's own grey
+ * face, border and font with it, so those are reset here: without it the theme control sat
+ * in the rail as a raised grey slab among flat links.
+ */
+.wz-rail__link {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  box-sizing: border-box;
+  height: 40px;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: var(--wz-radius);
+  background: transparent;
+  color: var(--wz-text-muted);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  text-decoration: none;
+  margin-bottom: 3px;
+  padding: 0 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.wz-rail__link:hover { color: var(--wz-text); background: var(--wz-hover); }
+
+.wz-rail:not(.wz-rail--open) .wz-rail__link {
+  width: 40px;
+  flex-shrink: 0;
+  padding: 0;
+  justify-content: center;
+  align-self: center;
+}
+
+.wz-rail__link--active {
+  background: color-mix(in srgb, var(--wz-accent) 18%, transparent);
+  border-left-color: var(--wz-accent);
+  color: var(--wz-accent);
+}
+
+.wz-rail__link--active:hover { color: var(--wz-accent); }
+
+.wz-rail__label { font-size: 13px; font-weight: 500; }
+.wz-rail__link--active .wz-rail__label { font-weight: 600; }
+
+.wz-rail__spacer { flex-grow: 1; }
+
+.wz-rail__rule {
+  height: 1px;
+  background: var(--wz-border);
+  margin: 0 6px 8px;
+}
+
+.wz-rail:not(.wz-rail--open) .wz-rail__rule { width: 28px; margin: 8px 0; }
+
+.wz-rail__util { height: 34px; color: var(--wz-text-subtle); }
+.wz-rail__util .wz-rail__label { font-size: 12px; font-weight: 400; }
+
+.wz-rail__toggle {
+  margin-top: 8px;
+  height: 32px;
+  border-radius: var(--wz-radius);
+  border: 1px solid var(--wz-border-strong);
+  background: transparent;
+  color: var(--wz-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.wz-rail:not(.wz-rail--open) .wz-rail__toggle { width: 40px; align-self: center; }
+.wz-rail__toggle:hover { color: var(--wz-text); border-color: var(--wz-accent); }
+
+/* ------------------------------------------------------------------ stage */
+
+.wz-stage {
+  flex-grow: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.wz-topbar {
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--wz-border);
+}
+
+.wz-topbar__title { font-size: 14px; font-weight: 600; }
+
+.wz-topbar__target {
+  font-family: var(--wz-font-mono);
+  font-size: 12px;
+  color: var(--wz-text-subtle);
+}
+
+.wz-stage__body {
+  flex-grow: 1;
+  min-height: 0;
+  padding: 16px 18px 12px;
+  display: flex;
+  gap: 14px;
+}
+
+.wz-stage__video {
+  flex-grow: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.wz-stage__aside { width: 274px; flex-shrink: 0; display: flex; flex-direction: column; }
+
+.wz-stage__stats { flex-shrink: 0; margin: 0 18px 14px; }
+
+.wz-stage__note {
+  margin: 0 18px 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--wz-text-subtle);
+}
+
+/* ------------------------------------------------------------------ inspector */
+
+.wz-inspector {
+  width: 340px;
+  flex-shrink: 0;
+  flex-grow: 0;
+  box-sizing: border-box;
+  background: var(--wz-surface);
+  border-left: 1px solid var(--wz-border);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 48px, the same as the stage's topbar, so the rule under both runs unbroken across the
+   shell. They are one line as far as the eye is concerned, and 2px out reads as a mistake. */
+.wz-tabs {
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--wz-border);
+}
+
+/*
+ * The selected tab is bolder, and bold text is wider, so selecting one nudged all three
+ * labels sideways. The width of the bold rendering is reserved up front by a zero-height
+ * copy of the label, so the row is laid out for the widest state it will ever be in and
+ * nothing moves when the selection changes.
+ */
+.wz-tabs button::before {
+  content: attr(data-label);
+  display: block;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.wz-tabs button {
+  flex-grow: 1;
+  border: 0;
+  background: transparent;
+  color: var(--wz-text-subtle);
+  font-size: 12px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+/* The tab strip had no hover state at all, so there was nothing to see whichever theme you
+   were in. Same wash as the rail, so feedback is consistent across the shell. */
+.wz-tabs button:hover { color: var(--wz-text); background: var(--wz-hover); }
+
+.wz-tabs button[aria-selected="true"] {
+  color: var(--wz-text);
+  font-weight: 600;
+  border-bottom-color: var(--wz-accent);
+}
+
+.wz-inspector__body {
+  flex-grow: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.wz-inspector__actions {
+  flex-shrink: 0;
+  padding: 14px;
+  border-top: 1px solid var(--wz-border);
+  display: flex;
+  gap: 8px;
+}
+
+.wz-inspector__actions > form { display: contents; }
+
+/* A permanent message at the foot of the panel: below the scrolling body, below the actions
+   slot, and quieter than either, because it is neither a field nor an action. */
+/*
+ * A permanent message at the foot of the panel: below the scrolling body, below the actions
+ * slot, and quieter than either, because it is neither a field nor an action.
+ *
+ * The height is not a guess. It matches the collapsed server communication bar beside it
+ * (the server communication bar is 38px plus a 1px top border), so the two rules land on the
+ * same pixel and read as one line across the shell. It was 43px and three out.
+ */
+.wz-inspector__foot {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  height: 39px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border-top: 1px solid var(--wz-border);
+  background: var(--wz-surface);
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--wz-text-subtle);
+}
+
+/* One line inside 39px. The panel is resizable down to 280px, so the message shortens with
+   the ellipsis rather than pushing the rule out of alignment; the link stays reachable. */
+.wz-inspector__foot small {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Field group heading inside a tab. */
+.wz-group {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--wz-text-subtle);
+  margin: 4px 0 10px;
+}
+
+.wz-group + .wz-group { margin-top: 18px; }
+/* The primary action sits at the foot of the inspector body and stays put while the
+   fields above it scroll, so it is reachable from every tab. */
+.wz-actions-dock {
+  position: sticky;
+  bottom: -16px;
+  margin: 18px -16px -16px;
+  padding: 12px 16px;
+  background: var(--wz-surface);
+  border-top: 1px solid var(--wz-border);
+}
+
+.wz-actions-dock .row { margin: 0; align-items: stretch; }
+.wz-actions-dock .btn { width: 100%; }
+.wz-actions-dock .control-button { margin-top: 0; height: 100%; }
+/* ------------------------------------------------------------------ resize handles */
+
+/*
+ * A thin strip in normal flow rather than an overlay, so nothing beneath it is ever
+ * covered and the hit area cannot drift out of alignment with the edge it moves.
+ * It is wider than it looks: 7px to grab, 1px of it painted.
+ */
+.wz-resizer {
+  flex-shrink: 0;
+  position: relative;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  touch-action: none;
+}
+
+.wz-resizer--x { width: 7px; margin: 0 -3px; cursor: col-resize; align-self: stretch; }
+.wz-resizer--y { height: 7px; margin: -3px 0; cursor: row-resize; }
+
+/* The painted line sits in the middle of the grab area. */
+.wz-resizer::after {
+  content: '';
+  position: absolute;
+  background: transparent;
+  transition: background var(--wz-transition);
+}
+
+.wz-resizer--x::after { top: 0; bottom: 0; left: 3px; width: 1px; }
+.wz-resizer--y::after { left: 0; right: 0; top: 3px; height: 1px; }
+
+.wz-resizer:hover::after,
+.wz-resizer:focus-visible::after,
+.wz-resizer--dragging::after { background: var(--wz-accent); }
+
+.wz-resizer:focus-visible { outline: none; }
+
+/* While dragging, the pointer owns the gesture: no text selection anywhere on the page. */
+.wz-resizer--dragging { cursor: inherit; }
+body:has(.wz-resizer--dragging) { user-select: none; }

@@ -1,17 +1,34 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
   <head>
     <meta charset="utf-8" />
+    <!-- Applies the saved theme before the first paint, so a light choice does not flash dark.
+         The storage key is shared with src/hooks/useTheme.js. -->
+    <script>
+      (function () {
+        try {
+          var saved = window.localStorage.getItem('wz.theme');
+          var theme = saved === 'light' || saved === 'dark'
+            ? saved
+            : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+              ? 'light'
+              : 'dark');
+          document.documentElement.setAttribute('data-bs-theme', theme);
+          document.documentElement.style.colorScheme = theme;
+        } catch (e) {
+          // Storage can be blocked. The attribute above is the fallback, so there is
+          // nothing to do here but carry on.
+        }
+      })();
+    </script>
     <meta name="robots" content="noindex, nofollow" />
-    <link rel="icon" href="./favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="Wowza WebRTC publish and playback example pages"
-    />
+    <!-- The only color outside tokens.css; it tracks --wz-bg so the browser chrome matches. -->
+    <meta name="theme-color" content="#0b141d" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f4f7fa" media="(prefers-color-scheme: light)" />
+    <meta name="description" content="Wowza WebRTC publish and playback example pages" />
+    <link rel="icon" href="./favicon.ico" />
     <link rel="apple-touch-icon" href="./logo192.png" />
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.min.css" rel="stylesheet" />
     <link rel="manifest" href="./manifest.json" />
     <title>Wowza WebRTC Example Page</title>

@@ -1,32 +1,40 @@
 /*
- * This code and all components (c) Copyright 2019-2020, Wowza Media Systems, LLC. All rights reserved.
- * This code is licensed pursuant to the BSD 3-Clause License.
+ * This code and all components (c) Copyright 2019-2026, Wowza Media Systems, LLC.
+ * All rights reserved. This code is licensed pursuant to the BSD 3-Clause License.
+ *
+ * Every colour here comes from src/styles/tokens.css. Do not add a literal hex value
+ * to this file.
  */
 
- html {
+html,
+body {
   height: 100%;
- }
- body {
-   background: #F8F8F8;
-   background-image: url(./images/bg-image-1.svg), url(./images/bg-image-2.svg);
-   background-position: bottom center, top center;
-   background-repeat: no-repeat;
-   background-size: 100% 32%, 100% 60%;
-   height: 100%;
- }
- a:disabled,
- button:disabled {
-   cursor: not-allowed;
- }
+}
 
- .alert-dismissible .close {
-   padding: .4rem 1.25rem;
- }
+body {
+  background: var(--wz-bg);
+  color: var(--wz-text);
+  font-family: var(--wz-font-sans);
+  -webkit-font-smoothing: antialiased;
+}
 
- #top-nav {
-   background: #FFFFFF;
-   box-shadow: 0px 3px 3px rgba(0, 0, 0, 0.05);
- }
+a:disabled,
+button:disabled {
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: 2px solid var(--wz-accent);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ app shell */
+
+#top-nav {
+  background: var(--wz-surface);
+  border-bottom: 1px solid var(--wz-border);
+  box-shadow: none;
+}
 
  #content {
    margin-top: 3em;

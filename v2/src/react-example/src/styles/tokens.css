@@ -1,0 +1,183 @@
+/*
+ * Wowza design tokens.
+ *
+ * Values are taken from the token set published on wowza.com (the Video Intelligence
+ * Framework page defines them as --wz-* and --wp--preset--color--wowza-*). Keep this
+ * file as the single place any colour is declared: every other stylesheet and component
+ * should reference a var() from here, never a literal hex.
+ */
+
+:root {
+  /* ---- Brand scale, verbatim from the Wowza token set ---- */
+  --wz-orange-500: #ff8400;
+  --wz-orange-600: #f47b20;
+  --wz-blue-700: #013053;
+  --wz-navy-800: #001b2f;
+  --wz-navy-850: #061128;
+  --wz-navy-900: #000b2f;
+  --wz-light-blue: #0081bc;
+  --wz-lighter-blue: #d9ecf5;
+  --wz-gray-500: #909090;
+  --wz-gray-600: #767676;
+  --wz-gray-700: #494f54;
+  --wz-white: #ffffff;
+  --wz-black: #000000;
+
+  --wz-white-a05: rgba(243, 243, 243, 0.05);
+  --wz-white-a10: rgba(255, 255, 255, 0.10);
+  --wz-white-a60: rgba(255, 255, 255, 0.60);
+  --wz-white-a75: rgba(255, 255, 255, 0.75);
+
+  /* ---- Type ---- */
+  --wz-font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                  "Helvetica Neue", Arial, sans-serif;
+  --wz-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* ---- Shape and motion ---- */
+  /* Sharper than the first pass: panels 4px, controls 3px. Reads as a tool. */
+  --wz-radius-sm: 3px;
+  --wz-radius: 4px;
+  --wz-radius-lg: 6px;
+  --wz-radius-pill: 999px;
+  --wz-gap: 1rem;
+  --wz-transition: 140ms ease;
+
+  /* ---- Status. Tuned for contrast on the navy surfaces below. ---- */
+  --wz-success: #3ddc97;
+  --wz-warning: #ffc046;
+  --wz-danger: #ff6b6b;
+  --wz-info: var(--wz-light-blue);
+}
+
+/*
+ * Semantic layer. Components reference these, not the brand scale, so a re-theme is a
+ * change here rather than a hunt through every stylesheet.
+ */
+:root,
+[data-bs-theme="dark"] {
+  /*
+   * The stage is the only place this is ever seen: the rail and the inspector paint over it,
+   * so this token is really the centre column's surface. It stays a flat colour because
+   * --bs-body-bg derives from it and Bootstrap consumes that as a background-color on .card
+   * and .form-control; a gradient there computes to transparent and the chat input would
+   * lose its ground.
+   *
+   * The old value was hue 226 at 100 percent saturation, which is the solid blue this
+   * replaces. Everything below sits at hue 206 to 212 and 33 to 57 percent saturation, so it
+   * stays in the palette family (navy-800 and blue-700 are both hue 205) while reading as
+   * grey-blue rather than as ink.
+   */
+  --wz-bg: #0b141d;
+
+  /*
+   * The shallow fall down the column, applied as a separate background-image layer so the
+   * flat token above stays usable as a colour. Percentage stops, on .wz-app, whose background
+   * box is the viewport (height: 100vh, overflow: hidden): the fall then covers the whole
+   * column at any window height and cannot rescale when the log drawer opens or the stat
+   * tiles wrap. Pixel stops left the bottom of a tall display flat, which is the complaint.
+   *
+   * Two stops, not three. The whole fall is 6 codes of red, 9 of green and 11 of blue; a
+   * middle stop inside an 11-code ramp only adds a band boundary.
+   */
+  --wz-bg-wash: linear-gradient(180deg, #0b141d 0%, #050b12 100%);
+
+  /*
+   * Retargeted with the ground, not left behind. The stat tiles, the simulcast table, the
+   * latency panel and the log all paint --wz-surface and they all render inside the stage, so
+   * leaving them at hue 205 full saturation would put saturated navy panels on a grey-blue
+   * ground inside the very section this change is about. Relative luminance is preserved in
+   * order: panels 0.0109, top of the wash 0.0066, field ground 0.0056, foot of the wash
+   * 0.0032, so depth still reads the same way round.
+   */
+  --wz-surface: #121c24;
+  --wz-surface-raised: #18242e;
+  --wz-surface-sunken: #0a1218;
+  --wz-border: rgba(255, 255, 255, 0.12);
+  --wz-border-strong: rgba(255, 255, 255, 0.24);
+
+  --wz-text: var(--wz-white);
+  --wz-text-muted: var(--wz-white-a60);
+  --wz-text-subtle: var(--wz-gray-500);
+
+  --wz-accent: var(--wz-orange-500);
+  --wz-accent-hover: var(--wz-orange-600);
+  --wz-accent-contrast: var(--wz-navy-900);
+
+  /*
+   * Hover wash. It has to be a theme token rather than the white one it used to be: a 5
+   * percent white overlay is invisible on a white panel, which is exactly what light mode
+   * looked like. Dark lifts, light darkens.
+   */
+  --wz-hover: rgba(255, 255, 255, 0.07);
+
+  --wz-video-bg: #00060f;
+  --wz-overlay: rgba(0, 11, 47, 0.72);
+  --wz-focus-ring: rgba(255, 132, 0, 0.45);
+}
+
+[data-bs-theme="light"] {
+  --wz-bg: #f4f7fa;
+  /* Light mode has no wash. The flat tint is the design there. */
+  --wz-bg-wash: none;
+  --wz-surface: var(--wz-white);
+  --wz-surface-raised: var(--wz-white);
+  /*
+   * A neutral tint, not the brand's light blue. Sunken is the ground under every input, and
+   * against a white panel #d9ecf5 read as a different material: the fields looked blue while
+   * a drawer or a secondary button beside them looked white. The same mismatch exists in
+   * dark mode but is nearly invisible there, which is how it survived this long.
+   */
+  --wz-surface-sunken: #f1f5f9;
+  --wz-border: rgba(1, 48, 83, 0.14);
+  --wz-border-strong: rgba(1, 48, 83, 0.28);
+
+  /*
+   * The two quiet rungs are darker here than the greys that work on the dark surface.
+   *
+   * They used to be shared with dark mode, which put gray-500 on white at a contrast of 3.19.
+   * A field label at 3.19 already reads as switched off, so a disabled one beside it, drawn at
+   * 60 percent of the same colour, had nothing left to say: 1.88 between them. The same greys
+   * on the dark surface measure 5.40, which is why dark mode never had the problem.
+   *
+   * These mirror the dark hierarchy instead of copying its values: roughly 17, 8 and 4.6
+   * against white, where dark runs 21, 9 and 5.4 against its own surface.
+   */
+  --wz-text: var(--wz-navy-800);
+  --wz-text-muted: var(--wz-gray-700);
+  --wz-text-subtle: var(--wz-gray-600);
+
+  --wz-accent: var(--wz-orange-500);
+  --wz-accent-hover: var(--wz-orange-600);
+  --wz-accent-contrast: var(--wz-white);
+
+  --wz-hover: rgba(1, 48, 83, 0.08);
+
+  --wz-video-bg: var(--wz-navy-800);
+  --wz-overlay: rgba(1, 48, 83, 0.72);
+  --wz-focus-ring: rgba(255, 132, 0, 0.45);
+
+  --wz-success: #0f9d58;
+  --wz-warning: #b26a00;
+  --wz-danger: #c5283d;
+}
+
+/*
+ * Bootstrap 5.3 reads these at runtime, so overriding them re-themes the built-in
+ * components without recompiling Bootstrap's Sass.
+ */
+:root,
+[data-bs-theme="dark"],
+[data-bs-theme="light"] {
+  --bs-body-bg: var(--wz-bg);
+  --bs-body-color: var(--wz-text);
+  --bs-body-font-family: var(--wz-font-sans);
+  --bs-primary: var(--wz-accent);
+  --bs-primary-rgb: 255, 132, 0;
+  --bs-border-color: var(--wz-border);
+  --bs-secondary-color: var(--wz-text-muted);
+  --bs-emphasis-color: var(--wz-text);
+  --bs-link-color: var(--wz-accent);
+  --bs-link-hover-color: var(--wz-accent-hover);
+  --bs-border-radius: var(--wz-radius-sm);
+  --bs-focus-ring-color: var(--wz-focus-ring);
+}
