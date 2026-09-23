@@ -135,11 +135,12 @@ ul.navbar-nav {
 @supports (width: 1cqw) {
   .wz-stage__video { container-type: size; }
 
+  /* Height is set as well as width, not left to aspect-ratio: WebKit gives a video that is
+     stretched in a flex row a height of zero, so Safari showed no player at all. */
   #player-video,
   #publisher-video {
     width: min(100cqw, calc(100cqh * var(--wz-video-ar, 1.7778)));
-    height: auto;
-    aspect-ratio: var(--wz-video-ar, 1.7778);
+    height: min(100cqh, calc(100cqw / var(--wz-video-ar, 1.7778)));
   }
 }
 
