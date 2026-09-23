@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
 
 import {
+  APPLICATION,
+  SIGNALING_URL,
+} from './helpers.js';
+import {
   openTab,
   waitForCamera,
 } from './ui-helpers.js';
@@ -9,6 +13,43 @@ import {
  * The shell before any media flows: settings panel, transport choice, remembered
  * values, theme, and layout stability.
  */
+
+test.describe('settings panel', () => {
+
+  test('the client IP box stays shut until the option is ticked', async ({ page }) => {
+    await page.goto('/#/play');
+    await openTab(page, 'Advanced');
+
+    const box = page.locator('#playIp');
+    await expect(box).toBeDisabled();
+
+    await page.locator('#playIsIp').check();
+    await expect(box).toBeEnabled();
+  });
+
+  test('an address that is not an address is refused, in place and on Play', async ({ page }) => {
+    await page.goto('/#/play');
+    await openTab(page, 'Advanced');
+    await page.locator('#playIsIp').check();
+
+    await page.fill('#playIp', '192.168.1.999');
+    await expect(page.locator('#playIp')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#playIp-error')).toBeVisible();
+
+    // The primary action refuses it too.
+    await openTab(page, 'Connection');
+    await page.fill('#playSignalingURL', SIGNALING_URL);
+    await page.fill('#playApplicationName', APPLICATION);
+    await page.fill('#playStreamName', 'anything');
+    await page.click('#play-toggle');
+    await expect(page.locator('#error-panel')).toContainText(/not an ip address/i);
+
+    await openTab(page, 'Advanced');
+    await page.fill('#playIp', '192.168.1.42');
+    await expect(page.locator('#playIp')).not.toHaveAttribute('aria-invalid', 'true');
+  });
+});
+
 
 test.describe('shell alignment', () => {
   // The topbar rule and the tab-strip rule read as one line, so they share a pixel.
@@ -100,6 +141,18 @@ test.describe('remembered values', () => {
     await expect(page.locator('#streamName')).toHaveValue('somethingElse');
   });
 
+  test('the player is offered what the publisher used', async ({ page }) => {
+    await page.goto('/#/publish');
+    await page.fill('#signalingURL', 'wss://engine.example/webrtc-session.json');
+    await page.fill('#applicationName', 'webrtc');
+    await page.fill('#streamName', 'sharedList');
+    await page.click('#publish-toggle');
+
+    await page.goto('/#/play');
+    await page.locator('#playStreamName-recent-toggle').click();
+    await expect(page.locator('#playStreamName-recent .wz-recent__value')).toHaveText(['sharedList']);
+  });
+
   // Offering a credential back in a dropdown is not a convenience worth having.
   test('no secret is remembered', async ({ page }) => {
     await page.goto('/#/publish');
@@ -114,6 +167,153 @@ test.describe('remembered values', () => {
     expect(stored).not.toContain('super-secret');
   });
 });
+
+// The transport switch is one boolean in the store and on the wire, with a word either side.
+test.describe('transport selector', () => {
+
+  test('WSS is the default, and the words either side say what the switch means', async ({ page }) => {
+    await page.goto('/#/publish');
+
+    const sides = page.locator('#publishUseWhip').locator('..').locator('.wz-toggle-select__side');
+    await expect(sides).toHaveText(['WSS', 'WHIP']);
+
+    // Off is WSS, which is the side shown as chosen.
+    await expect(page.locator('#publishUseWhip')).not.toBeChecked();
+    await expect(sides.nth(0)).toHaveAttribute('data-active', 'true');
+    await expect(sides.nth(1)).toHaveAttribute('data-active', 'false');
+
+    await page.locator('#publishUseWhip').check();
+    await expect(sides.nth(0)).toHaveAttribute('data-active', 'false');
+    await expect(sides.nth(1)).toHaveAttribute('data-active', 'true');
+  });
+
+  test('the player offers WHEP, not WHIP', async ({ page }) => {
+    await page.goto('/#/play');
+
+    const sides = page.locator('#playUseWhep').locator('..').locator('.wz-toggle-select__side');
+    await expect(sides).toHaveText(['WSS', 'WHEP']);
+  });
+
+  // The words go bold when chosen, and bold is wider. Reserved up front, or they slide.
+  test('choosing a side does not move the words', async ({ page }) => {
+    await page.goto('/#/publish');
+
+    const lefts = () => page.evaluate(() =>
+      Array.from(document.querySelectorAll('.wz-toggle-select__side'))
+        .map((el) => Math.round(el.getBoundingClientRect().left)));
+
+    const before = await lefts();
+    await page.locator('#publishUseWhip').check();
+    expect(await lefts()).toEqual(before);
+  });
+
+  test('the auth token is present under WSS, disabled, and says why', async ({ page }) => {
+    await page.goto('/#/publish');
+
+    const token = page.locator('#publishAuthToken');
+    await expect(token).toBeVisible();
+    await expect(token).toBeDisabled();
+    await expect(page.locator('label[for="publishAuthToken"]')).toHaveText('WHIP Auth Token');
+    await expect(page.locator('#publishAuthToken-hint')).toContainText('Select WHIP');
+
+    // The label dims with the control, or it reads as half switched off. Neighbors stay put.
+    const dimming = () => page.evaluate(() => ({
+      token: getComputedStyle(document.getElementById('publishAuthToken')).opacity,
+      label: getComputedStyle(document.querySelector('label[for="publishAuthToken"]')).opacity,
+      peer: getComputedStyle(document.querySelector('label[for="applicationName"]')).opacity,
+    }));
+    expect(await dimming()).toEqual({ token: '0.55', label: '0.6', peer: '1' });
+
+    await page.locator('#publishUseWhip').check();
+    await expect(token).toBeEnabled();
+    await expect(page.locator('#publishAuthToken-hint')).toContainText('Bearer');
+    expect(await dimming()).toEqual({ token: '1', label: '1', peer: '1' });
+  });
+
+  test('the player auth token behaves the same way and is named for WHEP', async ({ page }) => {
+    await page.goto('/#/play');
+
+    const token = page.locator('#playAuthToken');
+    await expect(token).toBeVisible();
+    await expect(token).toBeDisabled();
+    await expect(page.locator('label[for="playAuthToken"]')).toHaveText('WHEP Auth Token');
+
+    await page.locator('#playUseWhep').check();
+    await expect(token).toBeEnabled();
+  });
+});
+
+
+test.describe('signaling URL', () => {
+
+  // A pre-filled value that is not a real value leaks downstream; the remembered list
+  // already saves the typing.
+  test('starts empty and shows the shape the transport wants', async ({ page }) => {
+    await page.goto('/#/publish');
+    const url = page.locator('#signalingURL');
+
+    await expect(url).toHaveValue('');
+    await expect(url).toHaveAttribute('placeholder', /^wss:\/\/.*webrtc-session\.json$/);
+
+    await page.locator('#publishUseWhip').check();
+    await expect(url).toHaveValue('');
+    await expect(url).toHaveAttribute('placeholder', /^https:\/\//);
+  });
+
+  // Transport is how to reach the server, not which one: only scheme and path change.
+  test('the host and port carry over when the transport changes', async ({ page }) => {
+    await page.goto('/#/publish');
+    await page.fill('#signalingURL', 'wss://engine.example:8443/webrtc-session.json');
+
+    await page.locator('#publishUseWhip').check();
+    await expect(page.locator('#signalingURL')).toHaveValue('https://engine.example:8443');
+
+    await page.locator('#publishUseWhip').uncheck();
+    await expect(page.locator('#signalingURL')).toHaveValue('wss://engine.example:8443/webrtc-session.json');
+  });
+
+  test('the player carries it over too', async ({ page }) => {
+    await page.goto('/#/play');
+    await page.fill('#playSignalingURL', 'wss://engine.example:8443/webrtc-session.json');
+
+    await page.locator('#playUseWhep').check();
+    await expect(page.locator('#playSignalingURL')).toHaveValue('https://engine.example:8443');
+  });
+
+  // Flipping ws/wss silently changes session protection and yields a URL that does not answer.
+  test('carrying it over does not change the security level', async ({ page }) => {
+    await page.goto('/#/publish');
+    await page.fill('#signalingURL', 'ws://localhost:8080/webrtc-session.json');
+
+    await page.locator('#publishUseWhip').check();
+    await expect(page.locator('#signalingURL')).toHaveValue('http://localhost:8080');
+  });
+
+  // The switch converts, so the only way to end up mismatched is to type it that way.
+  test('a URL typed for the other transport is flagged', async ({ page }) => {
+    await page.goto('/#/publish');
+    await page.locator('#publishUseWhip').check();
+
+    await page.fill('#signalingURL', 'wss://engine.example/webrtc-session.json');
+    await expect(page.locator('#signalingURL-mismatch')).toBeVisible();
+
+    await page.fill('#signalingURL', 'https://engine.example');
+    await expect(page.locator('#signalingURL-mismatch')).toHaveCount(0);
+  });
+
+  test('an empty field is refused, and is never remembered', async ({ page }) => {
+    await page.goto('/#/publish');
+    await page.fill('#applicationName', 'webrtc');
+    await page.fill('#streamName', 'noUrl');
+
+    await page.click('#publish-toggle');
+    await expect(page.locator('#error-panel')).toContainText('Signaling URL is required');
+
+    const stored = await page.evaluate(() => JSON.stringify(window.localStorage));
+    expect(stored).not.toContain('webrtc-session.json');
+  });
+});
+
 
 // A custom dropdown sized to the panel (a native <datalist> popup is not), over a text field.
 test.describe('remembered values dropdown', () => {
@@ -207,6 +407,29 @@ test.describe('remembered values dropdown', () => {
     await page.locator('#signalingURL-recent-toggle').click();
     await expect(page.locator('#signalingURL-recent .wz-recent__value'))
       .toHaveText(['https://engine.example']);
+  });
+});
+
+// Icons are inline SVG with no icon font; nothing else in this suite would notice them missing.
+test.describe('assets', () => {
+
+  test('the icons are drawn inline, with no font to wait for', async ({ page }) => {
+    await page.goto('/#/publish');
+    await openTab(page, 'Source');
+    await page.locator('#publishUseSimulcast').check();
+
+    const add = page.getByRole('button', { name: /Add rendition/ });
+    await expect(add.locator('svg.wz-icon')).toHaveCount(1);
+    await expect(page.locator('button[title="Remove rendition"] svg.wz-icon').first()).toBeVisible();
+
+    // The glyphs are painted, not empty boxes.
+    const box = await add.locator('svg.wz-icon').boundingBox();
+    expect(box.width).toBeGreaterThan(8);
+
+    const fontRequests = await page.evaluate(() => performance
+      .getEntriesByType('resource')
+      .filter((r) => /bootstrap-icons/.test(r.name)).length);
+    expect(fontRequests).toBe(0);
   });
 });
 
@@ -411,6 +634,15 @@ test.describe('theme on first paint', () => {
 
 // Two player tabs, flat sections instead of drawers, a permanent legacy-Engine note. Engine-free.
 test.describe('panel structure', () => {
+  test('the player has two tabs and the token settings moved under Advanced', async ({ page }) => {
+    await page.goto('/#/play');
+    await expect(page.locator('.wz-tabs button')).toHaveCount(2);
+
+    await openTab(page, 'Advanced');
+    await expect(page.locator('#playSecret')).toBeVisible();
+    await expect(page.locator('#stunServer')).toBeVisible();
+  });
+
   test('the publisher keeps three tabs, and the middle one is Source', async ({ page }) => {
     await page.goto('/#/publish');
     const labels = await page.locator('.wz-tabs button').allTextContents();
