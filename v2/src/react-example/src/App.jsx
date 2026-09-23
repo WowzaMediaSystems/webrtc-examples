@@ -14,7 +14,7 @@ import TrackEnabledSync from './components/shared/TrackEnabledSync';
 import Play from './components/play/Play';
 import Publish from './components/publish/Publish';
 import Loopback from './components/loopback/Loopback';
-import 'bootstrap/dist/css/bootstrap.css';
+import './styles/bootstrap.scss';
 import './styles/shell.css';
 import './styles/inspector.css';
 import './styles/header.css';
