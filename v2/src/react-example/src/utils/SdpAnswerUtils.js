@@ -63,6 +63,10 @@ export const videoWasRejected = (answerSdp) => {
  * browser cannot encode it, so the fallback offer went out and was refused too" are
  * different problems with different fixes, and naming the wrong one sends people to look
  * at the Engine when the answer is the browser they are sitting in front of.
+ *
+ * When the Engine did refuse, the fix is in its application config, not on this page: the
+ * application only takes the codecs listed in PreferredCodecsVideo, and the refusal does
+ * not say which those are. So the message names the setting.
  */
 export const describeRejectedVideo = (answerSdp, offeredCodec, browserOffersCodec = null) => {
   if (!videoWasRejected(answerSdp)) return null;
@@ -71,15 +75,18 @@ export const describeRejectedVideo = (answerSdp, offeredCodec, browserOffersCode
 
   if (asked && browserOffersCodec === false) {
     return `No video is being sent: this browser cannot encode ${asked} for WebRTC, so the `
-      + `full codec list was offered instead, as with Auto, and the server accepted none of `
-      + `it. Audio is still being sent.`;
+      + `full codec list was offered instead, as with Auto, and the Engine application accepted `
+      + `none of it. Check PreferredCodecsVideo in the application's Application.xml. Audio `
+      + `is still being sent.`;
   }
 
   if (asked) {
-    return `No video is being sent: the server accepted none of the offered ${asked} codecs. `
-      + 'Audio is still being sent. Try setting Video Codec to Auto.';
+    return `No video is being sent: the Engine application does not accept ${asked}. Add it `
+      + `to PreferredCodecsVideo in the application's Application.xml, or set Video Codec to `
+      + 'Auto. Audio is still being sent.';
   }
 
-  return 'No video is being sent: the server and this browser have no video codec in '
-    + 'common, so the video track was refused. Audio is still being sent.';
+  return 'No video is being sent: the Engine application and this browser have no video '
+    + 'codec in common, so the video track was refused. Check PreferredCodecsVideo in the '
+    + "application's Application.xml. Audio is still being sent.";
 };
